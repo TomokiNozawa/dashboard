@@ -130,6 +130,10 @@ async function unlock() {
       throw new Error('Invalid password');
     }
 
+    // Store password in sessionStorage for shift.html
+    sessionStorage.setItem('dk_pass', password);
+    sessionStorage.setItem('dk_ts', Date.now().toString());
+
     // Replace current page with decrypted dashboard
     document.open();
     document.write(html);

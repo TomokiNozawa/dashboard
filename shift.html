@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>4月Camp シフト調整 | DIK&Company</title>
+<title>シフト管理 | DIK&Company</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -14,130 +14,504 @@
   --blue: #58a6ff; --green: #3fb950; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; --orange: #f0883e;
   --radius: 8px;
 }
-body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
-.container { max-width: 1400px; margin: 0 auto; padding: 24px 20px 60px; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+
+/* Login */
+.login-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; justify-content: center; align-items: center;
+}
+.login-container {
+  text-align: center; padding: 48px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  max-width: 400px; width: 90%;
+}
+.login-container h1 {
+  font-size: 20px; font-weight: 700; margin-bottom: 8px;
+  background: linear-gradient(135deg, #e6edf3, #58a6ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.login-container p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.login-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+}
+.login-input:focus { border-color: var(--blue); }
+.login-btn {
+  width: 100%; padding: 12px; margin-top: 16px;
+  background: linear-gradient(135deg, #238636, #3fb950);
+  border: none; border-radius: 8px; color: white;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+}
+.login-btn:hover { opacity: 0.9; }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-error { color: var(--red); font-size: 13px; margin-top: 12px; display: none; }
+.login-loading { color: var(--text2); font-size: 13px; margin-top: 12px; display: none; }
+
+/* Main App */
+.container { max-width: 1500px; margin: 0 auto; padding: 24px 20px 100px; }
 a { color: var(--blue); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* Header */
-.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); }
-.back-btn { padding: 6px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-size: 13px; cursor: pointer; transition: all 0.2s; }
-.back-btn:hover { background: var(--card-hover); color: var(--text); }
+.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+.back-btn { padding: 6px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-size: 13px; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block; }
+.back-btn:hover { background: var(--card-hover); color: var(--text); text-decoration: none; }
 .page-header h1 { font-size: 22px; font-weight: 700; }
 .page-header .sub { font-size: 13px; color: var(--text3); margin-left: auto; }
 
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border-light); overflow-x: auto; }
+.tab {
+  padding: 10px 18px; font-size: 13px; font-weight: 500;
+  color: var(--text2); background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; white-space: nowrap; transition: all 0.2s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
 /* Summary Cards */
-.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 32px; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 32px; }
 .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
 .summary-val { font-size: 28px; font-weight: 700; }
 .summary-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
 
 /* Section */
-.section { margin-top: 36px; }
-.section h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); }
+.section { margin-top: 28px; }
+.section h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; }
 
-/* Schedule Table */
-.schedule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.schedule-table th, .schedule-table td { padding: 10px 12px; border: 1px solid var(--border-light); text-align: center; }
-.schedule-table th { background: var(--card); color: var(--text2); font-weight: 600; position: sticky; top: 0; }
-.schedule-table td { background: var(--bg); }
-.schedule-table tr:hover td { background: var(--card); }
-.schedule-table .date-col { text-align: left; white-space: nowrap; font-weight: 500; }
-.urgent { color: var(--red); font-weight: 700; }
-.warning { color: var(--yellow); font-weight: 600; }
-.ok { color: var(--green); }
-.badge-a { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: rgba(248,81,73,0.15); color: var(--red); }
-.badge-b { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: rgba(210,153,34,0.15); color: var(--yellow); }
+/* Tables */
+.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border-light); }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); text-align: center; }
+.data-table th { background: var(--card); color: var(--text2); font-weight: 600; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+.data-table td { background: var(--bg); }
+.data-table tbody tr:hover td { background: var(--card); }
+.data-table .text-left { text-align: left; }
+.data-table .text-right { text-align: right; }
+.data-table tfoot td { background: var(--card); font-weight: 600; }
 
-/* Contact Progress */
-.contact-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.contact-table th, .contact-table td { padding: 10px 14px; border: 1px solid var(--border-light); }
-.contact-table th { background: var(--card); color: var(--text2); font-weight: 600; text-align: left; }
-.contact-table td { background: var(--bg); }
-.contact-table tr:hover td { background: var(--card); }
-.status-icon { font-size: 16px; text-align: center; }
+.row-muted td { opacity: 0.45; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge-a { background: rgba(248,81,73,0.15); color: var(--red); }
+.badge-b { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.badge-none { background: rgba(110,118,129,0.15); color: var(--text3); }
+
+.deficit { color: var(--red); font-weight: 700; }
+.surplus { color: var(--green); font-weight: 600; }
+.balanced { color: var(--text3); }
+
+/* Availability Matrix */
+.avail-table th, .avail-table td { padding: 6px 4px; min-width: 48px; }
+.avail-table th.date-header { writing-mode: vertical-rl; text-orientation: mixed; font-size: 11px; padding: 8px 2px; max-width: 36px; }
+.avail-cell {
+  width: 40px; height: 32px; border-radius: 4px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; user-select: none; transition: all 0.15s;
+  margin: 0 auto;
+}
+.avail-cell:hover { transform: scale(1.1); }
+.avail-full { background: rgba(63,185,80,0.2); color: var(--green); }
+.avail-am { background: rgba(88,166,255,0.2); color: var(--blue); }
+.avail-pm { background: rgba(88,166,255,0.2); color: var(--blue); }
+.avail-ng { background: rgba(248,81,73,0.2); color: var(--red); }
+.avail-empty { background: rgba(110,118,129,0.1); color: var(--text3); }
+.avail-name-cell { text-align: left !important; white-space: nowrap; font-weight: 500; font-size: 12px; position: sticky; left: 0; background: var(--card) !important; z-index: 1; }
+
+/* Contact table */
+.contact-check { width: 18px; height: 18px; cursor: pointer; accent-color: var(--green); }
+.editable-note {
+  background: transparent; border: 1px solid transparent; border-radius: 4px;
+  color: var(--text2); font-size: 12px; padding: 4px 8px; width: 100%; min-width: 120px;
+  outline: none; font-family: inherit;
+}
+.editable-note:hover { border-color: var(--border); }
+.editable-note:focus { border-color: var(--blue); background: var(--bg); color: var(--text); }
+
+/* Calendar */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.calendar-header { text-align: center; font-size: 12px; font-weight: 600; color: var(--text2); padding: 8px 4px; }
+.calendar-cell {
+  background: var(--card); border: 1px solid var(--border-light); border-radius: var(--radius);
+  padding: 8px; min-height: 80px; font-size: 11px; position: relative; transition: all 0.2s;
+}
+.calendar-cell:hover { border-color: var(--border); }
+.calendar-cell.empty { background: transparent; border-color: transparent; }
+.calendar-day { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.calendar-event { padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-green { background: rgba(63,185,80,0.15); color: var(--green); }
+.cal-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.cal-red { background: rgba(248,81,73,0.15); color: var(--red); }
+.cal-gray { background: rgba(110,118,129,0.1); color: var(--text3); }
+.calendar-month-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.calendar-month-nav button { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.calendar-month-nav button:hover { background: var(--card-hover); color: var(--text); }
+.calendar-month-nav span { font-size: 16px; font-weight: 600; }
+
+/* Suggestion */
+.suggestion-list { display: flex; flex-direction: column; gap: 8px; }
+.suggestion-item {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.suggestion-info { flex: 1; }
+.suggestion-date { font-weight: 600; font-size: 14px; }
+.suggestion-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.suggestion-names { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.suggestion-name { background: rgba(88,166,255,0.12); color: var(--blue); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.apply-btn { padding: 6px 14px; background: var(--green); color: #fff; border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.apply-btn:hover { opacity: 0.85; }
+.generate-btn { padding: 10px 20px; background: linear-gradient(135deg, #1f6feb, #58a6ff); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 16px; }
+.generate-btn:hover { opacity: 0.9; }
+
+/* History */
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; }
+.history-date { font-size: 13px; font-weight: 600; }
+.history-msg { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.history-author { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* Save Button */
+.save-fab {
+  position: fixed; bottom: 24px; right: 24px; z-index: 100;
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #238636, #3fb950);
+  border: none; border-radius: 12px;
+  color: white; font-size: 14px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(63,185,80,0.3);
+  transition: all 0.2s;
+}
+.save-fab:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(63,185,80,0.4); }
+.save-fab:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.save-badge {
+  background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 10px;
+  font-size: 11px;
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 90px; right: 24px; z-index: 200;
+  padding: 12px 20px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 500;
+  transform: translateX(120%); transition: transform 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.toast.show { transform: translateX(0); }
+.toast-success { background: #238636; color: white; }
+.toast-error { background: var(--red); color: white; }
 
 /* Legend */
-.legend { display: flex; gap: 20px; margin-bottom: 16px; font-size: 12px; color: var(--text2); }
+.legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--text2); flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; gap: 6px; }
 
-/* Instructor Grid */
-.inst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-.inst-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-.inst-card:hover { background: var(--card-hover); }
-.inst-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-.inst-type { font-size: 11px; color: var(--text3); }
-.inst-avail { font-size: 12px; color: var(--green); margin-top: 6px; }
+/* Loading spinner */
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.load-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
+.load-screen .spinner { width: 36px; height: 36px; border-width: 3px; }
+.load-screen p { color: var(--text2); font-size: 14px; }
 
 @media (max-width: 768px) {
-  .schedule-table, .contact-table { font-size: 11px; }
-  .schedule-table th, .schedule-table td, .contact-table th, .contact-table td { padding: 6px 8px; }
+  .container { padding: 16px 12px 100px; }
+  .page-header h1 { font-size: 18px; }
+  .summary { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .summary-card { padding: 10px; }
+  .summary-val { font-size: 22px; }
+  .tabs { gap: 0; }
+  .tab { padding: 8px 12px; font-size: 12px; }
+  .data-table { font-size: 11px; }
+  .data-table th, .data-table td { padding: 6px 6px; }
+  .calendar-cell { min-height: 60px; padding: 4px; }
 }
 </style>
 </head>
 <body>
-<div class="container" id="app"></div>
+
+<!-- Login Overlay -->
+<div class="login-overlay" id="loginOverlay" style="display:none;">
+  <div class="login-container">
+    <h1>DIK&Company</h1>
+    <p>シフト管理 - パスワードを入力してください</p>
+    <input type="password" class="login-input" id="loginPassword" placeholder="パスワードを入力" autofocus>
+    <button class="login-btn" id="loginBtn">ログイン</button>
+    <div class="login-error" id="loginError">パスワードが正しくありません</div>
+    <div class="login-loading" id="loginLoading">認証中...</div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div class="container" id="app" style="display:none;">
+  <div class="load-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <p>データを読み込み中...</p>
+  </div>
+</div>
+
+<!-- Save FAB -->
+<button class="save-fab" id="saveFab" style="display:none;" onclick="saveData()">
+  保存 <span class="save-badge" id="saveBadge">0</span>
+</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script>
-const shiftData = {
-  year: 2026,
-  lastUpdated: "2026-03-21",
+// ============================================================
+// State
+// ============================================================
+let shiftData = null;
+let fileSha = null;
+let pat = null;
+let changeCount = 0;
+const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours
+const API_BASE = 'https://api.github.com';
+const REPO = 'TomokiNozawa/dashboard-data';
+const FILE_PATH = 'shift-data.json';
 
-  // 講師（インストラクターとしてカウントしない）
-  teachers: ["中田", "野沢", "樋口", "赤井"],
+// ============================================================
+// Authentication
+// ============================================================
+async function init() {
+  const storedPass = sessionStorage.getItem('dk_pass');
+  const storedTs = sessionStorage.getItem('dk_ts');
 
-  // インストラクター候補（お助けマン）
-  instructors: [
-    { name: "堀内さん", type: "リピーター", slackId: "U3YJWQ8T0", contacted: false, replied: false, notes: "" },
-    { name: "神波さん", type: "リピーター", slackId: "U9X6C7Z1D", contacted: false, replied: false, notes: "" },
-    { name: "優さん", type: "リピーター", slackId: "UCXF8A5DY", contacted: false, replied: false, notes: "" },
-    { name: "まさしさん", type: "リピーター", slackId: "U01MN83P2FR", contacted: false, replied: false, notes: "" },
-    { name: "笠井さん", type: "リピーター", slackId: "U474EERUZ", contacted: false, replied: false, notes: "" },
-    { name: "保坂くん", type: "リピーター", slackId: "U0XETSAG5", contacted: false, replied: false, notes: "" },
-    { name: "森下さん", type: "初回", slackId: "U08SCAA2Y66", contacted: false, replied: false, notes: "大阪" },
-    { name: "楠瀬さん", type: "初回", slackId: "U0AAH8NTYAE", contacted: false, replied: false, notes: "" },
-    { name: "一柳さん", type: "初回", slackId: "U0532LQ7WA0", contacted: false, replied: false, notes: "" },
-    { name: "佐久間さん", type: "初回", slackId: "U051KMXC95J", contacted: false, replied: false, notes: "" },
-    { name: "あやさん", type: "初回", slackId: "U0HK6DYES", contacted: false, replied: false, notes: "" },
-    { name: "勇太さん", type: "初回", slackId: "U046KQ41970", contacted: false, replied: false, notes: "" },
-  ],
+  if (storedPass && storedTs) {
+    const elapsed = Date.now() - parseInt(storedTs, 10);
+    if (elapsed < SESSION_TIMEOUT) {
+      try {
+        pat = await decryptPAT(storedPass);
+        sessionStorage.setItem('dk_ts', Date.now().toString());
+        showApp();
+        return;
+      } catch (e) {
+        sessionStorage.removeItem('dk_pass');
+        sessionStorage.removeItem('dk_ts');
+      }
+    } else {
+      sessionStorage.removeItem('dk_pass');
+      sessionStorage.removeItem('dk_ts');
+    }
+  }
+  showLogin();
+}
 
-  // 研修スケジュール（サンプル: toB管理スプシから取得するデータ構造）
-  schedule: [
-    { date: "04/01(水)", company: "新卒Camp A社", time: "09:00-17:00", participants: 30, instNeeded: 1, instAssigned: 0, rank: "B", note: "" },
-    { date: "04/02(木)", company: "新卒Camp B社", time: "09:00-17:00", participants: 50, instNeeded: 2, instAssigned: 0, rank: "A", note: "大人数" },
-    { date: "04/03(金)", company: "新卒Camp C社", time: "09:00-12:00", participants: 20, instNeeded: 1, instAssigned: 0, rank: "B", note: "" },
-    { date: "04/07(火)", company: "新卒Camp D社 + E社", time: "09:00-17:00", participants: 80, instNeeded: 5, instAssigned: 0, rank: "A", note: "超大規模" },
-    { date: "04/08(水)", company: "新卒Camp F社", time: "10:00-17:00", participants: 25, instNeeded: 1, instAssigned: 0, rank: "B", note: "" },
-    { date: "04/09(木)", company: "新卒Camp G社", time: "09:00-17:00", participants: 60, instNeeded: 3, instAssigned: 0, rank: "A", note: "" },
-    { date: "04/10(金)", company: "新卒Camp H社", time: "09:00-12:00", participants: 15, instNeeded: 0, instAssigned: 0, rank: "-", note: "ワンオペ" },
-    { date: "04/14(火)", company: "新卒Camp I社", time: "09:00-17:00", participants: 40, instNeeded: 2, instAssigned: 0, rank: "A", note: "" },
-    { date: "04/15(水)", company: "新卒Camp J社", time: "10:00-17:00", participants: 30, instNeeded: 1, instAssigned: 0, rank: "B", note: "" },
-  ],
-};
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('saveFab').style.display = 'none';
 
-function render() {
-  const app = document.getElementById("app");
+  const pwInput = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
+  pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  loginBtn.addEventListener('click', doLogin);
+  setTimeout(() => pwInput.focus(), 100);
+}
+
+async function doLogin() {
+  const password = document.getElementById('loginPassword').value;
+  if (!password) return;
+
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  const loadEl = document.getElementById('loginLoading');
+  btn.disabled = true;
+  errEl.style.display = 'none';
+  loadEl.style.display = 'block';
+
+  try {
+    pat = await decryptPAT(password);
+    sessionStorage.setItem('dk_pass', password);
+    sessionStorage.setItem('dk_ts', Date.now().toString());
+    showApp();
+  } catch (e) {
+    errEl.style.display = 'block';
+    loadEl.style.display = 'none';
+    btn.disabled = false;
+    document.getElementById('loginPassword').select();
+  }
+}
+
+async function decryptPAT(password) {
+  const resp = await fetch('encrypted-pat.json');
+  const payload = await resp.json();
+
+  const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+  const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-CBC', length: 256 },
+    false,
+    ['decrypt']
+  );
+
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-CBC', iv },
+    key,
+    encData
+  );
+
+  const decoded = new TextDecoder().decode(decrypted);
+  const token = decoded.replace(/[\x00-\x1f]/g, '').trim();
+  if (!token || token.length < 10) throw new Error('Invalid');
+  return token;
+}
+
+// ============================================================
+// App Init
+// ============================================================
+async function showApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('loadingScreen').style.display = 'flex';
+
+  try {
+    await loadData();
+    renderApp();
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('saveFab').style.display = 'flex';
+    updateSaveBadge();
+    loadHistory();
+  } catch (e) {
+    document.getElementById('loadingScreen').innerHTML =
+      `<p style="color:var(--red);">データの読み込みに失敗しました: ${e.message}</p>
+       <button class="back-btn" onclick="location.reload()" style="margin-top:12px;">再試行</button>`;
+  }
+}
+
+// ============================================================
+// GitHub API
+// ============================================================
+function apiHeaders() {
+  return {
+    'Authorization': `token ${pat}`,
+    'Accept': 'application/vnd.github.v3+json'
+  };
+}
+
+async function loadData() {
+  const url = `${API_BASE}/repos/${REPO}/contents/${FILE_PATH}`;
+  const resp = await fetch(url, { headers: apiHeaders() });
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+  const json = await resp.json();
+  fileSha = json.sha;
+  const decoded = atob(json.content.replace(/\n/g, ''));
+  shiftData = JSON.parse(decoded);
+}
+
+async function saveData() {
+  const fab = document.getElementById('saveFab');
+  fab.disabled = true;
+  fab.textContent = '保存中...';
+
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(shiftData, null, 2))));
+    const url = `${API_BASE}/repos/${REPO}/contents/${FILE_PATH}`;
+    const resp = await fetch(url, {
+      method: 'PUT',
+      headers: apiHeaders(),
+      body: JSON.stringify({
+        message: 'update: shift data (browser edit)',
+        content: content,
+        sha: fileSha
+      })
+    });
+
+    if (resp.status === 409) {
+      showToast('他のユーザーが更新しています。再読み込みしてください。', 'error');
+      fab.disabled = false;
+      fab.innerHTML = '保存 <span class="save-badge" id="saveBadge">' + changeCount + '</span>';
+      return;
+    }
+    if (!resp.ok) throw new Error(`Save failed: ${resp.status}`);
+
+    const result = await resp.json();
+    fileSha = result.content.sha;
+    changeCount = 0;
+    updateSaveBadge();
+    showToast('保存しました', 'success');
+    loadHistory();
+  } catch (e) {
+    showToast('保存に失敗しました: ' + e.message, 'error');
+  }
+
+  fab.disabled = false;
+  fab.innerHTML = '保存 <span class="save-badge" id="saveBadge">' + changeCount + '</span>';
+}
+
+async function loadHistory() {
+  try {
+    const url = `${API_BASE}/repos/${REPO}/commits?path=${FILE_PATH}&per_page=5`;
+    const resp = await fetch(url, { headers: apiHeaders() });
+    if (!resp.ok) return;
+    const commits = await resp.json();
+    renderHistory(commits);
+  } catch (e) { /* ignore */ }
+}
+
+// ============================================================
+// Change Tracking
+// ============================================================
+function markChanged() {
+  changeCount++;
+  updateSaveBadge();
+  shiftData.lastEditedInBrowser = new Date().toISOString().slice(0, 19).replace('T', ' ');
+}
+
+function updateSaveBadge() {
+  const badge = document.getElementById('saveBadge');
+  if (badge) badge.textContent = changeCount;
+  const fab = document.getElementById('saveFab');
+  if (fab) fab.style.opacity = changeCount > 0 ? '1' : '0.6';
+}
+
+// ============================================================
+// Toast
+// ============================================================
+function showToast(msg, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast toast-' + type + ' show';
+  setTimeout(() => { toast.classList.remove('show'); }, 3000);
+}
+
+// ============================================================
+// Render
+// ============================================================
+function renderApp() {
+  const app = document.getElementById('app');
   const d = shiftData;
 
   const totalDays = d.schedule.filter(s => s.instNeeded > 0).length;
-  const totalNeeded = d.schedule.reduce((sum, s) => sum + s.instNeeded, 0);
-  const totalAssigned = d.schedule.reduce((sum, s) => sum + s.instAssigned, 0);
+  const totalNeeded = d.schedule.reduce((s, r) => s + r.instNeeded, 0);
+  const totalAssigned = d.schedule.reduce((s, r) => s + (r.assigned ? r.assigned.length : 0), 0);
+  const fillRate = totalNeeded > 0 ? Math.round((totalAssigned / totalNeeded) * 100) : 0;
   const contacted = d.instructors.filter(i => i.contacted).length;
   const replied = d.instructors.filter(i => i.replied).length;
-  const fillRate = totalNeeded > 0 ? Math.round((totalAssigned / totalNeeded) * 100) : 0;
-
-  const rankA = d.schedule.filter(s => s.rank === "A").length;
-  const rankB = d.schedule.filter(s => s.rank === "B").length;
 
   app.innerHTML = `
     <div class="page-header">
-      <button class="back-btn" onclick="window.location.href='index.html'">← ダッシュボードに戻る</button>
-      <h1>📅 ${d.year}年 4月Camp シフト調整</h1>
-      <span class="sub">最終更新: ${d.lastUpdated}</span>
+      <a class="back-btn" href="index.html">&larr; ダッシュボードに戻る</a>
+      <h1>4月 シフト管理</h1>
+      <span class="sub">最終更新: ${d.lastEditedInBrowser || '-'}</span>
     </div>
 
-    <div class="summary">
+    <div class="summary" id="summaryCards">
       <div class="summary-card"><div class="summary-val" style="color:var(--blue)">${totalDays}</div><div class="summary-label">研修実施日</div></div>
       <div class="summary-card"><div class="summary-val" style="color:var(--red)">${totalNeeded}</div><div class="summary-label">インスト必要数</div></div>
       <div class="summary-card"><div class="summary-val" style="color:var(--green)">${totalAssigned}</div><div class="summary-label">配置済み</div></div>
@@ -146,110 +520,527 @@ function render() {
       <div class="summary-card"><div class="summary-val" style="color:var(--orange)">${replied}/${d.instructors.length}</div><div class="summary-label">返信済み</div></div>
     </div>
 
-    <section class="section">
-      <h2>📋 研修スケジュール・インストラクター配置状況</h2>
+    <div class="tabs" id="tabsBar">
+      <button class="tab active" data-tab="schedule">スケジュール表</button>
+      <button class="tab" data-tab="availability">可用性マトリクス</button>
+      <button class="tab" data-tab="contact">連絡進捗</button>
+      <button class="tab" data-tab="calendar">カレンダー</button>
+      <button class="tab" data-tab="suggest">配置提案</button>
+      <button class="tab" data-tab="history">更新履歴</button>
+    </div>
+
+    <div class="tab-panel active" id="panel-schedule"></div>
+    <div class="tab-panel" id="panel-availability"></div>
+    <div class="tab-panel" id="panel-contact"></div>
+    <div class="tab-panel" id="panel-calendar"></div>
+    <div class="tab-panel" id="panel-suggest"></div>
+    <div class="tab-panel" id="panel-history"></div>
+  `;
+
+  initTabs();
+  renderSchedule();
+  renderAvailability();
+  renderContact();
+  renderCalendar();
+  renderSuggestPanel();
+  renderHistoryPanel();
+}
+
+// ============================================================
+// Tabs
+// ============================================================
+function initTabs() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+// ============================================================
+// Schedule Table
+// ============================================================
+function renderSchedule() {
+  const d = shiftData;
+  const panel = document.getElementById('panel-schedule');
+
+  const rankA = d.schedule.filter(s => s.rank === 'A').length;
+  const rankB = d.schedule.filter(s => s.rank === 'B').length;
+  const totalNeeded = d.schedule.reduce((s, r) => s + r.instNeeded, 0);
+  const totalAssigned = d.schedule.reduce((s, r) => s + (r.assigned ? r.assigned.length : 0), 0);
+
+  panel.innerHTML = `
+    <div class="section">
       <div class="legend">
-        <span class="legend-item"><span class="badge-a">A: 超絶募集</span> インスト5名以上 or 大人数</span>
-        <span class="legend-item"><span class="badge-b">B: とても募集</span> インスト必要</span>
-        <span class="legend-item">- : ワンオペ（インスト不要）</span>
+        <span class="legend-item"><span class="badge badge-a">A</span> 超絶募集(大人数/5名以上)</span>
+        <span class="legend-item"><span class="badge badge-b">B</span> とても募集(インスト必要)</span>
+        <span class="legend-item"><span class="badge badge-none">-</span> ワンオペ(インスト不要)</span>
       </div>
-      <div style="overflow-x:auto;">
-      <table class="schedule-table">
+      <div class="table-wrap">
+      <table class="data-table">
         <thead>
           <tr>
             <th>日付</th>
-            <th>顧客/研修</th>
+            <th>顧客</th>
+            <th>内容</th>
             <th>時間</th>
-            <th>参加者数</th>
+            <th>場所</th>
+            <th>人数</th>
+            <th>主担当</th>
             <th>分類</th>
             <th>必要数</th>
             <th>配置済</th>
             <th>過不足</th>
-            <th>備考</th>
           </tr>
         </thead>
         <tbody>
-          ${d.schedule.map(s => {
-            const diff = s.instAssigned - s.instNeeded;
-            const diffClass = s.instNeeded === 0 ? 'ok' : diff >= 0 ? 'ok' : diff >= -1 ? 'warning' : 'urgent';
-            const diffText = s.instNeeded === 0 ? '-' : diff >= 0 ? `+${diff}` : `${diff}`;
-            return `
-              <tr>
-                <td class="date-col">${s.date}</td>
-                <td>${s.company}</td>
-                <td>${s.time}</td>
-                <td>${s.participants}名</td>
-                <td>${s.rank === 'A' ? '<span class="badge-a">A</span>' : s.rank === 'B' ? '<span class="badge-b">B</span>' : '-'}</td>
-                <td>${s.instNeeded}</td>
-                <td>${s.instAssigned}</td>
-                <td class="${diffClass}">${diffText}</td>
-                <td style="color:var(--text3);font-size:12px;">${s.note}</td>
-              </tr>
-            `;
-          }).join("")}
+          ${d.schedule.map((s, i) => {
+            const assigned = s.assigned ? s.assigned.length : 0;
+            const diff = assigned - s.instNeeded;
+            let diffClass, diffText;
+            if (s.instNeeded === 0) { diffClass = 'balanced'; diffText = '-'; }
+            else if (diff >= 0) { diffClass = 'surplus'; diffText = '+' + diff; }
+            else { diffClass = 'deficit'; diffText = '' + diff; }
+            const muted = s.instNeeded === 0 ? ' row-muted' : '';
+            const rankBadge = s.rank === 'A' ? '<span class="badge badge-a">A</span>'
+              : s.rank === 'B' ? '<span class="badge badge-b">B</span>'
+              : '<span class="badge badge-none">-</span>';
+            const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : '';
+            return `<tr class="${muted}">
+              <td class="text-left" style="white-space:nowrap;font-weight:500;">${s.date}(${s.dow})</td>
+              <td class="text-left">${s.company}</td>
+              <td>${s.content || ''}</td>
+              <td style="white-space:nowrap;">${s.start}-${s.end}</td>
+              <td>${s.location || ''}</td>
+              <td>${s.participants}名</td>
+              <td>${s.mainTeacher || ''}</td>
+              <td>${rankBadge}</td>
+              <td>${s.instNeeded}</td>
+              <td title="${assignedNames}">${assigned}</td>
+              <td class="${diffClass}">${diffText}</td>
+            </tr>`;
+          }).join('')}
         </tbody>
         <tfoot>
-          <tr style="font-weight:600;background:var(--card);">
-            <td colspan="4" style="text-align:right;">合計</td>
-            <td><span class="badge-a">A:${rankA}</span> <span class="badge-b">B:${rankB}</span></td>
+          <tr>
+            <td colspan="7" class="text-right">合計</td>
+            <td><span class="badge badge-a">A:${rankA}</span> <span class="badge badge-b">B:${rankB}</span></td>
             <td>${totalNeeded}</td>
             <td>${totalAssigned}</td>
-            <td class="${fillRate >= 80 ? 'ok' : fillRate >= 50 ? 'warning' : 'urgent'}">${fillRate}%</td>
-            <td></td>
+            <td class="${totalAssigned >= totalNeeded ? 'surplus' : 'deficit'}">${totalNeeded > 0 ? Math.round(totalAssigned/totalNeeded*100) : 0}%</td>
           </tr>
         </tfoot>
       </table>
       </div>
-    </section>
-
-    <section class="section">
-      <h2>📞 連絡・返信 進捗</h2>
-      <table class="contact-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>名前</th>
-            <th>タイプ</th>
-            <th style="text-align:center;">連絡</th>
-            <th style="text-align:center;">返信</th>
-            <th>備考</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${d.instructors.map((inst, i) => `
-            <tr>
-              <td>${i + 1}</td>
-              <td style="font-weight:500;">${inst.name}</td>
-              <td><span style="color:${inst.type === 'リピーター' ? 'var(--green)' : 'var(--blue)'}; font-size:12px;">${inst.type}</span></td>
-              <td class="status-icon">${inst.contacted ? '✅' : '⬜'}</td>
-              <td class="status-icon">${inst.replied ? '✅' : '⬜'}</td>
-              <td style="color:var(--text3);font-size:12px;">${inst.notes}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </section>
-
-    <section class="section">
-      <h2>👥 インストラクター候補一覧</h2>
-      <div class="inst-grid">
-        ${d.instructors.map(inst => `
-          <div class="inst-card">
-            <div class="inst-name">${inst.name}</div>
-            <div class="inst-type">${inst.type}${inst.notes ? ' / ' + inst.notes : ''}</div>
-            <div class="inst-avail">${inst.replied ? '回答済み' : inst.contacted ? '連絡済み・返信待ち' : '未連絡'}</div>
-          </div>
-        `).join("")}
-      </div>
-    </section>
-
-    <footer style="text-align:center;margin-top:48px;padding-top:24px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text3);">
-      DIK&Company &middot; 4月Camp シフト調整 &middot; Powered by Claude Code
-    </footer>
+    </div>
   `;
 }
 
-document.addEventListener("DOMContentLoaded", render);
+// ============================================================
+// Availability Matrix
+// ============================================================
+const AVAIL_STATES = ['', '全日', 'AM', 'PM', 'NG'];
+const AVAIL_LABELS = { '': '', '全日': '全', 'AM': 'AM', 'PM': 'PM', 'NG': 'NG' };
+const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', 'AM': 'avail-am', 'PM': 'avail-pm', 'NG': 'avail-ng' };
+
+function renderAvailability() {
+  const d = shiftData;
+  const panel = document.getElementById('panel-availability');
+  const dates = d.schedule.filter(s => s.instNeeded > 0);
+
+  if (dates.length === 0) {
+    panel.innerHTML = '<p style="color:var(--text2);padding:20px;">インストが必要な日程がありません。</p>';
+    return;
+  }
+
+  let html = `<div class="section">
+    <div class="legend">
+      <span class="legend-item"><span class="avail-cell avail-full" style="display:inline-flex;width:28px;height:22px;font-size:10px;">全</span> 全日</span>
+      <span class="legend-item"><span class="avail-cell avail-am" style="display:inline-flex;width:28px;height:22px;font-size:10px;">AM</span> 午前</span>
+      <span class="legend-item"><span class="avail-cell avail-pm" style="display:inline-flex;width:28px;height:22px;font-size:10px;">PM</span> 午後</span>
+      <span class="legend-item"><span class="avail-cell avail-ng" style="display:inline-flex;width:28px;height:22px;font-size:10px;">NG</span> 不可</span>
+      <span class="legend-item"><span class="avail-cell avail-empty" style="display:inline-flex;width:28px;height:22px;font-size:10px;">&nbsp;</span> 未回答</span>
+    </div>
+    <div class="table-wrap" style="max-height:500px;overflow:auto;">
+    <table class="data-table avail-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;min-width:100px;position:sticky;left:0;z-index:3;background:var(--card);">名前</th>
+          ${dates.map(s => `<th class="date-header">${s.date.slice(5)}(${s.dow})</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>`;
+
+  d.instructors.forEach((inst, iIdx) => {
+    html += `<tr><td class="avail-name-cell">${inst.name}<br><span style="font-size:10px;color:${inst.type === 'リピーター' ? 'var(--green)' : 'var(--blue)'}">${inst.type}</span></td>`;
+    dates.forEach((s, dIdx) => {
+      const dateKey = s.date;
+      const avail = (inst.availability && inst.availability[dateKey]) || '';
+      const cls = AVAIL_CLASSES[avail] || 'avail-empty';
+      const label = AVAIL_LABELS[avail] || '';
+      html += `<td><div class="avail-cell ${cls}" data-inst="${iIdx}" data-date="${dateKey}" onclick="cycleAvail(this)">${label}</div></td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+  panel.innerHTML = html;
+}
+
+function cycleAvail(el) {
+  const instIdx = parseInt(el.dataset.inst);
+  const dateKey = el.dataset.date;
+  const inst = shiftData.instructors[instIdx];
+  if (!inst.availability) inst.availability = {};
+
+  const current = inst.availability[dateKey] || '';
+  const idx = AVAIL_STATES.indexOf(current);
+  const next = AVAIL_STATES[(idx + 1) % AVAIL_STATES.length];
+
+  if (next === '') {
+    delete inst.availability[dateKey];
+  } else {
+    inst.availability[dateKey] = next;
+  }
+
+  const cls = AVAIL_CLASSES[next] || 'avail-empty';
+  const label = AVAIL_LABELS[next] || '';
+  el.className = 'avail-cell ' + cls;
+  el.textContent = label;
+  markChanged();
+}
+
+// ============================================================
+// Contact Progress
+// ============================================================
+function renderContact() {
+  const d = shiftData;
+  const panel = document.getElementById('panel-contact');
+
+  let html = `<div class="section">
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:40px;">#</th>
+          <th class="text-left">名前</th>
+          <th>タイプ</th>
+          <th style="width:60px;">連絡</th>
+          <th style="width:60px;">返信</th>
+          <th class="text-left">備考</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  d.instructors.forEach((inst, i) => {
+    const typeColor = inst.type === 'リピーター' ? 'var(--green)' : 'var(--blue)';
+    html += `<tr>
+      <td>${i + 1}</td>
+      <td class="text-left" style="font-weight:500;">${inst.name}</td>
+      <td><span style="color:${typeColor};font-size:12px;">${inst.type}</span></td>
+      <td><input type="checkbox" class="contact-check" ${inst.contacted ? 'checked' : ''} onchange="toggleContacted(${i}, this.checked)"></td>
+      <td><input type="checkbox" class="contact-check" ${inst.replied ? 'checked' : ''} onchange="toggleReplied(${i}, this.checked)"></td>
+      <td><input type="text" class="editable-note" value="${escapeHtml(inst.notes || '')}" onblur="updateNote(${i}, this.value)" data-idx="${i}"></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div></div>';
+  panel.innerHTML = html;
+}
+
+function toggleContacted(idx, val) {
+  shiftData.instructors[idx].contacted = val;
+  markChanged();
+  refreshSummary();
+}
+
+function toggleReplied(idx, val) {
+  shiftData.instructors[idx].replied = val;
+  markChanged();
+  refreshSummary();
+}
+
+function updateNote(idx, val) {
+  if (shiftData.instructors[idx].notes !== val) {
+    shiftData.instructors[idx].notes = val;
+    markChanged();
+  }
+}
+
+function refreshSummary() {
+  const d = shiftData;
+  const totalDays = d.schedule.filter(s => s.instNeeded > 0).length;
+  const totalNeeded = d.schedule.reduce((s, r) => s + r.instNeeded, 0);
+  const totalAssigned = d.schedule.reduce((s, r) => s + (r.assigned ? r.assigned.length : 0), 0);
+  const fillRate = totalNeeded > 0 ? Math.round((totalAssigned / totalNeeded) * 100) : 0;
+  const contacted = d.instructors.filter(i => i.contacted).length;
+  const replied = d.instructors.filter(i => i.replied).length;
+
+  const cards = document.getElementById('summaryCards');
+  if (!cards) return;
+  cards.innerHTML = `
+    <div class="summary-card"><div class="summary-val" style="color:var(--blue)">${totalDays}</div><div class="summary-label">研修実施日</div></div>
+    <div class="summary-card"><div class="summary-val" style="color:var(--red)">${totalNeeded}</div><div class="summary-label">インスト必要数</div></div>
+    <div class="summary-card"><div class="summary-val" style="color:var(--green)">${totalAssigned}</div><div class="summary-label">配置済み</div></div>
+    <div class="summary-card"><div class="summary-val" style="color:${fillRate >= 80 ? 'var(--green)' : fillRate >= 50 ? 'var(--yellow)' : 'var(--red)'}">${fillRate}%</div><div class="summary-label">充足率</div></div>
+    <div class="summary-card"><div class="summary-val" style="color:var(--purple)">${contacted}/${d.instructors.length}</div><div class="summary-label">連絡済み</div></div>
+    <div class="summary-card"><div class="summary-val" style="color:var(--orange)">${replied}/${d.instructors.length}</div><div class="summary-label">返信済み</div></div>
+  `;
+}
+
+// ============================================================
+// Calendar View
+// ============================================================
+function renderCalendar() {
+  const panel = document.getElementById('panel-calendar');
+  const year = 2026;
+  const month = 4; // April
+
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  const daysInMonth = lastDay.getDate();
+
+  // Monday = 0, Sunday = 6 (ISO)
+  let startDow = firstDay.getDay(); // 0=Sun
+  // Convert to Mon-based: Mon=0, Tue=1, ... Sun=6
+  startDow = startDow === 0 ? 6 : startDow - 1;
+
+  const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
+
+  // Build schedule lookup
+  const scheduleLookup = {};
+  shiftData.schedule.forEach(s => {
+    const day = parseInt(s.date.split('-')[2], 10);
+    if (!scheduleLookup[day]) scheduleLookup[day] = [];
+    scheduleLookup[day].push(s);
+  });
+
+  let html = `<div class="section">
+    <div class="calendar-month-nav">
+      <span>${year}年 ${month}月</span>
+    </div>
+    <div class="calendar-grid">`;
+
+  dayNames.forEach(d => { html += `<div class="calendar-header">${d}</div>`; });
+
+  // Empty cells before first day
+  for (let i = 0; i < startDow; i++) {
+    html += '<div class="calendar-cell empty"></div>';
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const events = scheduleLookup[day] || [];
+    let cellContent = `<div class="calendar-day">${day}</div>`;
+
+    events.forEach(ev => {
+      const assigned = ev.assigned ? ev.assigned.length : 0;
+      const needed = ev.instNeeded;
+      let colorClass;
+      if (needed === 0) { colorClass = 'cal-gray'; }
+      else if (assigned >= needed) { colorClass = 'cal-green'; }
+      else if (assigned > 0) { colorClass = 'cal-yellow'; }
+      else { colorClass = 'cal-red'; }
+
+      const companyShort = ev.company.length > 10 ? ev.company.slice(0, 10) + '...' : ev.company;
+      cellContent += `<div class="calendar-event ${colorClass}" title="${ev.company} (${assigned}/${needed})">${companyShort}`;
+      if (needed > 0) cellContent += ` <span style="font-size:9px;">${assigned}/${needed}</span>`;
+      cellContent += `</div>`;
+    });
+
+    html += `<div class="calendar-cell">${cellContent}</div>`;
+  }
+
+  // Fill remaining cells
+  const totalCells = startDow + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let i = 0; i < remaining; i++) {
+    html += '<div class="calendar-cell empty"></div>';
+  }
+
+  html += '</div></div>';
+  panel.innerHTML = html;
+}
+
+// ============================================================
+// Auto-Assignment Suggestion
+// ============================================================
+function renderSuggestPanel() {
+  const panel = document.getElementById('panel-suggest');
+  panel.innerHTML = `<div class="section">
+    <button class="generate-btn" onclick="generateSuggestions()">配置提案を生成</button>
+    <div id="suggestionResults"></div>
+  </div>`;
+}
+
+function generateSuggestions() {
+  const d = shiftData;
+  const results = document.getElementById('suggestionResults');
+  const datesNeedingStaff = d.schedule.filter(s => {
+    const assigned = s.assigned ? s.assigned.length : 0;
+    return s.instNeeded > 0 && assigned < s.instNeeded;
+  });
+
+  if (datesNeedingStaff.length === 0) {
+    results.innerHTML = '<p style="color:var(--green);padding:16px;">全ての日程が充足しています。</p>';
+    return;
+  }
+
+  // Track workload for balancing
+  const workload = {};
+  d.instructors.forEach(inst => { workload[inst.name] = 0; });
+  // Count existing assignments
+  d.schedule.forEach(s => {
+    if (s.assigned) s.assigned.forEach(name => {
+      if (workload[name] !== undefined) workload[name]++;
+    });
+  });
+
+  const suggestions = [];
+
+  datesNeedingStaff.forEach(s => {
+    const dateKey = s.date;
+    const assigned = s.assigned ? [...s.assigned] : [];
+    const needed = s.instNeeded - assigned.length;
+
+    // Determine time slot
+    const startH = parseInt(s.start.split(':')[0], 10);
+    const endH = parseInt(s.end.split(':')[0], 10);
+    const isAM = endH <= 13;
+    const isPM = startH >= 12;
+
+    // Find available instructors
+    let available = d.instructors.filter(inst => {
+      if (assigned.includes(inst.name)) return false;
+      const avail = inst.availability && inst.availability[dateKey];
+      if (!avail) return false;
+      if (avail === 'NG') return false;
+      if (avail === '全日') return true;
+      if (avail === 'AM' && isAM) return true;
+      if (avail === 'PM' && isPM) return true;
+      if (avail === 'AM' && !isPM) return true; // AM person for AM-only or full-day
+      if (avail === 'PM' && !isAM) return true;  // PM person for PM-only or full-day
+      if (avail === '全日') return true;
+      return false;
+    });
+
+    // Sort: repeaters first, then by workload (ascending)
+    available.sort((a, b) => {
+      const aRepeat = a.type === 'リピーター' ? 0 : 1;
+      const bRepeat = b.type === 'リピーター' ? 0 : 1;
+      if (aRepeat !== bRepeat) return aRepeat - bRepeat;
+      return (workload[a.name] || 0) - (workload[b.name] || 0);
+    });
+
+    const suggested = available.slice(0, needed);
+
+    // Update simulated workload
+    suggested.forEach(inst => {
+      workload[inst.name] = (workload[inst.name] || 0) + 1;
+    });
+
+    suggestions.push({
+      schedule: s,
+      suggested: suggested.map(inst => inst.name),
+      needed: needed
+    });
+  });
+
+  if (suggestions.length === 0) {
+    results.innerHTML = '<p style="color:var(--text2);padding:16px;">提案可能なデータがありません。可用性マトリクスを先に入力してください。</p>';
+    return;
+  }
+
+  let html = '<div class="suggestion-list">';
+  suggestions.forEach((sg, idx) => {
+    const s = sg.schedule;
+    const hasEnough = sg.suggested.length >= sg.needed;
+    html += `<div class="suggestion-item">
+      <div class="suggestion-info">
+        <div class="suggestion-date">${s.date}(${s.dow}) - ${s.company}</div>
+        <div class="suggestion-detail">${s.content} / ${s.start}-${s.end} / 不足: ${sg.needed}名</div>
+        <div class="suggestion-names">
+          ${sg.suggested.length > 0
+            ? sg.suggested.map(n => `<span class="suggestion-name">${n}</span>`).join('')
+            : '<span style="color:var(--red);font-size:12px;">候補なし（可用性未入力）</span>'}
+        </div>
+      </div>
+      ${sg.suggested.length > 0 ? `<button class="apply-btn" onclick="applySuggestion(${idx})">適用</button>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+  results.innerHTML = html;
+
+  // Store suggestions for apply
+  window._suggestions = suggestions;
+}
+
+function applySuggestion(idx) {
+  const sg = window._suggestions[idx];
+  if (!sg) return;
+  const s = sg.schedule;
+  const schedIdx = shiftData.schedule.findIndex(r => r.date === s.date && r.company === s.company);
+  if (schedIdx < 0) return;
+
+  if (!shiftData.schedule[schedIdx].assigned) shiftData.schedule[schedIdx].assigned = [];
+  sg.suggested.forEach(name => {
+    if (!shiftData.schedule[schedIdx].assigned.includes(name)) {
+      shiftData.schedule[schedIdx].assigned.push(name);
+    }
+  });
+
+  markChanged();
+  refreshSummary();
+  renderSchedule();
+  renderCalendar();
+  // Re-generate to reflect changes
+  generateSuggestions();
+  showToast(`${s.date} に ${sg.suggested.length}名を配置しました`, 'success');
+}
+
+// ============================================================
+// History
+// ============================================================
+function renderHistoryPanel() {
+  const panel = document.getElementById('panel-history');
+  panel.innerHTML = `<div class="section"><div id="historyList"><div class="spinner" style="margin:20px auto;display:block;"></div></div></div>`;
+}
+
+function renderHistory(commits) {
+  const container = document.getElementById('historyList');
+  if (!container) return;
+
+  if (!commits || commits.length === 0) {
+    container.innerHTML = '<p style="color:var(--text2);">履歴がありません。</p>';
+    return;
+  }
+
+  container.innerHTML = '<div class="history-list">' + commits.map(c => {
+    const date = new Date(c.commit.author.date);
+    const dateStr = date.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return `<div class="history-item">
+      <div class="history-date">${dateStr}</div>
+      <div class="history-msg">${escapeHtml(c.commit.message)}</div>
+      <div class="history-author">${escapeHtml(c.commit.author.name)}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ============================================================
+// Util
+// ============================================================
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============================================================
+// Init
+// ============================================================
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
