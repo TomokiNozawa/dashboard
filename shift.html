@@ -1251,8 +1251,10 @@ function renderCalendar() {
       else { colorClass = 'cal-red'; }
 
       const timeStr = `${ev.start}-${ev.end}`;
-      cellContent += `<div class="calendar-event ${colorClass}" title="${ev.company} ${timeStr} (${assigned}/${needed})">`;
+      const pCount = ev.participants > 0 ? `${ev.participants}名` : '';
+      cellContent += `<div class="calendar-event ${colorClass}" title="${ev.company} ${timeStr} ${pCount} (${assigned}/${needed})">`;
       cellContent += `<span style="font-size:9px;opacity:0.8;">${timeStr}</span> ${ev.company}`;
+      if (pCount) cellContent += ` <span style="font-size:9px;opacity:0.7;">${pCount}</span>`;
       if (needed > 0) cellContent += ` <span style="font-size:9px;font-weight:600;">${assigned}/${needed}</span>`;
       cellContent += `</div>`;
     });
