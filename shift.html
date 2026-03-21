@@ -785,8 +785,10 @@ function renderApp() {
       <a class="back-btn" href="index.html">&larr; ダッシュボードに戻る</a>
       <h1>4月 シフト管理</h1>
       <div class="header-right">
-        <span class="sub">System ${sysVer}: ${sysUpdateDisplay}</span>
-        <span class="sub">Web更新: ${webUpdateDisplay}</span>
+        <div class="sub" style="display:grid;grid-template-columns:auto auto;gap:0 8px;font-variant-numeric:tabular-nums;font-family:'Inter',monospace;">
+          <span style="text-align:right;">System ${sysVer}:</span><span>${sysUpdateDisplay}</span>
+          <span style="text-align:right;">Web更新:</span><span>${webUpdateDisplay}</span>
+        </div>
         <div class="action-bar" id="actionBar">
           <button class="save-fab" id="saveFab" onclick="saveData()">💾 保存 <span class="save-badge" id="saveBadge">${changeCount}</span></button>
         </div>
