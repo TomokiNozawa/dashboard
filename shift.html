@@ -776,13 +776,13 @@ function renderApp() {
     </div>
 
     <div class="tabs" id="tabsBar">
-      <button class="tab active" data-tab="schedule">スケジュール表</button>
-      <button class="tab" data-tab="availability">可用性マトリクス</button>
-      <button class="tab" data-tab="contact">連絡進捗</button>
-      <button class="tab" data-tab="assignment">配置設定</button>
-      <button class="tab" data-tab="calendar">カレンダー</button>
-      <button class="tab" data-tab="suggest">配置提案</button>
-      <button class="tab" data-tab="history">更新履歴</button>
+      <button class="tab active" data-tab="schedule">スケジュール表(1)</button>
+      <button class="tab" data-tab="availability">可用性マトリクス(2)</button>
+      <button class="tab" data-tab="contact">連絡進捗(3)</button>
+      <button class="tab" data-tab="assignment">配置設定(4)</button>
+      <button class="tab" data-tab="calendar">カレンダー(5)</button>
+      <button class="tab" data-tab="suggest">配置提案(6)</button>
+      <button class="tab" data-tab="history">更新履歴(7)</button>
     </div>
 
     <div class="tab-panel active" id="panel-schedule"></div>
@@ -1621,6 +1621,16 @@ document.addEventListener('keydown', function(e) {
     }
     tabs[nextIdx].click();
     tabs[nextIdx].focus();
+  }
+  // Alt + 1-7: jump to tab by number
+  if (e.altKey && e.key >= '1' && e.key <= '7') {
+    e.preventDefault();
+    const tabs = Array.from(document.querySelectorAll('.tab'));
+    const idx = parseInt(e.key, 10) - 1;
+    if (idx < tabs.length) {
+      tabs[idx].click();
+      tabs[idx].focus();
+    }
   }
 });
 
