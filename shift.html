@@ -1234,6 +1234,11 @@ function renderAssignment() {
   panel.innerHTML = html;
 }
 
+// Check if an instructor is teaching at any overlapping session on the same date
+function isTeachingOnDate(instName, date) {
+  return shiftData.schedule.some(s => s.date === date && s.teachers && s.teachers.includes(instName));
+}
+
 function showAssignDropdown(event, schedIdx) {
   event.stopPropagation();
   closeAssignDropdown();
@@ -1241,10 +1246,11 @@ function showAssignDropdown(event, schedIdx) {
   const s = shiftData.schedule[schedIdx];
   const assigned = s.assigned || [];
 
-  // Get all instructor names that are not already assigned
+  // Get all instructor names that are not already assigned and not teaching on that date
   const available = shiftData.instructors
     .map(inst => inst.name)
-    .filter(name => !assigned.includes(name));
+    .filter(name => !assigned.includes(name))
+    .filter(name => !isTeachingOnDate(name, s.date));
 
   if (available.length === 0) {
     showToast('全てのインストラクターが配置済みです', 'error');
@@ -1365,9 +1371,10 @@ function generateSuggestions() {
     const isAM = endH <= 13;
     const isPM = startH >= 12;
 
-    // Find available instructors
+    // Find available instructors (exclude those teaching on this date)
     let available = d.instructors.filter(inst => {
       if (assigned.includes(inst.name)) return false;
+      if (isTeachingOnDate(inst.name, dateKey)) return false;
       const avail = inst.availability && inst.availability[dateKey];
       if (!avail) return false;
       if (avail === 'NG') return false;
@@ -1510,13 +1517,13 @@ document.addEventListener('keydown', function(e) {
     document.getElementById('modalOverlay').classList.remove('active');
   }
   // Alt + Left/Right: switch tabs
-  if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
     e.preventDefault();
     const tabs = Array.from(document.querySelectorAll('.tab'));
     if (tabs.length === 0) return;
     const activeIdx = tabs.findIndex(t => t.classList.contains('active'));
     let nextIdx;
-    if (e.key === 'ArrowRight') {
+    if (e.key === 'ArrowDown') {
       nextIdx = (activeIdx + 1) % tabs.length;
     } else {
       nextIdx = (activeIdx - 1 + tabs.length) % tabs.length;
