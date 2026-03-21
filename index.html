@@ -84,6 +84,40 @@ document.getElementById('passwordInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') unlock();
 });
 
+async function decryptAndShow(password) {
+  const resp = await fetch('encrypted.json');
+  const payload = await resp.json();
+
+  const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+  const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-CBC', length: 256 },
+    false,
+    ['decrypt']
+  );
+
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, encData);
+  const html = new TextDecoder().decode(decrypted);
+
+  if (!html.includes('<!DOCTYPE html>') && !html.includes('<html')) {
+    throw new Error('Invalid password');
+  }
+
+  sessionStorage.setItem('dk_pass', password);
+  sessionStorage.setItem('dk_ts', Date.now().toString());
+
+  document.open();
+  document.write(html);
+  document.close();
+}
+
 async function unlock() {
   const password = document.getElementById('passwordInput').value;
   if (!password) return;
@@ -96,49 +130,7 @@ async function unlock() {
   loading.style.display = 'block';
 
   try {
-    // Load encrypted data
-    const resp = await fetch('encrypted.json');
-    const payload = await resp.json();
-
-    const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
-    const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
-    const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
-
-    // Derive key with PBKDF2
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
-    );
-    const key = await crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
-      keyMaterial,
-      { name: 'AES-CBC', length: 256 },
-      false,
-      ['decrypt']
-    );
-
-    // Decrypt
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-CBC', iv: iv },
-      key,
-      encData
-    );
-
-    const html = new TextDecoder().decode(decrypted);
-
-    // Remove PKCS7 padding artifacts and verify it's HTML
-    if (!html.includes('<!DOCTYPE html>') && !html.includes('<html')) {
-      throw new Error('Invalid password');
-    }
-
-    // Store password in sessionStorage for shift.html
-    sessionStorage.setItem('dk_pass', password);
-    sessionStorage.setItem('dk_ts', Date.now().toString());
-
-    // Replace current page with decrypted dashboard
-    document.open();
-    document.write(html);
-    document.close();
-
+    await decryptAndShow(password);
   } catch (e) {
     error.style.display = 'block';
     loading.style.display = 'none';
@@ -146,6 +138,23 @@ async function unlock() {
     document.getElementById('passwordInput').select();
   }
 }
+
+// Auto-login if session exists
+(async function() {
+  const storedPass = sessionStorage.getItem('dk_pass');
+  const storedTs = sessionStorage.getItem('dk_ts');
+  if (storedPass && storedTs) {
+    const elapsed = Date.now() - parseInt(storedTs, 10);
+    if (elapsed < 4 * 60 * 60 * 1000) {
+      try {
+        await decryptAndShow(storedPass);
+      } catch (e) {
+        sessionStorage.removeItem('dk_pass');
+        sessionStorage.removeItem('dk_ts');
+      }
+    }
+  }
+})();
 </script>
 </body>
 </html>
