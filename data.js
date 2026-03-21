@@ -1,6 +1,6 @@
 window.DASHBOARD_DATA = {
   title: "DIK&Company 業務自動化ダッシュボード",
-  lastUpdated: "2026-03-21 09:00",
+  lastUpdated: "2026-03-21 23:30 (JST)",
   tools: [
     { name: "Slack", status: "active", icon: "💬", details: "送信・下書き・チャンネル検索・リアクション対応。xoxpトークンで認証。" },
     { name: "Gmail", status: "active", icon: "📧", details: "MCP経由で操作。送信・下書き・検索・ラベル管理。workspace-mcp OAuth認証。" },
@@ -23,6 +23,8 @@ window.DASHBOARD_DATA = {
     { id: 5, title: "請求書送付メール下書き", status: "pending", notes: "#4の後工程", details: "請求書作成後にGmailで送付メールの下書きを自動作成する。#4のバッチモード完了後に着手予定。" },
     { id: 6, title: "教材複製+内容更新", status: "pending", notes: "Drive API準備済み", details: "教材格納庫から個社Boxフォルダにファイルをコピーし、内容を更新する。Google Drive APIフルアクセスは2026-03-19に設定済み。" },
     { id: 7, title: "メールレポート→Slack投稿", status: "in-progress", notes: "v5稼働中、GPT-4oで精度改善中", details: "GitHub Actionsで毎朝8:00 JSTに実行。Gmail→スレッド分析→GPT-4oで要約・タスク抽出→Slackチャンネル投稿。v5でバグ修正・通知フィルタ強化・返信検出精度向上済み。" },
+    { id: 8, title: "その場チャットツール開発", status: "pending", notes: "疑似メタバース雑談ページ", details: "Slackからアクセスし、その瞬間オンラインの人だけでやり取りできる雑談ツール。2Dの簡易空間にアバターが動く形（gather.town簡易版）。GitHub Pages + Firebase Realtime DB（無料Sparkプラン）+ Slack OAuth。履歴不要。" },
+    { id: 9, title: "Claude Cowork Camp企画ダッシュボード", status: "pending", notes: "チーム共有・別リポ（camp-dashboard）", details: "非エンジニア向けClaude研修の企画・運営管理。検討事項・議事録・カリキュラム企画・タスク進捗を1箇所で管理。既存dashboardとは別リポ。セキュリティ: Slack OAuth認証 or Cloudflare Pages。" },
   ],
   skills: [
     { name: "事前mtg作成", desc: "研修の事前ミーティングpptxを自動生成", invocable: true, details: "企業名と事前mtg日付を指定するだけで、テンプレートコピーからデータ転記まで一気通貫で実行。WebSearchで本社住所取得、build_cal.pyで報告会候補日算出も含む。" },

@@ -774,14 +774,17 @@ function renderApp() {
   const contacted = d.instructors.filter(i => i.contacted).length;
   const replied = d.instructors.filter(i => i.replied).length;
 
-  const lastUpdatedDisplay = formatDateJP(d.lastEditedInBrowser);
+  const webUpdateDisplay = formatDateJP(d.lastEditedInBrowser);
+  const sysUpdateDisplay = formatDateJP(d.lastSystemUpdate || '-');
+  const sysVer = d.systemVersion || '-';
 
   app.innerHTML = `
     <div class="page-header">
       <a class="back-btn" href="index.html">&larr; ダッシュボードに戻る</a>
       <h1>4月 シフト管理</h1>
       <div class="header-right">
-        <span class="sub">最終更新: ${lastUpdatedDisplay}</span>
+        <span class="sub">System ${sysVer}: ${sysUpdateDisplay}</span>
+        <span class="sub">Web更新: ${webUpdateDisplay}</span>
         <div class="action-bar" id="actionBar">
           <button class="save-fab" id="saveFab" onclick="saveData()">💾 保存 <span class="save-badge" id="saveBadge">${changeCount}</span></button>
         </div>
@@ -1611,9 +1614,14 @@ function renderHistory(commits) {
 
   container.innerHTML = '<div class="history-list">' + commits.map(c => {
     const dateStr = formatDateJP(c.commit.author.date);
+    const msg = c.commit.message;
+    const isWeb = msg.includes('ブラウザ編集');
+    const sourceTag = isWeb
+      ? '<span style="background:var(--blue);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;margin-left:8px;">Web</span>'
+      : '<span style="background:var(--purple);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.75rem;margin-left:8px;">System</span>';
     return `<div class="history-item">
-      <div class="history-date">${dateStr}</div>
-      <div class="history-msg">${escapeHtml(c.commit.message)}</div>
+      <div class="history-date">${dateStr}${sourceTag}</div>
+      <div class="history-msg">${escapeHtml(msg)}</div>
       <div class="history-author">${escapeHtml(c.commit.author.name)}</div>
     </div>`;
   }).join('') + '</div>';
