@@ -928,6 +928,7 @@ function updateInstNeeded(idx, val) {
 const AVAIL_STATES = ['', '全日', 'AM', 'PM', '保留', 'NG'];
 const AVAIL_LABELS = { '': '', '全日': '全', 'AM': 'AM', 'PM': 'PM', '保留': '保', 'NG': 'NG' };
 const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', 'AM': 'avail-am', 'PM': 'avail-pm', '保留': 'avail-hold', 'NG': 'avail-ng' };
+let availFilterDate = null; // null = show all, string = filter by date
 
 function renderAvailability() {
   const d = shiftData;
@@ -956,6 +957,11 @@ function renderAvailability() {
     { label: '初回（外部委託）', instructors: d.instructors.filter(i => i.type === '初回') },
   ].filter(g => g.instructors.length > 0);
 
+  const filterActive = availFilterDate !== null;
+  const filterLabel = filterActive
+    ? `<span style="margin-left:12px;font-size:13px;color:var(--blue);cursor:pointer;" onclick="clearAvailFilter()">🔍 ${availFilterDate.slice(5)} のNG以外を表示中 ✕ 解除</span>`
+    : '<span style="margin-left:12px;font-size:12px;color:var(--text3);">※ 日付ヘッダーをクリックで絞り込み</span>';
+
   let html = `<div class="section">
     <div class="legend">
       <span class="legend-item"><span class="avail-cell avail-full" style="display:inline-flex;width:32px;height:24px;font-size:10px;">全</span> 全日</span>
@@ -964,23 +970,37 @@ function renderAvailability() {
       <span class="legend-item"><span class="avail-cell avail-hold" style="display:inline-flex;width:32px;height:24px;font-size:10px;">保</span> 保留</span>
       <span class="legend-item"><span class="avail-cell avail-ng" style="display:inline-flex;width:32px;height:24px;font-size:10px;">NG</span> 不可</span>
       <span class="legend-item"><span class="avail-cell avail-empty" style="display:inline-flex;width:32px;height:24px;font-size:10px;">-</span> 未回答</span>
+      ${filterLabel}
     </div>
     <div class="table-wrap" style="max-height:700px;overflow:auto;">
     <table class="data-table avail-table">
       <thead>
         <tr>
           <th style="text-align:left;min-width:120px;position:sticky;left:0;z-index:3;background:var(--card);">名前</th>
-          ${uniqueDates.map(dt => `<th class="date-header">${dt.date.slice(5)}(${dt.dow})</th>`).join('')}
+          ${uniqueDates.map(dt => {
+            const isActive = availFilterDate === dt.date;
+            const style = isActive ? 'background:var(--blue);color:#fff;cursor:pointer;' : 'cursor:pointer;';
+            return `<th class="date-header" style="${style}" onclick="toggleAvailFilter('${dt.date}')">${dt.date.slice(5)}(${dt.dow})</th>`;
+          }).join('')}
         </tr>
       </thead>
       <tbody>`;
 
   groups.forEach(group => {
-    // Group header row
-    html += `<tr class="avail-group-header"><td colspan="${uniqueDates.length + 1}">${group.label}（${group.instructors.length}名）</td></tr>`;
-    group.instructors.forEach(inst => {
+    // Filter instructors if date filter is active
+    let filteredInstructors = group.instructors;
+    if (filterActive) {
+      filteredInstructors = group.instructors.filter(inst => {
+        const avail = (inst.availability && inst.availability[availFilterDate]) || '';
+        return avail !== 'NG';
+      });
+    }
+    if (filteredInstructors.length === 0 && filterActive) return;
+
+    const countLabel = filterActive ? `${filteredInstructors.length}/${group.instructors.length}名` : `${group.instructors.length}名`;
+    html += `<tr class="avail-group-header"><td colspan="${uniqueDates.length + 1}">${group.label}（${countLabel}）</td></tr>`;
+    filteredInstructors.forEach(inst => {
       const iIdx = d.instructors.indexOf(inst);
-      const typeColor = inst.type === 'リピーター' ? 'var(--green)' : inst.type === '初回' ? 'var(--blue)' : 'var(--purple)';
       html += `<tr><td class="avail-name-cell clickable-name" onclick="openAvailabilityModal(${iIdx})">${inst.name}</td>`;
       uniqueDates.forEach(dt => {
         const avail = (inst.availability && inst.availability[dt.date]) || '';
@@ -994,6 +1014,16 @@ function renderAvailability() {
 
   html += '</tbody></table></div></div>';
   panel.innerHTML = html;
+}
+
+function toggleAvailFilter(date) {
+  availFilterDate = (availFilterDate === date) ? null : date;
+  renderAvailability();
+}
+
+function clearAvailFilter() {
+  availFilterDate = null;
+  renderAvailability();
 }
 
 function cycleAvail(el) {
