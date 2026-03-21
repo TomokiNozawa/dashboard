@@ -377,14 +377,17 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 }
 .modal-add-btn:hover { background: rgba(63,185,80,0.25); }
 .modal-dropdown {
-  position: absolute; background: var(--card); border: 1px solid var(--border);
+  background: var(--bg); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-  z-index: 1100; max-height: 200px; overflow-y: auto; min-width: 160px;
+  z-index: 1100; max-height: 240px; overflow-y: auto; min-width: 100%;
+  margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; padding: 8px;
 }
 .modal-dropdown-item {
-  padding: 6px 12px; font-size: 12px; cursor: pointer; color: var(--text);
+  padding: 6px 14px; font-size: 12px; cursor: pointer; color: var(--text);
+  background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+  transition: all 0.15s; font-weight: 500;
 }
-.modal-dropdown-item:hover { background: var(--card-hover); }
+.modal-dropdown-item:hover { background: rgba(88,166,255,0.15); border-color: var(--blue); color: var(--blue); }
 .modal-avail-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
 .modal-avail-date { min-width: 100px; color: var(--text); font-size: 13px; }
 .modal-inst-available {
@@ -1675,9 +1678,6 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
 
   const dropdown = document.createElement('div');
   dropdown.className = 'modal-dropdown';
-  dropdown.style.position = 'absolute';
-  dropdown.style.left = event.target.offsetLeft + 'px';
-  dropdown.style.top = (event.target.offsetTop + event.target.offsetHeight + 2) + 'px';
 
   available.forEach(name => {
     const item = document.createElement('div');
@@ -1697,9 +1697,9 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
     dropdown.appendChild(item);
   });
 
-  const container = event.target.closest('.detail-value') || event.target.parentElement;
-  container.style.position = 'relative';
-  container.appendChild(dropdown);
+  // Insert dropdown after the add button's parent container
+  const tagsContainer = event.target.closest('.modal-assign-tags') || event.target.parentElement;
+  tagsContainer.insertAdjacentElement('afterend', dropdown);
   activeModalDropdown = dropdown;
 
   setTimeout(() => {
