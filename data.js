@@ -1,6 +1,6 @@
 window.DASHBOARD_DATA = {
   title: "DIK&Company 業務自動化ダッシュボード",
-  lastUpdated: "2026-03-21 23:30 (JST)",
+  lastUpdated: "2026-03-22 00:15 (JST)",
   tools: [
     { name: "Slack", status: "active", icon: "💬", details: "送信・下書き・チャンネル検索・リアクション対応。xoxpトークンで認証。" },
     { name: "Gmail", status: "active", icon: "📧", details: "MCP経由で操作。送信・下書き・検索・ラベル管理。workspace-mcp OAuth認証。" },
@@ -40,12 +40,6 @@ window.DASHBOARD_DATA = {
     { name: "deepl", desc: "DeepL APIによる高品質翻訳", invocable: false, details: "Free プラン（月50万文字無料）。日英・英日など多言語対応。教材の多言語化に使用。" },
     { name: "pptx作成", desc: "PowerPointスライド自動生成", invocable: false, details: "python-pptxベース。Meiryo UIフォント（East Asian対応）。ノイズ除去ガイドライン準拠。" },
     { name: "4月Camp募集", desc: "外部委託インストラクター募集自動化", invocable: false, details: "toB管理スプシ+インターンシフトスプシ分析→超絶/とても分類→Slack下書き一括作成。毎年3月中旬〜下旬に実行。" },
-  ],
-  desktopSetup: [
-    { text: "GitHub CLI認証（gh auth login）", done: false, details: "gh auth login --web -p https で認証。PATHに含まれない場合: 'C:/Program Files/GitHub CLI/gh.exe'" },
-    { text: "環境変数設定（OPENAI_API_KEY, DEEPL_API_KEY）", done: false, details: "ノートPC側の値と同じキーをユーザー環境変数に設定する。" },
-    { text: "openaiパッケージインストール（pip install openai）", done: false, details: "pip install openai でv2.29.0+をインストール。" },
-    { text: "Google Driveトークン動作確認", done: false, details: "sheets-token.jsonはgit同期されるため、動作確認だけでOKの可能性あり。" },
   ],
   workflows: [
     { name: "daily-mail-report", desc: "毎朝メール要約レポートをSlackに自動投稿", detail: "毎日 08:00 JST / Python 3.12 / GPT-4o", status: "running", details: "Gmail API→スレッド全文取得→通知フィルタ→返信状況分析→GPT-4oで要約・タスク抽出→Slackチャンネル(00_野沢ﾒｰﾙ_ﾀｽｸ整理)投稿。Secrets: GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, OPENAI_API_KEY, SLACK_TOKEN, SLACK_CHANNEL_ID" },
