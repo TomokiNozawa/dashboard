@@ -1337,7 +1337,8 @@ function isTeachingOnDate(instName, date) {
 
 function showAssignDropdown(event, schedIdx) {
   event.stopPropagation();
-  closeAssignDropdown();
+  // Toggle: if already open, close it
+  if (activeAssignDropdown) { closeAssignDropdown(); return; }
 
   const s = shiftData.schedule[schedIdx];
   const assigned = s.assigned || [];
@@ -1348,6 +1349,7 @@ function showAssignDropdown(event, schedIdx) {
     if (sc.date === s.date) (sc.assigned || []).forEach(n => allAssignedOnDate.add(n));
   });
   const available = shiftData.instructors
+    .filter(inst => { const a = inst.availability && inst.availability[s.date]; return a !== 'NG'; })
     .map(inst => inst.name)
     .filter(name => !assigned.includes(name))
     .filter(name => !allAssignedOnDate.has(name))
@@ -1612,6 +1614,9 @@ function closeShiftModal(e) {
 
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
+    // Close dropdowns first, then modal
+    if (activeAssignDropdown) { closeAssignDropdown(); return; }
+    if (activeModalDropdown) { closeModalDropdown(); return; }
     document.getElementById('modalOverlay').classList.remove('active');
   }
   // Alt + Left/Right: switch tabs
@@ -1675,7 +1680,8 @@ function closeModalDropdownOnOutside(e) {
 
 function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
   event.stopPropagation();
-  closeModalDropdown();
+  // Toggle: if already open, close it
+  if (activeModalDropdown) { closeModalDropdown(); return; }
 
   const s = shiftData.schedule[schedIdx];
   const assigned = s.assigned || [];
@@ -1685,6 +1691,7 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
     if (sc.date === s.date) (sc.assigned || []).forEach(n => allAssignedOnDate.add(n));
   });
   const available = shiftData.instructors
+    .filter(inst => { const a = inst.availability && inst.availability[s.date]; return a !== 'NG'; })
     .map(inst => inst.name)
     .filter(name => !assigned.includes(name))
     .filter(name => !allAssignedOnDate.has(name))
