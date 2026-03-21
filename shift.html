@@ -207,8 +207,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 /* Action buttons bar */
 .action-bar {
-  position: fixed; top: 16px; right: 24px; z-index: 100;
-  display: flex; gap: 10px; align-items: center;
+  display: flex; gap: 10px; align-items: center; margin-left: auto;
 }
 .reload-fab {
   display: flex; align-items: center; gap: 6px;
@@ -407,13 +406,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   </div>
 </div>
 
-<!-- Action Buttons -->
-<div class="action-bar" id="actionBar" style="display:none;">
-  <button class="reload-fab" onclick="reloadData()">🔄 データ反映</button>
-  <button class="save-fab" id="saveFab" onclick="saveData()">
-    💾 保存 <span class="save-badge" id="saveBadge">0</span>
-  </button>
-</div>
+<!-- Action Buttons (rendered inside page-header by JS) -->
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -475,7 +468,6 @@ async function init() {
 function showLogin() {
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
-  document.getElementById('actionBar').style.display = 'none';
 
   const pwInput = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
@@ -551,7 +543,6 @@ async function showApp() {
     await loadData();
     renderApp();
     document.getElementById('loadingScreen').style.display = 'none';
-    document.getElementById('actionBar').style.display = 'flex';
     updateSaveBadge();
     loadHistory();
   } catch (e) {
@@ -728,6 +719,10 @@ function renderApp() {
       <a class="back-btn" href="index.html">&larr; ダッシュボードに戻る</a>
       <h1>4月 シフト管理</h1>
       <span class="sub">最終更新: ${lastUpdatedDisplay}</span>
+      <div class="action-bar" id="actionBar">
+        <button class="reload-fab" onclick="reloadData()">🔄 データ反映</button>
+        <button class="save-fab" id="saveFab" onclick="saveData()">💾 保存 <span class="save-badge" id="saveBadge">${changeCount}</span></button>
+      </div>
     </div>
 
     <div class="summary" id="summaryCards">
