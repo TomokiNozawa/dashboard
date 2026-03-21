@@ -205,6 +205,23 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   font-size: 11px;
 }
 
+/* Action buttons bar */
+.action-bar {
+  position: fixed; bottom: 24px; right: 24px; z-index: 100;
+  display: flex; gap: 10px; align-items: center;
+}
+.reload-fab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #1f6feb, #58a6ff);
+  border: none; border-radius: 12px;
+  color: white; font-size: 13px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 4px 16px rgba(88,166,255,0.3);
+  transition: all 0.2s;
+}
+.reload-fab:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(88,166,255,0.4); }
+.reload-fab:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
 /* Toast */
 .toast {
   position: fixed; bottom: 90px; right: 24px; z-index: 200;
@@ -310,10 +327,13 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   </div>
 </div>
 
-<!-- Save FAB -->
-<button class="save-fab" id="saveFab" style="display:none;" onclick="saveData()">
-  保存 <span class="save-badge" id="saveBadge">0</span>
-</button>
+<!-- Action Buttons -->
+<div class="action-bar" id="actionBar" style="display:none;">
+  <button class="reload-fab" onclick="reloadData()">🔄 データ反映</button>
+  <button class="save-fab" id="saveFab" onclick="saveData()">
+    💾 保存 <span class="save-badge" id="saveBadge">0</span>
+  </button>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -364,7 +384,7 @@ async function init() {
 function showLogin() {
   document.getElementById('loginOverlay').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
-  document.getElementById('saveFab').style.display = 'none';
+  document.getElementById('actionBar').style.display = 'none';
 
   const pwInput = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
@@ -440,7 +460,7 @@ async function showApp() {
     await loadData();
     renderApp();
     document.getElementById('loadingScreen').style.display = 'none';
-    document.getElementById('saveFab').style.display = 'flex';
+    document.getElementById('actionBar').style.display = 'flex';
     updateSaveBadge();
     loadHistory();
   } catch (e) {
@@ -514,7 +534,7 @@ async function saveData() {
   }
 
   fab.disabled = false;
-  fab.innerHTML = '保存 <span class="save-badge" id="saveBadge">' + changeCount + '</span>';
+  fab.innerHTML = '💾 保存 <span class="save-badge" id="saveBadge">' + changeCount + '</span>';
 }
 
 async function loadHistory() {
@@ -525,6 +545,26 @@ async function loadHistory() {
     const commits = await resp.json();
     renderHistory(commits);
   } catch (e) { /* ignore */ }
+}
+
+// ============================================================
+// Reload Data (re-fetch from GitHub)
+// ============================================================
+async function reloadData() {
+  if (changeCount > 0) {
+    if (!confirm(`未保存の変更が${changeCount}件あります。破棄してデータを再読み込みしますか？`)) return;
+  }
+  try {
+    showToast('データを再読み込み中...', 'success');
+    await loadData();
+    changeCount = 0;
+    renderApp();
+    updateSaveBadge();
+    loadHistory();
+    showToast('最新データを反映しました', 'success');
+  } catch (e) {
+    showToast('再読み込みに失敗: ' + e.message, 'error');
+  }
 }
 
 // ============================================================
@@ -883,10 +923,11 @@ function cycleAvail(el) {
   }
 
   const cls = AVAIL_CLASSES[next] || 'avail-empty';
-  const label = AVAIL_LABELS[next] || '';
+  const label = AVAIL_LABELS[next] || '-';
   el.className = 'avail-cell ' + cls;
   el.textContent = label;
   markChanged();
+  renderCalendar();
 }
 
 // ============================================================
@@ -934,17 +975,20 @@ function toggleContacted(idx, val) {
   shiftData.instructors[idx].contacted = val;
   markChanged();
   refreshSummary();
+  renderAvailability();
 }
 
 function toggleConfirmed(idx, val) {
   shiftData.instructors[idx].confirmed = val;
   markChanged();
+  refreshSummary();
 }
 
 function toggleReplied(idx, val) {
   shiftData.instructors[idx].replied = val;
   markChanged();
   refreshSummary();
+  renderAvailability();
 }
 
 function updateNote(idx, val) {
