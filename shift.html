@@ -410,7 +410,10 @@ async function loadData() {
   if (!resp.ok) throw new Error(`API error ${resp.status}`);
   const json = await resp.json();
   fileSha = json.sha;
-  const decoded = atob(json.content.replace(/\n/g, ''));
+  const binary = atob(json.content.replace(/\n/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const decoded = new TextDecoder('utf-8').decode(bytes);
   shiftData = JSON.parse(decoded);
 }
 
@@ -420,7 +423,11 @@ async function saveData() {
   fab.textContent = '保存中...';
 
   try {
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(shiftData, null, 2))));
+    const jsonStr = JSON.stringify(shiftData, null, 2);
+    const utf8Bytes = new TextEncoder().encode(jsonStr);
+    let binaryStr = '';
+    utf8Bytes.forEach(b => binaryStr += String.fromCharCode(b));
+    const content = btoa(binaryStr);
     const url = `${API_BASE}/repos/${REPO}/contents/${FILE_PATH}`;
     const resp = await fetch(url, {
       method: 'PUT',
