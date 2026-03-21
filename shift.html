@@ -1031,8 +1031,9 @@ function renderAvailability() {
     }
     if (filteredInstructors.length === 0 && filterActive) return;
 
-    const countLabel = filterActive ? `${filteredInstructors.length}/${group.instructors.length}名` : `${group.instructors.length}名`;
-    html += `<tr class="avail-group-header"><td colspan="${uniqueDates.length + 1}">${group.label}（${countLabel}）</td></tr>`;
+    if (!filterActive) {
+      html += `<tr class="avail-group-header"><td colspan="${uniqueDates.length + 1}">${group.label}（${group.instructors.length}名）</td></tr>`;
+    }
     filteredInstructors.forEach(inst => {
       const iIdx = d.instructors.indexOf(inst);
       html += `<tr><td class="avail-name-cell clickable-name" onclick="openAvailabilityModal(${iIdx})">${inst.name}</td>`;
