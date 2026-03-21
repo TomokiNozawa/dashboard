@@ -165,6 +165,27 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .calendar-month-nav button:hover { background: var(--card-hover); color: var(--text); }
 .calendar-month-nav span { font-size: 16px; font-weight: 600; }
 
+/* Timeline view (Google Calendar style) */
+.timeline { position: relative; margin-left: 50px; border-left: 1px solid var(--border-light); }
+.timeline-hour { position: relative; height: 60px; border-bottom: 1px solid var(--border-light); }
+.timeline-hour-label { position: absolute; left: -50px; top: -8px; font-size: 11px; color: var(--text3); width: 44px; text-align: right; }
+.timeline-event {
+  position: absolute; left: 4px; border-radius: 6px; padding: 6px 10px;
+  font-size: 11px; overflow: hidden; cursor: pointer;
+  border-left: 3px solid; z-index: 1; transition: opacity 0.15s;
+  min-height: 28px; display: flex; flex-direction: column; justify-content: center;
+}
+.timeline-event:hover { opacity: 0.85; }
+.timeline-event-title { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.timeline-event-sub { font-size: 10px; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.timeline-event-status { font-size: 10px; font-weight: 600; margin-top: 2px; }
+.timeline-event-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.timeline-event-tag { background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 500; }
+.tl-green { background: rgba(63,185,80,0.15); border-color: var(--green); color: var(--green); }
+.tl-yellow { background: rgba(210,153,34,0.15); border-color: var(--yellow); color: var(--yellow); }
+.tl-red { background: rgba(248,81,73,0.15); border-color: var(--red); color: var(--red); }
+.tl-gray { background: rgba(110,118,129,0.1); border-color: var(--text3); color: var(--text3); }
+
 /* Suggestion */
 .suggestion-list { display: flex; flex-direction: column; gap: 8px; }
 .suggestion-item {
@@ -2026,47 +2047,91 @@ function modalRemoveAssignedByName(schedIdx, name, reopenFn, ...reopenArgs) {
   }
 }
 
-// -- Calendar day modal (EDITABLE) --
+// -- Calendar day modal (EDITABLE, Timeline view) --
 function openCalendarDayModal(day) {
   const year = 2026, month = 4;
   const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   const dowIdx = new Date(year, month - 1, day).getDay();
   const dow = JP_DAY_NAMES[dowIdx];
 
-  // Find all schedules on this day
   const daySchedules = shiftData.schedule.filter(s => s.date === dateStr);
 
-  let schedHtml = '';
-  if (daySchedules.length > 0) {
-    daySchedules.forEach(s => {
-      const origIdx = shiftData.schedule.indexOf(s);
-      const assigned = s.assigned ? s.assigned.length : 0;
-      const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '-';
-      const statusColor = s.instNeeded === 0 ? 'var(--text3)' : assigned >= s.instNeeded ? 'var(--green)' : assigned > 0 ? 'var(--yellow)' : 'var(--red)';
+  // Determine timeline range
+  let minHour = 24, maxHour = 0;
+  daySchedules.forEach(s => {
+    const sh = parseInt(s.start.split(':')[0], 10);
+    const eh = parseInt(s.end.split(':')[0], 10);
+    const em = parseInt(s.end.split(':')[1] || '0', 10);
+    if (sh < minHour) minHour = sh;
+    if ((eh + (em > 0 ? 1 : 0)) > maxHour) maxHour = eh + (em > 0 ? 1 : 0);
+  });
+  if (daySchedules.length === 0) { minHour = 8; maxHour = 18; }
+  minHour = Math.max(minHour - 1, 0);
+  maxHour = Math.min(maxHour + 1, 24);
+  const totalHours = maxHour - minHour;
+  const hourHeight = 60; // px per hour
 
-      // Build removable assignment tags
-      const assignedTags = (s.assigned || []).map((name, tagIdx) =>
-        `<span class="modal-assign-tag">${escapeHtml(name)}<span class="modal-remove-tag" onclick="event.stopPropagation();modalRemoveAssigned(${origIdx}, ${tagIdx}, openCalendarDayModal, ${day})">&times;</span></span>`
-      ).join('');
+  // Compute columns for overlapping events
+  const sorted = [...daySchedules].sort((a, b) => a.start.localeCompare(b.start));
+  const columns = [];
+  sorted.forEach(s => {
+    const sh = parseFloat(s.start.replace(':', '.'));
+    const eh = parseFloat(s.end.replace(':', '.'));
+    let placed = false;
+    for (let c = 0; c < columns.length; c++) {
+      const lastInCol = columns[c][columns[c].length - 1];
+      const lastEnd = parseFloat(lastInCol.end.replace(':', '.'));
+      if (sh >= lastEnd) { columns[c].push(s); s._col = c; placed = true; break; }
+    }
+    if (!placed) { s._col = columns.length; columns.push([s]); }
+  });
+  const totalCols = Math.max(columns.length, 1);
 
-      schedHtml += `<div style="padding:8px 0;border-bottom:1px solid var(--border-light);">
-        <div style="font-weight:600;color:var(--text);">${escapeHtml(s.start)}-${escapeHtml(s.end)} ${escapeHtml(s.company)}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px;">${escapeHtml(s.content || '-')} / 講師: ${escapeHtml(teacherNames)}</div>
-        <div style="font-size:12px;margin-top:4px;color:${statusColor};">配置: ${assigned}/${s.instNeeded}</div>
-        <div style="margin-top:4px;">
-          <div class="modal-assign-tags">
-            ${assignedTags}
-            <span class="modal-add-btn" onclick="event.stopPropagation();showModalAssignDropdown(event, ${origIdx}, openCalendarDayModal, ${day})">+ 追加</span>
-          </div>
-        </div>
-      </div>`;
-    });
-  } else {
-    schedHtml = '<span style="color:var(--text3);">研修なし</span>';
+  // Build timeline
+  let timelineHtml = '';
+  for (let h = minHour; h < maxHour; h++) {
+    timelineHtml += `<div class="timeline-hour"><span class="timeline-hour-label">${String(h).padStart(2,'0')}:00</span></div>`;
   }
 
-  // Find available instructors on this day
-  // Collect all assigned instructors + teachers for this date (across all sessions)
+  // Build events
+  let eventsHtml = '';
+  daySchedules.forEach(s => {
+    const origIdx = shiftData.schedule.indexOf(s);
+    const sh = parseInt(s.start.split(':')[0], 10);
+    const sm = parseInt(s.start.split(':')[1] || '0', 10);
+    const eh = parseInt(s.end.split(':')[0], 10);
+    const em = parseInt(s.end.split(':')[1] || '0', 10);
+    const topMin = (sh - minHour) * 60 + sm;
+    const durMin = (eh - sh) * 60 + (em - sm);
+    const top = topMin;
+    const height = Math.max(durMin, 20);
+
+    const assigned = s.assigned ? s.assigned.length : 0;
+    const needed = s.instNeeded;
+    let colorClass;
+    if (needed === 0) colorClass = 'tl-gray';
+    else if (assigned >= needed) colorClass = 'tl-green';
+    else if (assigned > 0) colorClass = 'tl-yellow';
+    else colorClass = 'tl-red';
+
+    const col = s._col || 0;
+    const colWidth = (100 - 2) / totalCols;
+    const left = col * colWidth + 1;
+    const width = colWidth - 1;
+
+    const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '';
+    const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.map(n => `<span class="timeline-event-tag">${n}</span>`).join('') : '';
+
+    eventsHtml += `<div class="timeline-event ${colorClass}" style="top:${top}px;height:${height}px;left:${left}%;width:${width}%;"
+      onclick="event.stopPropagation();openScheduleModal(${origIdx})">
+      <div class="timeline-event-title">${s.start}-${s.end} ${escapeHtml(s.company)}</div>
+      <div class="timeline-event-sub">${escapeHtml(s.content || '')}${teacherNames ? ' / 講師: ' + escapeHtml(teacherNames) : ''}${s.participants > 0 ? ' / ' + s.participants + '名' : ''}</div>
+      <div class="timeline-event-status">配置: ${assigned}/${needed}</div>
+      ${assignedNames ? '<div class="timeline-event-tags">' + assignedNames + '</div>' : ''}
+    </div>`;
+  });
+
+  // Available instructors
   const allAssignedOnDate = new Set();
   const allTeachersOnDate = new Set();
   daySchedules.forEach(s => {
@@ -2080,12 +2145,10 @@ function openCalendarDayModal(day) {
     const avail = inst.availability && inst.availability[dateStr];
     if (avail && avail !== 'NG') {
       const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
-
-      // Check if already assigned or teaching
       if (allAssignedOnDate.has(inst.name)) {
-        unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">インスト配置済み</span></div>`;
+        unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">配置済み</span></div>`;
       } else if (allTeachersOnDate.has(inst.name)) {
-        unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">講師担当のため不可</span></div>`;
+        unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">講師</span></div>`;
       } else {
         availHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:${availColor};"></span><span style="color:var(--text);">${escapeHtml(inst.name)}</span><span style="color:${availColor};font-weight:600;">${avail}</span></div>`;
       }
@@ -2093,14 +2156,21 @@ function openCalendarDayModal(day) {
   });
   if (!availHtml) availHtml = '<span style="color:var(--text3);">なし</span>';
   if (unavailHtml) {
-    availHtml += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);font-size:11px;color:var(--text3);margin-bottom:4px;">配置済み・講師担当</div>${unavailHtml}`;
+    availHtml += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);font-size:11px;color:var(--text3);margin-bottom:4px;">配置済み・講師</div>${unavailHtml}`;
   }
 
   const body = `
-    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">研修一覧</span><div style="padding-left:4px;">${schedHtml}</div></div>
-    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">参加可能インストラクター</span><div style="padding-left:4px;">${availHtml}</div></div>
+    <div style="position:relative;height:${totalHours * hourHeight}px;margin-bottom:20px;">
+      <div class="timeline">${timelineHtml}</div>
+      ${eventsHtml}
+    </div>
+    <div style="padding-top:12px;border-top:1px solid var(--border-light);">
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;">参加可能インストラクター</div>
+      ${availHtml}
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:12px;">※ 研修をクリックで詳細・配置編集</div>
   `;
-  openShiftModal(`${dateStr}(${dow})`, body);
+  openShiftModal(`${day}日(${dow}) ${month}月`, body);
 }
 
 // ============================================================
