@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4月Camp シフト調整 | DIK&Company</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117; --card: #161b22; --card-hover: #1c2129;
+  --border: #30363d; --border-light: #21262d;
+  --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+  --blue: #58a6ff; --green: #3fb950; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; --orange: #f0883e;
+  --radius: 8px;
+}
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+.container { max-width: 1400px; margin: 0 auto; padding: 24px 20px 60px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Header */
+.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); }
+.back-btn { padding: 6px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+.back-btn:hover { background: var(--card-hover); color: var(--text); }
+.page-header h1 { font-size: 22px; font-weight: 700; }
+.page-header .sub { font-size: 13px; color: var(--text3); margin-left: auto; }
+
+/* Summary Cards */
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 32px; }
+.summary-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.summary-val { font-size: 28px; font-weight: 700; }
+.summary-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* Section */
+.section { margin-top: 36px; }
+.section h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); }
+
+/* Schedule Table */
+.schedule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.schedule-table th, .schedule-table td { padding: 10px 12px; border: 1px solid var(--border-light); text-align: center; }
+.schedule-table th { background: var(--card); color: var(--text2); font-weight: 600; position: sticky; top: 0; }
+.schedule-table td { background: var(--bg); }
+.schedule-table tr:hover td { background: var(--card); }
+.schedule-table .date-col { text-align: left; white-space: nowrap; font-weight: 500; }
+.urgent { color: var(--red); font-weight: 700; }
+.warning { color: var(--yellow); font-weight: 600; }
+.ok { color: var(--green); }
+.badge-a { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: rgba(248,81,73,0.15); color: var(--red); }
+.badge-b { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: rgba(210,153,34,0.15); color: var(--yellow); }
+
+/* Contact Progress */
+.contact-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.contact-table th, .contact-table td { padding: 10px 14px; border: 1px solid var(--border-light); }
+.contact-table th { background: var(--card); color: var(--text2); font-weight: 600; text-align: left; }
+.contact-table td { background: var(--bg); }
+.contact-table tr:hover td { background: var(--card); }
+.status-icon { font-size: 16px; text-align: center; }
+
+/* Legend */
+.legend { display: flex; gap: 20px; margin-bottom: 16px; font-size: 12px; color: var(--text2); }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+
+/* Instructor Grid */
+.inst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.inst-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.inst-card:hover { background: var(--card-hover); }
+.inst-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.inst-type { font-size: 11px; color: var(--text3); }
+.inst-avail { font-size: 12px; color: var(--green); margin-top: 6px; }
+
+@media (max-width: 768px) {
+  .schedule-table, .contact-table { font-size: 11px; }
+  .schedule-table th, .schedule-table td, .contact-table th, .contact-table td { padding: 6px 8px; }
+}
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+const shiftData = {
+  year: 2026,
+  lastUpdated: "2026-03-21",
+
+  // 講師（インストラクターとしてカウントしない）
+  teachers: ["中田", "野沢", "樋口", "赤井"],
+
+  // インストラクター候補（お助けマン）
+  instructors: [
+    { name: "堀内さん", type: "リピーター", slackId: "U3YJWQ8T0", contacted: false, replied: false, notes: "" },
+    { name: "神波さん", type: "リピーター", slackId: "U9X6C7Z1D", contacted: false, replied: false, notes: "" },
+    { name: "優さん", type: "リピーター", slackId: "UCXF8A5DY", contacted: false, replied: false, notes: "" },
+    { name: "まさしさん", type: "リピーター", slackId: "U01MN83P2FR", contacted: false, replied: false, notes: "" },
+    { name: "笠井さん", type: "リピーター", slackId: "U474EERUZ", contacted: false, replied: false, notes: "" },
+    { name: "保坂くん", type: "リピーター", slackId: "U0XETSAG5", contacted: false, replied: false, notes: "" },
+    { name: "森下さん", type: "初回", slackId: "U08SCAA2Y66", contacted: false, replied: false, notes: "大阪" },
+    { name: "楠瀬さん", type: "初回", slackId: "U0AAH8NTYAE", contacted: false, replied: false, notes: "" },
+    { name: "一柳さん", type: "初回", slackId: "U0532LQ7WA0", contacted: false, replied: false, notes: "" },
+    { name: "佐久間さん", type: "初回", slackId: "U051KMXC95J", contacted: false, replied: false, notes: "" },
+    { name: "あやさん", type: "初回", slackId: "U0HK6DYES", contacted: false, replied: false, notes: "" },
+    { name: "勇太さん", type: "初回", slackId: "U046KQ41970", contacted: false, replied: false, notes: "" },
+  ],
+
+  // 研修スケジュール（サンプル: toB管理スプシから取得するデータ構造）
+  schedule: [
+    { date: "04/01(水)", company: "新卒Camp A社", time: "09:00-17:00", participants: 30, instNeeded: 1, instAssigned: 0, rank: "B", note: "" },
+    { date: "04/02(木)", company: "新卒Camp B社", time: "09:00-17:00", participants: 50, instNeeded: 2, instAssigned: 0, rank: "A", note: "大人数" },
+    { date: "04/03(金)", company: "新卒Camp C社", time: "09:00-12:00", participants: 20, instNeeded: 1, instAssigned: 0, rank: "B", note: "" },
+    { date: "04/07(火)", company: "新卒Camp D社 + E社", time: "09:00-17:00", participants: 80, instNeeded: 5, instAssigned: 0, rank: "A", note: "超大規模" },
+    { date: "04/08(水)", company: "新卒Camp F社", time: "10:00-17:00", participants: 25, instNeeded: 1, instAssigned: 0, rank: "B", note: "" },
+    { date: "04/09(木)", company: "新卒Camp G社", time: "09:00-17:00", participants: 60, instNeeded: 3, instAssigned: 0, rank: "A", note: "" },
+    { date: "04/10(金)", company: "新卒Camp H社", time: "09:00-12:00", participants: 15, instNeeded: 0, instAssigned: 0, rank: "-", note: "ワンオペ" },
+    { date: "04/14(火)", company: "新卒Camp I社", time: "09:00-17:00", participants: 40, instNeeded: 2, instAssigned: 0, rank: "A", note: "" },
+    { date: "04/15(水)", company: "新卒Camp J社", time: "10:00-17:00", participants: 30, instNeeded: 1, instAssigned: 0, rank: "B", note: "" },
+  ],
+};
+
+function render() {
+  const app = document.getElementById("app");
+  const d = shiftData;
+
+  const totalDays = d.schedule.filter(s => s.instNeeded > 0).length;
+  const totalNeeded = d.schedule.reduce((sum, s) => sum + s.instNeeded, 0);
+  const totalAssigned = d.schedule.reduce((sum, s) => sum + s.instAssigned, 0);
+  const contacted = d.instructors.filter(i => i.contacted).length;
+  const replied = d.instructors.filter(i => i.replied).length;
+  const fillRate = totalNeeded > 0 ? Math.round((totalAssigned / totalNeeded) * 100) : 0;
+
+  const rankA = d.schedule.filter(s => s.rank === "A").length;
+  const rankB = d.schedule.filter(s => s.rank === "B").length;
+
+  app.innerHTML = `
+    <div class="page-header">
+      <button class="back-btn" onclick="window.location.href='index.html'">← ダッシュボードに戻る</button>
+      <h1>📅 ${d.year}年 4月Camp シフト調整</h1>
+      <span class="sub">最終更新: ${d.lastUpdated}</span>
+    </div>
+
+    <div class="summary">
+      <div class="summary-card"><div class="summary-val" style="color:var(--blue)">${totalDays}</div><div class="summary-label">研修実施日</div></div>
+      <div class="summary-card"><div class="summary-val" style="color:var(--red)">${totalNeeded}</div><div class="summary-label">インスト必要数</div></div>
+      <div class="summary-card"><div class="summary-val" style="color:var(--green)">${totalAssigned}</div><div class="summary-label">配置済み</div></div>
+      <div class="summary-card"><div class="summary-val" style="color:${fillRate >= 80 ? 'var(--green)' : fillRate >= 50 ? 'var(--yellow)' : 'var(--red)'}">${fillRate}%</div><div class="summary-label">充足率</div></div>
+      <div class="summary-card"><div class="summary-val" style="color:var(--purple)">${contacted}/${d.instructors.length}</div><div class="summary-label">連絡済み</div></div>
+      <div class="summary-card"><div class="summary-val" style="color:var(--orange)">${replied}/${d.instructors.length}</div><div class="summary-label">返信済み</div></div>
+    </div>
+
+    <section class="section">
+      <h2>📋 研修スケジュール・インストラクター配置状況</h2>
+      <div class="legend">
+        <span class="legend-item"><span class="badge-a">A: 超絶募集</span> インスト5名以上 or 大人数</span>
+        <span class="legend-item"><span class="badge-b">B: とても募集</span> インスト必要</span>
+        <span class="legend-item">- : ワンオペ（インスト不要）</span>
+      </div>
+      <div style="overflow-x:auto;">
+      <table class="schedule-table">
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>顧客/研修</th>
+            <th>時間</th>
+            <th>参加者数</th>
+            <th>分類</th>
+            <th>必要数</th>
+            <th>配置済</th>
+            <th>過不足</th>
+            <th>備考</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${d.schedule.map(s => {
+            const diff = s.instAssigned - s.instNeeded;
+            const diffClass = s.instNeeded === 0 ? 'ok' : diff >= 0 ? 'ok' : diff >= -1 ? 'warning' : 'urgent';
+            const diffText = s.instNeeded === 0 ? '-' : diff >= 0 ? `+${diff}` : `${diff}`;
+            return `
+              <tr>
+                <td class="date-col">${s.date}</td>
+                <td>${s.company}</td>
+                <td>${s.time}</td>
+                <td>${s.participants}名</td>
+                <td>${s.rank === 'A' ? '<span class="badge-a">A</span>' : s.rank === 'B' ? '<span class="badge-b">B</span>' : '-'}</td>
+                <td>${s.instNeeded}</td>
+                <td>${s.instAssigned}</td>
+                <td class="${diffClass}">${diffText}</td>
+                <td style="color:var(--text3);font-size:12px;">${s.note}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+        <tfoot>
+          <tr style="font-weight:600;background:var(--card);">
+            <td colspan="4" style="text-align:right;">合計</td>
+            <td><span class="badge-a">A:${rankA}</span> <span class="badge-b">B:${rankB}</span></td>
+            <td>${totalNeeded}</td>
+            <td>${totalAssigned}</td>
+            <td class="${fillRate >= 80 ? 'ok' : fillRate >= 50 ? 'warning' : 'urgent'}">${fillRate}%</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>📞 連絡・返信 進捗</h2>
+      <table class="contact-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>名前</th>
+            <th>タイプ</th>
+            <th style="text-align:center;">連絡</th>
+            <th style="text-align:center;">返信</th>
+            <th>備考</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${d.instructors.map((inst, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td style="font-weight:500;">${inst.name}</td>
+              <td><span style="color:${inst.type === 'リピーター' ? 'var(--green)' : 'var(--blue)'}; font-size:12px;">${inst.type}</span></td>
+              <td class="status-icon">${inst.contacted ? '✅' : '⬜'}</td>
+              <td class="status-icon">${inst.replied ? '✅' : '⬜'}</td>
+              <td style="color:var(--text3);font-size:12px;">${inst.notes}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>👥 インストラクター候補一覧</h2>
+      <div class="inst-grid">
+        ${d.instructors.map(inst => `
+          <div class="inst-card">
+            <div class="inst-name">${inst.name}</div>
+            <div class="inst-type">${inst.type}${inst.notes ? ' / ' + inst.notes : ''}</div>
+            <div class="inst-avail">${inst.replied ? '回答済み' : inst.contacted ? '連絡済み・返信待ち' : '未連絡'}</div>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+
+    <footer style="text-align:center;margin-top:48px;padding-top:24px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text3);">
+      DIK&Company &middot; 4月Camp シフト調整 &middot; Powered by Claude Code
+    </footer>
+  `;
+}
+
+document.addEventListener("DOMContentLoaded", render);
+</script>
+</body>
+</html>
