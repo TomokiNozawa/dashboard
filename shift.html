@@ -136,9 +136,11 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .editable-note:hover { border-color: var(--border); }
 .editable-note:focus { border-color: var(--blue); background: var(--bg); color: var(--text); }
 
-/* Calendar */
-.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+/* Calendar - Sunday start with narrow weekends */
+.calendar-grid { display: grid; grid-template-columns: 0.6fr 1fr 1fr 1fr 1fr 1fr 0.6fr; gap: 4px; }
 .calendar-header { text-align: center; font-size: 12px; font-weight: 600; color: var(--text2); padding: 8px 4px; }
+.calendar-header-sun { color: var(--red); }
+.calendar-header-sat { color: var(--blue); }
 .calendar-cell {
   background: var(--card); border: 1px solid var(--border-light); border-radius: var(--radius);
   padding: 8px; min-height: 80px; font-size: 11px; position: relative; transition: all 0.2s;
@@ -221,6 +223,51 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .load-screen .spinner { width: 36px; height: 36px; border-width: 3px; }
 .load-screen p { color: var(--text2); font-size: 14px; }
 
+/* Sortable column headers */
+.data-table th.sortable { cursor: pointer; user-select: none; }
+.data-table th.sortable:hover { color: var(--blue); }
+.sort-arrow { font-size: 10px; margin-left: 3px; }
+
+/* Editable instNeeded */
+.editable-inst-needed {
+  background: transparent; border: 1px solid transparent; border-radius: 4px;
+  color: var(--text); font-size: 13px; padding: 2px 6px; width: 50px;
+  text-align: center; outline: none; font-family: inherit;
+}
+.editable-inst-needed:hover { border-color: var(--border); }
+.editable-inst-needed:focus { border-color: var(--blue); background: var(--bg); }
+
+/* Assignment UI */
+.assign-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.assign-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(88,166,255,0.12); color: var(--blue);
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+}
+.assign-tag .remove-tag {
+  cursor: pointer; font-size: 13px; color: var(--red); margin-left: 2px;
+  font-weight: 700; line-height: 1;
+}
+.assign-tag .remove-tag:hover { color: #ff6b6b; }
+.assign-add-btn {
+  background: rgba(63,185,80,0.15); color: var(--green); border: 1px dashed var(--green);
+  border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;
+  font-weight: 500;
+}
+.assign-add-btn:hover { background: rgba(63,185,80,0.25); }
+.assign-dropdown {
+  position: absolute; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  z-index: 50; max-height: 200px; overflow-y: auto; min-width: 140px;
+}
+.assign-dropdown-item {
+  padding: 6px 12px; font-size: 12px; cursor: pointer; color: var(--text);
+}
+.assign-dropdown-item:hover { background: var(--card-hover); }
+
+/* Teacher column */
+.teacher-names { font-size: 11px; color: var(--purple); white-space: nowrap; }
+
 @media (max-width: 768px) {
   .container { padding: 16px 12px 100px; }
   .page-header h1 { font-size: 18px; }
@@ -277,6 +324,9 @@ const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours
 const API_BASE = 'https://api.github.com';
 const REPO = 'TomokiNozawa/dashboard-data';
 const FILE_PATH = 'shift-data.json';
+
+// Sort state for schedule table
+let scheduleSortState = { column: 'date', direction: 'asc' };
 
 // ============================================================
 // Authentication
@@ -498,11 +548,34 @@ function showToast(msg, type) {
 }
 
 // ============================================================
+// Date formatting helper: yyyy/mm/dd(曜日) hh:mm:ss
+// ============================================================
+const JP_DAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'];
+
+function formatDateJP(dateStr) {
+  if (!dateStr || dateStr === '-') return '-';
+  // Try to parse - supports "2026-04-01 12:30:00" or ISO format
+  const d = new Date(dateStr.replace(' ', 'T'));
+  if (isNaN(d.getTime())) return dateStr;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const dow = JP_DAY_NAMES[d.getDay()];
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${yyyy}/${mm}/${dd}(${dow}) ${hh}:${mi}:${ss}`;
+}
+
+// ============================================================
 // Render
 // ============================================================
 function renderApp() {
   const app = document.getElementById('app');
   const d = shiftData;
+
+  // Sort schedule by date ascending by default
+  d.schedule.sort((a, b) => a.date.localeCompare(b.date));
 
   const totalDays = d.schedule.filter(s => s.instNeeded > 0).length;
   const totalNeeded = d.schedule.reduce((s, r) => s + r.instNeeded, 0);
@@ -511,11 +584,13 @@ function renderApp() {
   const contacted = d.instructors.filter(i => i.contacted).length;
   const replied = d.instructors.filter(i => i.replied).length;
 
+  const lastUpdatedDisplay = formatDateJP(d.lastEditedInBrowser);
+
   app.innerHTML = `
     <div class="page-header">
       <a class="back-btn" href="index.html">&larr; ダッシュボードに戻る</a>
       <h1>4月 シフト管理</h1>
-      <span class="sub">最終更新: ${d.lastEditedInBrowser || '-'}</span>
+      <span class="sub">最終更新: ${lastUpdatedDisplay}</span>
     </div>
 
     <div class="summary" id="summaryCards">
@@ -531,6 +606,7 @@ function renderApp() {
       <button class="tab active" data-tab="schedule">スケジュール表</button>
       <button class="tab" data-tab="availability">可用性マトリクス</button>
       <button class="tab" data-tab="contact">連絡進捗</button>
+      <button class="tab" data-tab="assignment">配置設定</button>
       <button class="tab" data-tab="calendar">カレンダー</button>
       <button class="tab" data-tab="suggest">配置提案</button>
       <button class="tab" data-tab="history">更新履歴</button>
@@ -539,6 +615,7 @@ function renderApp() {
     <div class="tab-panel active" id="panel-schedule"></div>
     <div class="tab-panel" id="panel-availability"></div>
     <div class="tab-panel" id="panel-contact"></div>
+    <div class="tab-panel" id="panel-assignment"></div>
     <div class="tab-panel" id="panel-calendar"></div>
     <div class="tab-panel" id="panel-suggest"></div>
     <div class="tab-panel" id="panel-history"></div>
@@ -548,6 +625,7 @@ function renderApp() {
   renderSchedule();
   renderAvailability();
   renderContact();
+  renderAssignment();
   renderCalendar();
   renderSuggestPanel();
   renderHistoryPanel();
@@ -568,8 +646,53 @@ function initTabs() {
 }
 
 // ============================================================
-// Schedule Table
+// Schedule Table (sortable columns, editable instNeeded, teacher column)
 // ============================================================
+function getSortedSchedule() {
+  const sorted = [...shiftData.schedule];
+  const col = scheduleSortState.column;
+  const dir = scheduleSortState.direction === 'asc' ? 1 : -1;
+
+  sorted.sort((a, b) => {
+    let va, vb;
+    switch (col) {
+      case 'date': va = a.date; vb = b.date; break;
+      case 'company': va = a.company || ''; vb = b.company || ''; break;
+      case 'content': va = a.content || ''; vb = b.content || ''; break;
+      case 'time': va = a.start || ''; vb = b.start || ''; break;
+      case 'location': va = a.location || ''; vb = b.location || ''; break;
+      case 'participants': va = a.participants || 0; vb = b.participants || 0; return (va - vb) * dir;
+      case 'mainTeacher': va = a.mainTeacher || ''; vb = b.mainTeacher || ''; break;
+      case 'teachers': va = (a.teachers || []).join(','); vb = (b.teachers || []).join(','); break;
+      case 'rank': va = a.rank || ''; vb = b.rank || ''; break;
+      case 'instNeeded': va = a.instNeeded || 0; vb = b.instNeeded || 0; return (va - vb) * dir;
+      case 'assigned': va = a.assigned ? a.assigned.length : 0; vb = b.assigned ? b.assigned.length : 0; return (va - vb) * dir;
+      case 'diff':
+        va = (a.assigned ? a.assigned.length : 0) - a.instNeeded;
+        vb = (b.assigned ? b.assigned.length : 0) - b.instNeeded;
+        return (va - vb) * dir;
+      default: va = a.date; vb = b.date;
+    }
+    return va < vb ? -dir : va > vb ? dir : 0;
+  });
+  return sorted;
+}
+
+function sortArrow(col) {
+  if (scheduleSortState.column !== col) return '';
+  return `<span class="sort-arrow">${scheduleSortState.direction === 'asc' ? '▲' : '▼'}</span>`;
+}
+
+function toggleSort(col) {
+  if (scheduleSortState.column === col) {
+    scheduleSortState.direction = scheduleSortState.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    scheduleSortState.column = col;
+    scheduleSortState.direction = 'asc';
+  }
+  renderSchedule();
+}
+
 function renderSchedule() {
   const d = shiftData;
   const panel = document.getElementById('panel-schedule');
@@ -578,6 +701,8 @@ function renderSchedule() {
   const rankB = d.schedule.filter(s => s.rank === 'B').length;
   const totalNeeded = d.schedule.reduce((s, r) => s + r.instNeeded, 0);
   const totalAssigned = d.schedule.reduce((s, r) => s + (r.assigned ? r.assigned.length : 0), 0);
+
+  const sorted = getSortedSchedule();
 
   panel.innerHTML = `
     <div class="section">
@@ -590,21 +715,23 @@ function renderSchedule() {
       <table class="data-table">
         <thead>
           <tr>
-            <th>日付</th>
-            <th>顧客</th>
-            <th>内容</th>
-            <th>時間</th>
-            <th>場所</th>
-            <th>人数</th>
-            <th>主担当</th>
-            <th>分類</th>
-            <th>必要数</th>
-            <th>配置済</th>
-            <th>過不足</th>
+            <th class="sortable" onclick="toggleSort('date')">日付${sortArrow('date')}</th>
+            <th class="sortable" onclick="toggleSort('company')">顧客${sortArrow('company')}</th>
+            <th class="sortable" onclick="toggleSort('content')">内容${sortArrow('content')}</th>
+            <th class="sortable" onclick="toggleSort('time')">時間${sortArrow('time')}</th>
+            <th class="sortable" onclick="toggleSort('location')">場所${sortArrow('location')}</th>
+            <th class="sortable" onclick="toggleSort('participants')">人数${sortArrow('participants')}</th>
+            <th class="sortable" onclick="toggleSort('mainTeacher')">主担当${sortArrow('mainTeacher')}</th>
+            <th class="sortable" onclick="toggleSort('teachers')">講師${sortArrow('teachers')}</th>
+            <th class="sortable" onclick="toggleSort('rank')">分類${sortArrow('rank')}</th>
+            <th class="sortable" onclick="toggleSort('instNeeded')">必要数${sortArrow('instNeeded')}</th>
+            <th class="sortable" onclick="toggleSort('assigned')">配置済${sortArrow('assigned')}</th>
+            <th class="sortable" onclick="toggleSort('diff')">過不足${sortArrow('diff')}</th>
           </tr>
         </thead>
         <tbody>
-          ${d.schedule.map((s, i) => {
+          ${sorted.map((s) => {
+            const origIdx = d.schedule.indexOf(s);
             const assigned = s.assigned ? s.assigned.length : 0;
             const diff = assigned - s.instNeeded;
             let diffClass, diffText;
@@ -616,6 +743,7 @@ function renderSchedule() {
               : s.rank === 'B' ? '<span class="badge badge-b">B</span>'
               : '<span class="badge badge-none">-</span>';
             const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : '';
+            const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '';
             return `<tr class="${muted}">
               <td class="text-left" style="white-space:nowrap;font-weight:500;">${s.date}(${s.dow})</td>
               <td class="text-left">${s.company}</td>
@@ -624,8 +752,9 @@ function renderSchedule() {
               <td>${s.location || ''}</td>
               <td>${s.participants}名</td>
               <td>${s.mainTeacher || ''}</td>
+              <td><span class="teacher-names">${teacherNames}</span></td>
               <td>${rankBadge}</td>
-              <td>${s.instNeeded}</td>
+              <td><input type="number" class="editable-inst-needed" value="${s.instNeeded}" min="0" onblur="updateInstNeeded(${origIdx}, this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
               <td title="${assignedNames}">${assigned}</td>
               <td class="${diffClass}">${diffText}</td>
             </tr>`;
@@ -633,7 +762,7 @@ function renderSchedule() {
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="7" class="text-right">合計</td>
+            <td colspan="8" class="text-right">合計</td>
             <td><span class="badge badge-a">A:${rankA}</span> <span class="badge badge-b">B:${rankB}</span></td>
             <td>${totalNeeded}</td>
             <td>${totalAssigned}</td>
@@ -644,6 +773,17 @@ function renderSchedule() {
       </div>
     </div>
   `;
+}
+
+function updateInstNeeded(idx, val) {
+  const newVal = parseInt(val, 10);
+  if (isNaN(newVal) || newVal < 0) return;
+  if (shiftData.schedule[idx].instNeeded !== newVal) {
+    shiftData.schedule[idx].instNeeded = newVal;
+    markChanged();
+    renderSchedule();
+    refreshSummary();
+  }
 }
 
 // ============================================================
@@ -721,7 +861,7 @@ function cycleAvail(el) {
 }
 
 // ============================================================
-// Contact Progress
+// Contact Progress (3 columns: 連絡, 確認, 返信)
 // ============================================================
 function renderContact() {
   const d = shiftData;
@@ -736,6 +876,7 @@ function renderContact() {
           <th class="text-left">名前</th>
           <th>タイプ</th>
           <th style="width:60px;">連絡</th>
+          <th style="width:60px;">確認</th>
           <th style="width:60px;">返信</th>
           <th class="text-left">備考</th>
         </tr>
@@ -744,11 +885,13 @@ function renderContact() {
 
   d.instructors.forEach((inst, i) => {
     const typeColor = inst.type === 'リピーター' ? 'var(--green)' : 'var(--blue)';
+    const confirmed = inst.confirmed || false;
     html += `<tr>
       <td>${i + 1}</td>
       <td class="text-left" style="font-weight:500;">${inst.name}</td>
       <td><span style="color:${typeColor};font-size:12px;">${inst.type}</span></td>
       <td><input type="checkbox" class="contact-check" ${inst.contacted ? 'checked' : ''} onchange="toggleContacted(${i}, this.checked)"></td>
+      <td><input type="checkbox" class="contact-check" ${confirmed ? 'checked' : ''} onchange="toggleConfirmed(${i}, this.checked)"></td>
       <td><input type="checkbox" class="contact-check" ${inst.replied ? 'checked' : ''} onchange="toggleReplied(${i}, this.checked)"></td>
       <td><input type="text" class="editable-note" value="${escapeHtml(inst.notes || '')}" onblur="updateNote(${i}, this.value)" data-idx="${i}"></td>
     </tr>`;
@@ -762,6 +905,11 @@ function toggleContacted(idx, val) {
   shiftData.instructors[idx].contacted = val;
   markChanged();
   refreshSummary();
+}
+
+function toggleConfirmed(idx, val) {
+  shiftData.instructors[idx].confirmed = val;
+  markChanged();
 }
 
 function toggleReplied(idx, val) {
@@ -799,7 +947,7 @@ function refreshSummary() {
 }
 
 // ============================================================
-// Calendar View
+// Calendar View (Sunday start + narrow weekends)
 // ============================================================
 function renderCalendar() {
   const panel = document.getElementById('panel-calendar');
@@ -810,12 +958,11 @@ function renderCalendar() {
   const lastDay = new Date(year, month, 0);
   const daysInMonth = lastDay.getDate();
 
-  // Monday = 0, Sunday = 6 (ISO)
-  let startDow = firstDay.getDay(); // 0=Sun
-  // Convert to Mon-based: Mon=0, Tue=1, ... Sun=6
-  startDow = startDow === 0 ? 6 : startDow - 1;
+  // Sunday = 0 (native JS getDay), use as-is for Sun-start calendar
+  const startDow = firstDay.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 
-  const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+  const dayClasses = ['calendar-header-sun', '', '', '', '', '', 'calendar-header-sat'];
 
   // Build schedule lookup
   const scheduleLookup = {};
@@ -831,7 +978,7 @@ function renderCalendar() {
     </div>
     <div class="calendar-grid">`;
 
-  dayNames.forEach(d => { html += `<div class="calendar-header">${d}</div>`; });
+  dayNames.forEach((d, i) => { html += `<div class="calendar-header ${dayClasses[i]}">${d}</div>`; });
 
   // Empty cells before first day
   for (let i = 0; i < startDow; i++) {
@@ -869,6 +1016,142 @@ function renderCalendar() {
 
   html += '</div></div>';
   panel.innerHTML = html;
+}
+
+// ============================================================
+// Assignment Tab (配置設定)
+// ============================================================
+let activeAssignDropdown = null;
+
+function renderAssignment() {
+  const d = shiftData;
+  const panel = document.getElementById('panel-assignment');
+
+  // Sort by date
+  const sorted = [...d.schedule].sort((a, b) => a.date.localeCompare(b.date));
+
+  let html = `<div class="section">
+    <h2>配置設定</h2>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th class="text-left">顧客</th>
+          <th>時間</th>
+          <th>講師</th>
+          <th class="text-left" style="min-width:200px;">配置インストラクター</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  sorted.forEach((s) => {
+    const origIdx = d.schedule.indexOf(s);
+    const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '-';
+    const assignedTags = (s.assigned || []).map((name, tagIdx) =>
+      `<span class="assign-tag">${escapeHtml(name)}<span class="remove-tag" onclick="removeAssigned(${origIdx}, ${tagIdx})">&times;</span></span>`
+    ).join('');
+
+    html += `<tr>
+      <td style="white-space:nowrap;font-weight:500;">${s.date}(${s.dow})</td>
+      <td class="text-left">${s.company}</td>
+      <td style="white-space:nowrap;">${s.start}-${s.end}</td>
+      <td><span class="teacher-names">${teacherNames}</span></td>
+      <td class="text-left" style="position:relative;">
+        <div class="assign-tags">
+          ${assignedTags}
+          <span class="assign-add-btn" onclick="showAssignDropdown(event, ${origIdx})">+ 追加</span>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div></div>';
+  panel.innerHTML = html;
+}
+
+function showAssignDropdown(event, schedIdx) {
+  event.stopPropagation();
+  closeAssignDropdown();
+
+  const s = shiftData.schedule[schedIdx];
+  const assigned = s.assigned || [];
+
+  // Get all instructor names that are not already assigned
+  const available = shiftData.instructors
+    .map(inst => inst.name)
+    .filter(name => !assigned.includes(name));
+
+  if (available.length === 0) {
+    showToast('全てのインストラクターが配置済みです', 'error');
+    return;
+  }
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'assign-dropdown';
+  dropdown.id = 'assignDropdown';
+
+  available.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'assign-dropdown-item';
+    item.textContent = name;
+    item.onclick = (e) => {
+      e.stopPropagation();
+      addAssigned(schedIdx, name);
+      closeAssignDropdown();
+    };
+    dropdown.appendChild(item);
+  });
+
+  // Position near the button
+  const btn = event.target;
+  const td = btn.closest('td');
+  td.appendChild(dropdown);
+  activeAssignDropdown = dropdown;
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', closeAssignDropdownOnOutside);
+  }, 0);
+}
+
+function closeAssignDropdownOnOutside(e) {
+  if (activeAssignDropdown && !activeAssignDropdown.contains(e.target)) {
+    closeAssignDropdown();
+  }
+}
+
+function closeAssignDropdown() {
+  if (activeAssignDropdown) {
+    activeAssignDropdown.remove();
+    activeAssignDropdown = null;
+    document.removeEventListener('click', closeAssignDropdownOnOutside);
+  }
+}
+
+function addAssigned(schedIdx, name) {
+  if (!shiftData.schedule[schedIdx].assigned) {
+    shiftData.schedule[schedIdx].assigned = [];
+  }
+  if (!shiftData.schedule[schedIdx].assigned.includes(name)) {
+    shiftData.schedule[schedIdx].assigned.push(name);
+    markChanged();
+    renderAssignment();
+    renderSchedule();
+    renderCalendar();
+    refreshSummary();
+  }
+}
+
+function removeAssigned(schedIdx, tagIdx) {
+  if (shiftData.schedule[schedIdx].assigned) {
+    shiftData.schedule[schedIdx].assigned.splice(tagIdx, 1);
+    markChanged();
+    renderAssignment();
+    renderSchedule();
+    renderCalendar();
+    refreshSummary();
+  }
 }
 
 // ============================================================
@@ -1001,6 +1284,7 @@ function applySuggestion(idx) {
   markChanged();
   refreshSummary();
   renderSchedule();
+  renderAssignment();
   renderCalendar();
   // Re-generate to reflect changes
   generateSuggestions();
@@ -1025,8 +1309,7 @@ function renderHistory(commits) {
   }
 
   container.innerHTML = '<div class="history-list">' + commits.map(c => {
-    const date = new Date(c.commit.author.date);
-    const dateStr = date.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const dateStr = formatDateJP(c.commit.author.date);
     return `<div class="history-item">
       <div class="history-date">${dateStr}</div>
       <div class="history-msg">${escapeHtml(c.commit.message)}</div>
