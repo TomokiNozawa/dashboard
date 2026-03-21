@@ -166,18 +166,20 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .calendar-month-nav span { font-size: 16px; font-weight: 600; }
 
 /* Timeline view (Google Calendar style) */
-.timeline { position: relative; margin-left: 50px; border-left: 1px solid var(--border-light); }
+.timeline-wrap { position: relative; margin-left: 50px; }
+.timeline { position: relative; border-left: 1px solid var(--border-light); }
 .timeline-hour { position: relative; height: 60px; border-bottom: 1px solid var(--border-light); }
 .timeline-hour-label { position: absolute; left: -50px; top: -8px; font-size: 11px; color: var(--text3); width: 44px; text-align: right; }
+.timeline-events { position: absolute; top: 0; left: 4px; right: 0; bottom: 0; }
 .timeline-event {
-  position: absolute; left: 4px; border-radius: 6px; padding: 6px 10px;
-  font-size: 11px; overflow: hidden; cursor: pointer;
+  position: absolute; border-radius: 6px; padding: 6px 10px;
+  font-size: 11px; overflow-y: auto; cursor: pointer;
   border-left: 3px solid; z-index: 1; transition: opacity 0.15s;
-  min-height: 28px; display: flex; flex-direction: column; justify-content: center;
+  min-height: 28px;
 }
 .timeline-event:hover { opacity: 0.85; }
-.timeline-event-title { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.timeline-event-sub { font-size: 10px; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.timeline-event-title { font-weight: 600; font-size: 12px; }
+.timeline-event-sub { font-size: 10px; opacity: 0.8; }
 .timeline-event-status { font-size: 10px; font-weight: 600; margin-top: 2px; }
 .timeline-event-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
 .timeline-event-tag { background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 500; }
@@ -1088,6 +1090,13 @@ function renderAvailability() {
   panel.innerHTML = html;
 }
 
+// Open schedule modal from timeline, with back-to-timeline on Escape
+let _timelineReturnDay = null;
+function openScheduleFromTimeline(schedIdx, day) {
+  _timelineReturnDay = day;
+  openScheduleModal(schedIdx);
+}
+
 function toggleAkaiTeacher(schedIdx, add) {
   const s = shiftData.schedule[schedIdx];
   if (!s.teachers) s.teachers = [];
@@ -1638,6 +1647,13 @@ document.addEventListener('keydown', function(e) {
     // Close dropdowns first, then modal
     if (activeAssignDropdown) { closeAssignDropdown(); return; }
     if (activeModalDropdown) { closeModalDropdown(); return; }
+    // If opened from timeline, go back to timeline
+    if (_timelineReturnDay !== null) {
+      const returnDay = _timelineReturnDay;
+      _timelineReturnDay = null;
+      openCalendarDayModal(returnDay);
+      return;
+    }
     document.getElementById('modalOverlay').classList.remove('active');
   }
   // Alt + Left/Right: switch tabs
@@ -2123,7 +2139,7 @@ function openCalendarDayModal(day) {
     const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.map(n => `<span class="timeline-event-tag">${n}</span>`).join('') : '';
 
     eventsHtml += `<div class="timeline-event ${colorClass}" style="top:${top}px;height:${height}px;left:${left}%;width:${width}%;"
-      onclick="event.stopPropagation();openScheduleModal(${origIdx})">
+      onclick="event.stopPropagation();openScheduleFromTimeline(${origIdx}, ${day})">
       <div class="timeline-event-title">${s.start}-${s.end} ${escapeHtml(s.company)}</div>
       <div class="timeline-event-sub">${escapeHtml(s.content || '')}${teacherNames ? ' / 講師: ' + escapeHtml(teacherNames) : ''}${s.participants > 0 ? ' / ' + s.participants + '名' : ''}</div>
       <div class="timeline-event-status">配置: ${assigned}/${needed}</div>
@@ -2160,9 +2176,9 @@ function openCalendarDayModal(day) {
   }
 
   const body = `
-    <div style="position:relative;height:${totalHours * hourHeight}px;margin-bottom:20px;">
+    <div class="timeline-wrap" style="height:${totalHours * hourHeight}px;margin-bottom:20px;">
       <div class="timeline">${timelineHtml}</div>
-      ${eventsHtml}
+      <div class="timeline-events">${eventsHtml}</div>
     </div>
     <div style="padding-top:12px;border-top:1px solid var(--border-light);">
       <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;">参加可能インストラクター</div>
@@ -2170,7 +2186,7 @@ function openCalendarDayModal(day) {
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:12px;">※ 研修をクリックで詳細・配置編集</div>
   `;
-  openShiftModal(`${day}日(${dow}) ${month}月`, body);
+  openShiftModal(`${month}月${day}日(${dow})`, body);
 }
 
 // ============================================================
