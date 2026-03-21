@@ -564,8 +564,8 @@ function apiHeaders() {
 }
 
 async function loadData() {
-  const url = `${API_BASE}/repos/${REPO}/contents/${FILE_PATH}`;
-  const resp = await fetch(url, { headers: apiHeaders() });
+  const url = `${API_BASE}/repos/${REPO}/contents/${FILE_PATH}?t=${Date.now()}`;
+  const resp = await fetch(url, { headers: apiHeaders(), cache: 'no-store' });
   if (!resp.ok) throw new Error(`API error ${resp.status}`);
   const json = await resp.json();
   fileSha = json.sha;
