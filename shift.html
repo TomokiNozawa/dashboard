@@ -238,13 +238,44 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--text2); flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; gap: 6px; }
 
-/* Loading spinner */
-.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; }
+/* Loading screen */
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes loadPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+@keyframes loadSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+@keyframes loadFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.load-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
-.load-screen .spinner { width: 36px; height: 36px; border-width: 3px; }
-.load-screen p { color: var(--text2); font-size: 14px; }
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+.load-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 70vh; gap: 24px;
+  animation: loadFadeIn 0.5s ease;
+}
+.load-logo {
+  font-size: 32px; font-weight: 700; letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--text), var(--blue));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.load-sub { font-size: 13px; color: var(--text3); letter-spacing: 0.05em; }
+.load-bar-wrap {
+  width: 200px; height: 3px; background: var(--border-light); border-radius: 2px;
+  overflow: hidden; position: relative;
+}
+.load-bar-fill {
+  position: absolute; top: 0; left: 0; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+  border-radius: 2px; animation: loadSlide 1.2s ease-in-out infinite;
+}
+.load-status {
+  font-size: 12px; color: var(--text3); animation: loadPulse 1.5s ease infinite;
+}
+.load-dots { display: flex; gap: 6px; margin-top: 4px; }
+.load-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--blue);
+  animation: loadPulse 1.2s ease infinite;
+}
+.load-dot:nth-child(2) { animation-delay: 0.2s; }
+.load-dot:nth-child(3) { animation-delay: 0.4s; }
 
 /* Sortable column headers */
 .data-table th.sortable { cursor: pointer; user-select: none; }
@@ -402,8 +433,11 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 <!-- Main App -->
 <div class="container" id="app" style="display:none;">
   <div class="load-screen" id="loadingScreen">
-    <div class="spinner"></div>
-    <p>データを読み込み中...</p>
+    <div class="load-logo">DIK&Company</div>
+    <div class="load-sub">シフト管理システム</div>
+    <div class="load-bar-wrap"><div class="load-bar-fill"></div></div>
+    <div class="load-status">データを読み込み中</div>
+    <div class="load-dots"><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div>
   </div>
 </div>
 
