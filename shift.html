@@ -291,6 +291,29 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 /* Teacher column */
 .teacher-names { font-size: 11px; color: var(--purple); white-space: nowrap; }
 
+/* Modal */
+.modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center; backdrop-filter:blur(4px); }
+.modal-overlay.active { display:flex; }
+.modal { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:32px; max-width:700px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 16px 48px rgba(0,0,0,0.5); }
+.modal-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+.modal-title { font-size:18px; font-weight:700; }
+.modal-close { background:none; border:none; color:var(--text3); font-size:24px; cursor:pointer; padding:4px 8px; border-radius:var(--radius); }
+.modal-close:hover { color:var(--text); background:var(--border-light); }
+.modal-body { font-size:14px; color:var(--text2); line-height:1.8; }
+.modal-body .detail-row { display:flex; gap:12px; padding:8px 0; border-bottom:1px solid var(--border-light); }
+.modal-body .detail-label { color:var(--text3); min-width:100px; font-weight:500; flex-shrink:0; }
+.modal-body .detail-value { color:var(--text); }
+.modal-body .avail-list-item { display:flex; align-items:center; gap:8px; padding:3px 0; }
+.modal-body .avail-list-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* Clickable rows */
+.data-table tbody tr.clickable-row { cursor: pointer; }
+.data-table tbody tr.clickable-row:hover td { background: var(--card-hover); }
+.avail-name-cell.clickable-name { cursor: pointer; }
+.avail-name-cell.clickable-name:hover { color: var(--blue); text-decoration: underline; }
+.calendar-cell.clickable-day { cursor: pointer; }
+.calendar-cell.clickable-day:hover { border-color: var(--blue); background: var(--card-hover); }
+
 @media (max-width: 768px) {
   .container { padding: 16px 12px 100px; }
   .page-header h1 { font-size: 18px; }
@@ -337,6 +360,17 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+
+<!-- Shift Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeShiftModal(event)">
+  <div class="modal" id="shiftModal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="shiftModalTitle"></div>
+      <button class="modal-close" onclick="closeShiftModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="shiftModalBody"></div>
+  </div>
+</div>
 
 <script>
 // ============================================================
@@ -790,7 +824,7 @@ function renderSchedule() {
               : '<span class="badge badge-none">-</span>';
             const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : '';
             const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '';
-            return `<tr class="${muted}">
+            return `<tr class="${muted} clickable-row" onclick="openScheduleModal(${origIdx})" style="cursor:pointer;">
               <td class="text-left" style="white-space:nowrap;font-weight:500;">${s.date}(${s.dow})</td>
               <td style="white-space:nowrap;">${s.start}-${s.end}</td>
               <td class="text-left">${s.company}</td>
@@ -800,7 +834,7 @@ function renderSchedule() {
               <td>${s.mainTeacher || ''}</td>
               <td><span class="teacher-names">${teacherNames}</span></td>
               <td>${rankBadge}</td>
-              <td><input type="number" class="editable-inst-needed" value="${s.instNeeded}" min="0" onblur="updateInstNeeded(${origIdx}, this.value)" onkeydown="if(event.key==='Enter')this.blur()"></td>
+              <td><input type="number" class="editable-inst-needed" value="${s.instNeeded}" min="0" onblur="updateInstNeeded(${origIdx}, this.value)" onkeydown="if(event.key==='Enter')this.blur()" onclick="event.stopPropagation()"></td>
               <td title="${assignedNames}">${assigned}</td>
               <td class="${diffClass}">${diffText}</td>
             </tr>`;
@@ -891,7 +925,7 @@ function renderAvailability() {
     group.instructors.forEach(inst => {
       const iIdx = d.instructors.indexOf(inst);
       const typeColor = inst.type === 'リピーター' ? 'var(--green)' : inst.type === '初回' ? 'var(--blue)' : 'var(--purple)';
-      html += `<tr><td class="avail-name-cell">${inst.name}</td>`;
+      html += `<tr><td class="avail-name-cell clickable-name" onclick="openAvailabilityModal(${iIdx})">${inst.name}</td>`;
       uniqueDates.forEach(dt => {
         const avail = (inst.availability && inst.availability[dt.date]) || '';
         const cls = AVAIL_CLASSES[avail] || 'avail-empty';
@@ -956,14 +990,14 @@ function renderContact() {
   d.instructors.forEach((inst, i) => {
     const typeColor = inst.type === 'リピーター' ? 'var(--green)' : 'var(--blue)';
     const confirmed = inst.confirmed || false;
-    html += `<tr>
+    html += `<tr class="clickable-row" onclick="openContactModal(${i})" style="cursor:pointer;">
       <td>${i + 1}</td>
       <td class="text-left" style="font-weight:500;">${inst.name}</td>
       <td><span style="color:${typeColor};font-size:12px;">${inst.type}</span></td>
-      <td><input type="checkbox" class="contact-check" ${inst.contacted ? 'checked' : ''} onchange="toggleContacted(${i}, this.checked)"></td>
-      <td><input type="checkbox" class="contact-check" ${confirmed ? 'checked' : ''} onchange="toggleConfirmed(${i}, this.checked)"></td>
-      <td><input type="checkbox" class="contact-check" ${inst.replied ? 'checked' : ''} onchange="toggleReplied(${i}, this.checked)"></td>
-      <td><input type="text" class="editable-note" value="${escapeHtml(inst.notes || '')}" onblur="updateNote(${i}, this.value)" data-idx="${i}"></td>
+      <td><input type="checkbox" class="contact-check" ${inst.contacted ? 'checked' : ''} onchange="toggleContacted(${i}, this.checked)" onclick="event.stopPropagation()"></td>
+      <td><input type="checkbox" class="contact-check" ${confirmed ? 'checked' : ''} onchange="toggleConfirmed(${i}, this.checked)" onclick="event.stopPropagation()"></td>
+      <td><input type="checkbox" class="contact-check" ${inst.replied ? 'checked' : ''} onchange="toggleReplied(${i}, this.checked)" onclick="event.stopPropagation()"></td>
+      <td><input type="text" class="editable-note" value="${escapeHtml(inst.notes || '')}" onblur="updateNote(${i}, this.value)" data-idx="${i}" onclick="event.stopPropagation()"></td>
     </tr>`;
   });
 
@@ -1078,7 +1112,7 @@ function renderCalendar() {
       cellContent += `</div>`;
     });
 
-    html += `<div class="calendar-cell">${cellContent}</div>`;
+    html += `<div class="calendar-cell clickable-day" onclick="openCalendarDayModal(${day})">${cellContent}</div>`;
   }
 
   // Fill remaining cells
@@ -1126,12 +1160,12 @@ function renderAssignment() {
       `<span class="assign-tag">${escapeHtml(name)}<span class="remove-tag" onclick="removeAssigned(${origIdx}, ${tagIdx})">&times;</span></span>`
     ).join('');
 
-    html += `<tr>
+    html += `<tr class="clickable-row" onclick="openAssignmentModal(${origIdx})" style="cursor:pointer;">
       <td style="white-space:nowrap;font-weight:500;">${s.date}(${s.dow})</td>
       <td style="white-space:nowrap;">${s.start}-${s.end}</td>
       <td class="text-left">${s.company}</td>
       <td><span class="teacher-names">${teacherNames}</span></td>
-      <td class="text-left" style="position:relative;">
+      <td class="text-left" style="position:relative;" onclick="event.stopPropagation()">
         <div class="assign-tags">
           ${assignedTags}
           <span class="assign-add-btn" onclick="showAssignDropdown(event, ${origIdx})">+ 追加</span>
@@ -1399,6 +1433,226 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+// ============================================================
+// Modal System
+// ============================================================
+function openShiftModal(title, bodyHtml) {
+  document.getElementById('shiftModalTitle').textContent = title;
+  document.getElementById('shiftModalBody').innerHTML = bodyHtml;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeShiftModal(e) {
+  if (e && e.target !== document.getElementById('modalOverlay')) return;
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('modalOverlay').classList.remove('active');
+  }
+});
+
+// -- Schedule row modal --
+function openScheduleModal(schedIdx) {
+  const s = shiftData.schedule[schedIdx];
+  const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : 'なし';
+  const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : 'なし';
+  const rankLabel = s.rank === 'A' ? 'A（超絶募集）' : s.rank === 'B' ? 'B（とても募集）' : '-（ワンオペ）';
+  const body = `
+    <div class="detail-row"><span class="detail-label">日付</span><span class="detail-value">${escapeHtml(s.date)}(${escapeHtml(s.dow)})</span></div>
+    <div class="detail-row"><span class="detail-label">時間</span><span class="detail-value">${escapeHtml(s.start)} - ${escapeHtml(s.end)}</span></div>
+    <div class="detail-row"><span class="detail-label">顧客名</span><span class="detail-value">${escapeHtml(s.company)}</span></div>
+    <div class="detail-row"><span class="detail-label">研修内容</span><span class="detail-value">${escapeHtml(s.content || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">場所</span><span class="detail-value">${escapeHtml(s.location || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">参加人数</span><span class="detail-value">${s.participants}名</span></div>
+    <div class="detail-row"><span class="detail-label">主担当</span><span class="detail-value">${escapeHtml(s.mainTeacher || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">講師一覧</span><span class="detail-value">${escapeHtml(teacherNames)}</span></div>
+    <div class="detail-row"><span class="detail-label">分類</span><span class="detail-value">${escapeHtml(rankLabel)}</span></div>
+    <div class="detail-row"><span class="detail-label">インスト必要数</span><span class="detail-value">${s.instNeeded}</span></div>
+    <div class="detail-row"><span class="detail-label">配置済み</span><span class="detail-value">${escapeHtml(assignedNames)}</span></div>
+    <div class="detail-row"><span class="detail-label">確認備考</span><span class="detail-value">${escapeHtml(s.confirmNote || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">メモ</span><span class="detail-value">${escapeHtml(s.note || '-')}</span></div>
+  `;
+  openShiftModal(`${s.date}(${s.dow}) ${s.company}`, body);
+}
+
+// -- Availability name modal --
+function openAvailabilityModal(instIdx) {
+  const inst = shiftData.instructors[instIdx];
+  const typeLabel = inst.type || '-';
+
+  // Availability color map
+  const availColorMap = { '全日': 'var(--green)', 'AM': 'var(--blue)', 'PM': 'var(--purple)', '保留': 'var(--yellow)', 'NG': 'var(--red)' };
+
+  // Build availability list
+  const dates = shiftData.schedule.filter(s => s.instNeeded > 0);
+  const seenDates = new Set();
+  const uniqueDates = [];
+  dates.forEach(s => { if (!seenDates.has(s.date)) { seenDates.add(s.date); uniqueDates.push({ date: s.date, dow: s.dow }); } });
+  uniqueDates.sort((a, b) => a.date.localeCompare(b.date));
+
+  let availHtml = '';
+  uniqueDates.forEach(dt => {
+    const avail = (inst.availability && inst.availability[dt.date]) || '未回答';
+    const color = availColorMap[avail] || 'var(--text3)';
+    availHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:${color};"></span><span style="color:var(--text);">${dt.date}(${dt.dow})</span><span style="color:${color};font-weight:600;">${avail}</span></div>`;
+  });
+
+  // Assigned schedules
+  let assignedHtml = '';
+  shiftData.schedule.forEach(s => {
+    if (s.assigned && s.assigned.includes(inst.name)) {
+      assignedHtml += `<div style="padding:2px 0;color:var(--text);">${s.date}(${s.dow}) ${s.start}-${s.end} ${escapeHtml(s.company)}</div>`;
+    }
+  });
+  if (!assignedHtml) assignedHtml = '<span style="color:var(--text3);">なし</span>';
+
+  const body = `
+    <div class="detail-row"><span class="detail-label">名前</span><span class="detail-value">${escapeHtml(inst.name)}</span></div>
+    <div class="detail-row"><span class="detail-label">タイプ</span><span class="detail-value">${escapeHtml(typeLabel)}</span></div>
+    <div class="detail-row"><span class="detail-label">連絡</span><span class="detail-value">${inst.contacted ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
+    <div class="detail-row"><span class="detail-label">確認</span><span class="detail-value">${inst.confirmed ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
+    <div class="detail-row"><span class="detail-label">返信</span><span class="detail-value">${inst.replied ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
+    <div class="detail-row"><span class="detail-label">備考</span><span class="detail-value">${escapeHtml(inst.notes || '-')}</span></div>
+    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">全日程の可用性</span><div style="padding-left:4px;">${availHtml || '<span style="color:var(--text3);">データなし</span>'}</div></div>
+    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">配置済みの研修</span><div style="padding-left:4px;">${assignedHtml}</div></div>
+  `;
+  openShiftModal(inst.name, body);
+}
+
+// -- Contact row modal --
+function openContactModal(instIdx) {
+  const inst = shiftData.instructors[instIdx];
+
+  // Availability summary
+  let fullCount = 0, amCount = 0, pmCount = 0, holdCount = 0, ngCount = 0;
+  if (inst.availability) {
+    Object.values(inst.availability).forEach(v => {
+      if (v === '全日') fullCount++;
+      else if (v === 'AM') amCount++;
+      else if (v === 'PM') pmCount++;
+      else if (v === '保留') holdCount++;
+      else if (v === 'NG') ngCount++;
+    });
+  }
+
+  // Assigned schedules
+  let assignedHtml = '';
+  shiftData.schedule.forEach(s => {
+    if (s.assigned && s.assigned.includes(inst.name)) {
+      assignedHtml += `<div style="padding:2px 0;color:var(--text);">${s.date}(${s.dow}) ${s.start}-${s.end} ${escapeHtml(s.company)}</div>`;
+    }
+  });
+  if (!assignedHtml) assignedHtml = '<span style="color:var(--text3);">なし</span>';
+
+  const body = `
+    <div class="detail-row"><span class="detail-label">名前</span><span class="detail-value">${escapeHtml(inst.name)}</span></div>
+    <div class="detail-row"><span class="detail-label">タイプ</span><span class="detail-value">${escapeHtml(inst.type || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">SlackユーザーID</span><span class="detail-value">${escapeHtml(inst.slackUserId || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">連絡</span><span class="detail-value">${inst.contacted ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
+    <div class="detail-row"><span class="detail-label">確認</span><span class="detail-value">${inst.confirmed ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
+    <div class="detail-row"><span class="detail-label">返信</span><span class="detail-value">${inst.replied ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
+    <div class="detail-row"><span class="detail-label">備考</span><span class="detail-value">${escapeHtml(inst.notes || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">可用性サマリー</span><span class="detail-value">
+      <span style="color:var(--green);">全日 ${fullCount}件</span> /
+      <span style="color:var(--blue);">AM ${amCount}件</span> /
+      <span style="color:var(--purple);">PM ${pmCount}件</span> /
+      <span style="color:var(--yellow);">保留 ${holdCount}件</span> /
+      <span style="color:var(--red);">NG ${ngCount}件</span>
+    </span></div>
+    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">配置済みの研修</span><div style="padding-left:4px;">${assignedHtml}</div></div>
+  `;
+  openShiftModal(inst.name, body);
+}
+
+// -- Assignment row modal --
+function openAssignmentModal(schedIdx) {
+  const s = shiftData.schedule[schedIdx];
+  const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '-';
+  const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : 'なし';
+
+  // Find available instructors for this date/time
+  const startH = parseInt(s.start.split(':')[0], 10);
+  const endH = parseInt(s.end.split(':')[0], 10);
+  const isAM = endH <= 13;
+  const isPM = startH >= 12;
+
+  let availableHtml = '';
+  shiftData.instructors.forEach(inst => {
+    const avail = inst.availability && inst.availability[s.date];
+    if (!avail || avail === 'NG') return;
+    let canWork = false;
+    if (avail === '全日') canWork = true;
+    else if (avail === 'AM' && (isAM || !isPM)) canWork = true;
+    else if (avail === 'PM' && (isPM || !isAM)) canWork = true;
+    else if (avail === '保留') canWork = true;
+
+    if (canWork) {
+      const isAssigned = s.assigned && s.assigned.includes(inst.name);
+      const marker = isAssigned ? ' <span style="color:var(--green);font-size:11px;">(配置済)</span>' : '';
+      const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
+      availableHtml += `<div style="padding:2px 0;color:var(--text);">${escapeHtml(inst.name)} <span style="color:${availColor};font-size:12px;">[${avail}]</span>${marker}</div>`;
+    }
+  });
+  if (!availableHtml) availableHtml = '<span style="color:var(--text3);">なし</span>';
+
+  const body = `
+    <div class="detail-row"><span class="detail-label">日付</span><span class="detail-value">${escapeHtml(s.date)}(${escapeHtml(s.dow)})</span></div>
+    <div class="detail-row"><span class="detail-label">時間</span><span class="detail-value">${escapeHtml(s.start)} - ${escapeHtml(s.end)}</span></div>
+    <div class="detail-row"><span class="detail-label">顧客名</span><span class="detail-value">${escapeHtml(s.company)}</span></div>
+    <div class="detail-row"><span class="detail-label">講師</span><span class="detail-value">${escapeHtml(teacherNames)}</span></div>
+    <div class="detail-row"><span class="detail-label">配置済み</span><span class="detail-value">${escapeHtml(assignedNames)}</span></div>
+    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">参加可能インストラクター</span><div style="padding-left:4px;">${availableHtml}</div></div>
+  `;
+  openShiftModal(`${s.date}(${s.dow}) ${s.company} - 配置詳細`, body);
+}
+
+// -- Calendar day modal --
+function openCalendarDayModal(day) {
+  const year = 2026, month = 4;
+  const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  const dowIdx = new Date(year, month - 1, day).getDay();
+  const dow = JP_DAY_NAMES[dowIdx];
+
+  // Find all schedules on this day
+  const daySchedules = shiftData.schedule.filter(s => s.date === dateStr);
+
+  let schedHtml = '';
+  if (daySchedules.length > 0) {
+    daySchedules.forEach(s => {
+      const assigned = s.assigned ? s.assigned.length : 0;
+      const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : 'なし';
+      const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '-';
+      const statusColor = s.instNeeded === 0 ? 'var(--text3)' : assigned >= s.instNeeded ? 'var(--green)' : assigned > 0 ? 'var(--yellow)' : 'var(--red)';
+      schedHtml += `<div style="padding:8px 0;border-bottom:1px solid var(--border-light);">
+        <div style="font-weight:600;color:var(--text);">${escapeHtml(s.start)}-${escapeHtml(s.end)} ${escapeHtml(s.company)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">${escapeHtml(s.content || '-')} / 講師: ${escapeHtml(teacherNames)}</div>
+        <div style="font-size:12px;margin-top:2px;color:${statusColor};">配置: ${assigned}/${s.instNeeded} ${assignedNames !== 'なし' ? '(' + escapeHtml(assignedNames) + ')' : ''}</div>
+      </div>`;
+    });
+  } else {
+    schedHtml = '<span style="color:var(--text3);">研修なし</span>';
+  }
+
+  // Find available instructors on this day
+  let availHtml = '';
+  shiftData.instructors.forEach(inst => {
+    const avail = inst.availability && inst.availability[dateStr];
+    if (avail && avail !== 'NG') {
+      const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
+      availHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:${availColor};"></span><span style="color:var(--text);">${escapeHtml(inst.name)}</span><span style="color:${availColor};font-weight:600;">${avail}</span></div>`;
+    }
+  });
+  if (!availHtml) availHtml = '<span style="color:var(--text3);">なし</span>';
+
+  const body = `
+    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">研修一覧</span><div style="padding-left:4px;">${schedHtml}</div></div>
+    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">参加可能インストラクター</span><div style="padding-left:4px;">${availHtml}</div></div>
+  `;
+  openShiftModal(`${dateStr}(${dow})`, body);
 }
 
 // ============================================================
