@@ -302,9 +302,66 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .modal-body { font-size:14px; color:var(--text2); line-height:1.8; }
 .modal-body .detail-row { display:flex; gap:12px; padding:8px 0; border-bottom:1px solid var(--border-light); }
 .modal-body .detail-label { color:var(--text3); min-width:100px; font-weight:500; flex-shrink:0; }
-.modal-body .detail-value { color:var(--text); }
+.modal-body .detail-value { color:var(--text); flex:1; }
 .modal-body .avail-list-item { display:flex; align-items:center; gap:8px; padding:3px 0; }
 .modal-body .avail-list-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* Modal editable inputs */
+.modal-input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 13px; padding: 4px 8px; width: 100%;
+  outline: none; font-family: inherit; transition: border-color 0.2s;
+}
+.modal-input:focus { border-color: var(--blue); }
+.modal-input-number {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 13px; padding: 4px 8px; width: 70px;
+  outline: none; font-family: inherit; text-align: center; transition: border-color 0.2s;
+}
+.modal-input-number:focus { border-color: var(--blue); }
+.modal-checkbox {
+  width: 18px; height: 18px; cursor: pointer; accent-color: var(--green);
+  vertical-align: middle;
+}
+.modal-avail-status {
+  cursor: pointer; padding: 2px 10px; border-radius: 4px; font-size: 12px;
+  font-weight: 600; user-select: none; display: inline-block; min-width: 40px;
+  text-align: center; transition: all 0.15s;
+}
+.modal-avail-status:hover { transform: scale(1.1); }
+.modal-assign-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.modal-assign-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(88,166,255,0.12); color: var(--blue);
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+}
+.modal-assign-tag .modal-remove-tag {
+  cursor: pointer; font-size: 13px; color: var(--red); margin-left: 2px;
+  font-weight: 700; line-height: 1;
+}
+.modal-assign-tag .modal-remove-tag:hover { color: #ff6b6b; }
+.modal-add-btn {
+  background: rgba(63,185,80,0.15); color: var(--green); border: 1px dashed var(--green);
+  border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; font-weight: 500;
+}
+.modal-add-btn:hover { background: rgba(63,185,80,0.25); }
+.modal-dropdown {
+  position: absolute; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  z-index: 1100; max-height: 200px; overflow-y: auto; min-width: 160px;
+}
+.modal-dropdown-item {
+  padding: 6px 12px; font-size: 12px; cursor: pointer; color: var(--text);
+}
+.modal-dropdown-item:hover { background: var(--card-hover); }
+.modal-avail-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.modal-avail-date { min-width: 100px; color: var(--text); font-size: 13px; }
+.modal-inst-available {
+  padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--border); transition: all 0.15s;
+}
+.modal-inst-available:hover { border-color: var(--blue); background: rgba(88,166,255,0.1); }
+.modal-inst-available.is-assigned { border-color: var(--green); background: rgba(63,185,80,0.15); }
 
 /* Clickable rows */
 .data-table tbody tr.clickable-row { cursor: pointer; }
@@ -1455,12 +1512,107 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// -- Schedule row modal --
+// Helper: refresh a modal in-place (re-call same open function)
+function refreshModal(openFn, ...args) {
+  openFn(...args);
+}
+
+// Helper: after modal data change, refresh panels
+function afterModalEdit() {
+  refreshSummary();
+  renderSchedule();
+  renderContact();
+  renderAssignment();
+  renderCalendar();
+  renderAvailability();
+}
+
+// Helper: show modal assign dropdown
+let activeModalDropdown = null;
+
+function closeModalDropdown() {
+  if (activeModalDropdown) {
+    activeModalDropdown.remove();
+    activeModalDropdown = null;
+    document.removeEventListener('click', closeModalDropdownOnOutside);
+  }
+}
+
+function closeModalDropdownOnOutside(e) {
+  if (activeModalDropdown && !activeModalDropdown.contains(e.target)) {
+    closeModalDropdown();
+  }
+}
+
+function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
+  event.stopPropagation();
+  closeModalDropdown();
+
+  const s = shiftData.schedule[schedIdx];
+  const assigned = s.assigned || [];
+  const available = shiftData.instructors
+    .map(inst => inst.name)
+    .filter(name => !assigned.includes(name));
+
+  if (available.length === 0) {
+    showToast('全てのインストラクターが配置済みです', 'error');
+    return;
+  }
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'modal-dropdown';
+  dropdown.style.position = 'absolute';
+  dropdown.style.left = event.target.offsetLeft + 'px';
+  dropdown.style.top = (event.target.offsetTop + event.target.offsetHeight + 2) + 'px';
+
+  available.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'modal-dropdown-item';
+    item.textContent = name;
+    item.onclick = (e) => {
+      e.stopPropagation();
+      if (!shiftData.schedule[schedIdx].assigned) shiftData.schedule[schedIdx].assigned = [];
+      if (!shiftData.schedule[schedIdx].assigned.includes(name)) {
+        shiftData.schedule[schedIdx].assigned.push(name);
+        markChanged();
+        afterModalEdit();
+        refreshModal(reopenFn, ...reopenArgs);
+      }
+      closeModalDropdown();
+    };
+    dropdown.appendChild(item);
+  });
+
+  const container = event.target.closest('.detail-value') || event.target.parentElement;
+  container.style.position = 'relative';
+  container.appendChild(dropdown);
+  activeModalDropdown = dropdown;
+
+  setTimeout(() => {
+    document.addEventListener('click', closeModalDropdownOnOutside);
+  }, 0);
+}
+
+function modalRemoveAssigned(schedIdx, tagIdx, reopenFn, ...reopenArgs) {
+  if (shiftData.schedule[schedIdx].assigned) {
+    shiftData.schedule[schedIdx].assigned.splice(tagIdx, 1);
+    markChanged();
+    afterModalEdit();
+    refreshModal(reopenFn, ...reopenArgs);
+  }
+}
+
+// -- Schedule row modal (EDITABLE) --
 function openScheduleModal(schedIdx) {
   const s = shiftData.schedule[schedIdx];
-  const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : 'なし';
   const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : 'なし';
   const rankLabel = s.rank === 'A' ? 'A（超絶募集）' : s.rank === 'B' ? 'B（とても募集）' : '-（ワンオペ）';
+
+  // Build assigned tags
+  const assignedTags = (s.assigned || []).map((name, tagIdx) =>
+    `<span class="modal-assign-tag">${escapeHtml(name)}<span class="modal-remove-tag" onclick="event.stopPropagation();modalRemoveAssigned(${schedIdx}, ${tagIdx}, openScheduleModal, ${schedIdx})">&times;</span></span>`
+  ).join('');
+
   const body = `
     <div class="detail-row"><span class="detail-label">日付</span><span class="detail-value">${escapeHtml(s.date)}(${escapeHtml(s.dow)})</span></div>
     <div class="detail-row"><span class="detail-label">時間</span><span class="detail-value">${escapeHtml(s.start)} - ${escapeHtml(s.end)}</span></div>
@@ -1471,23 +1623,41 @@ function openScheduleModal(schedIdx) {
     <div class="detail-row"><span class="detail-label">主担当</span><span class="detail-value">${escapeHtml(s.mainTeacher || '-')}</span></div>
     <div class="detail-row"><span class="detail-label">講師一覧</span><span class="detail-value">${escapeHtml(teacherNames)}</span></div>
     <div class="detail-row"><span class="detail-label">分類</span><span class="detail-value">${escapeHtml(rankLabel)}</span></div>
-    <div class="detail-row"><span class="detail-label">インスト必要数</span><span class="detail-value">${s.instNeeded}</span></div>
-    <div class="detail-row"><span class="detail-label">配置済み</span><span class="detail-value">${escapeHtml(assignedNames)}</span></div>
-    <div class="detail-row"><span class="detail-label">確認備考</span><span class="detail-value">${escapeHtml(s.confirmNote || '-')}</span></div>
-    <div class="detail-row"><span class="detail-label">メモ</span><span class="detail-value">${escapeHtml(s.note || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">インスト必要数</span><span class="detail-value">
+      <input type="number" class="modal-input-number" value="${s.instNeeded}" min="0"
+        onclick="event.stopPropagation()"
+        onchange="event.stopPropagation();shiftData.schedule[${schedIdx}].instNeeded=parseInt(this.value,10)||0;markChanged();afterModalEdit();refreshModal(openScheduleModal,${schedIdx});"
+        onkeydown="if(event.key==='Enter'){this.blur();event.stopPropagation();}">
+    </span></div>
+    <div class="detail-row"><span class="detail-label">配置済み</span><span class="detail-value">
+      <div class="modal-assign-tags">
+        ${assignedTags}
+        <span class="modal-add-btn" onclick="event.stopPropagation();showModalAssignDropdown(event, ${schedIdx}, openScheduleModal, ${schedIdx})">+ 追加</span>
+      </div>
+    </span></div>
+    <div class="detail-row"><span class="detail-label">メモ</span><span class="detail-value">
+      <input type="text" class="modal-input" value="${escapeHtml(s.note || '')}"
+        onclick="event.stopPropagation()"
+        onblur="event.stopPropagation();if(shiftData.schedule[${schedIdx}].note!==this.value){shiftData.schedule[${schedIdx}].note=this.value;markChanged();}">
+    </span></div>
+    <div class="detail-row"><span class="detail-label">確認備考</span><span class="detail-value">
+      <input type="text" class="modal-input" value="${escapeHtml(s.confirmNote || '')}"
+        onclick="event.stopPropagation()"
+        onblur="event.stopPropagation();if(shiftData.schedule[${schedIdx}].confirmNote!==this.value){shiftData.schedule[${schedIdx}].confirmNote=this.value;markChanged();}">
+    </span></div>
   `;
   openShiftModal(`${s.date}(${s.dow}) ${s.company}`, body);
 }
 
-// -- Availability name modal --
+// -- Availability name modal (EDITABLE) --
 function openAvailabilityModal(instIdx) {
   const inst = shiftData.instructors[instIdx];
   const typeLabel = inst.type || '-';
 
-  // Availability color map
   const availColorMap = { '全日': 'var(--green)', 'AM': 'var(--blue)', 'PM': 'var(--purple)', '保留': 'var(--yellow)', 'NG': 'var(--red)' };
+  const availBgMap = { '全日': 'rgba(63,185,80,0.25)', 'AM': 'rgba(88,166,255,0.25)', 'PM': 'rgba(188,140,255,0.25)', '保留': 'rgba(210,153,34,0.25)', 'NG': 'rgba(248,81,73,0.25)' };
 
-  // Build availability list
+  // Build availability list with clickable status
   const dates = shiftData.schedule.filter(s => s.instNeeded > 0);
   const seenDates = new Set();
   const uniqueDates = [];
@@ -1496,9 +1666,15 @@ function openAvailabilityModal(instIdx) {
 
   let availHtml = '';
   uniqueDates.forEach(dt => {
-    const avail = (inst.availability && inst.availability[dt.date]) || '未回答';
+    const avail = (inst.availability && inst.availability[dt.date]) || '';
+    const label = avail || '未回答';
     const color = availColorMap[avail] || 'var(--text3)';
-    availHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:${color};"></span><span style="color:var(--text);">${dt.date}(${dt.dow})</span><span style="color:${color};font-weight:600;">${avail}</span></div>`;
+    const bg = availBgMap[avail] || 'rgba(110,118,129,0.08)';
+    availHtml += `<div class="modal-avail-row">
+      <span class="modal-avail-date">${dt.date}(${dt.dow})</span>
+      <span class="modal-avail-status" style="background:${bg};color:${color};"
+        onclick="event.stopPropagation();cycleModalAvail(${instIdx},'${dt.date}');refreshModal(openAvailabilityModal,${instIdx});">${label}</span>
+    </div>`;
   });
 
   // Assigned schedules
@@ -1513,17 +1689,49 @@ function openAvailabilityModal(instIdx) {
   const body = `
     <div class="detail-row"><span class="detail-label">名前</span><span class="detail-value">${escapeHtml(inst.name)}</span></div>
     <div class="detail-row"><span class="detail-label">タイプ</span><span class="detail-value">${escapeHtml(typeLabel)}</span></div>
-    <div class="detail-row"><span class="detail-label">連絡</span><span class="detail-value">${inst.contacted ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
-    <div class="detail-row"><span class="detail-label">確認</span><span class="detail-value">${inst.confirmed ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
-    <div class="detail-row"><span class="detail-label">返信</span><span class="detail-value">${inst.replied ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
-    <div class="detail-row"><span class="detail-label">備考</span><span class="detail-value">${escapeHtml(inst.notes || '-')}</span></div>
-    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">全日程の可用性</span><div style="padding-left:4px;">${availHtml || '<span style="color:var(--text3);">データなし</span>'}</div></div>
+    <div class="detail-row"><span class="detail-label">連絡</span><span class="detail-value">
+      <input type="checkbox" class="modal-checkbox" ${inst.contacted ? 'checked' : ''}
+        onclick="event.stopPropagation();shiftData.instructors[${instIdx}].contacted=this.checked;markChanged();afterModalEdit();">
+      <span style="margin-left:6px;">${inst.contacted ? '済' : '未'}</span>
+    </span></div>
+    <div class="detail-row"><span class="detail-label">確認</span><span class="detail-value">
+      <input type="checkbox" class="modal-checkbox" ${inst.confirmed ? 'checked' : ''}
+        onclick="event.stopPropagation();shiftData.instructors[${instIdx}].confirmed=this.checked;markChanged();afterModalEdit();">
+      <span style="margin-left:6px;">${inst.confirmed ? '済' : '未'}</span>
+    </span></div>
+    <div class="detail-row"><span class="detail-label">返信</span><span class="detail-value">
+      <input type="checkbox" class="modal-checkbox" ${inst.replied ? 'checked' : ''}
+        onclick="event.stopPropagation();shiftData.instructors[${instIdx}].replied=this.checked;markChanged();afterModalEdit();">
+      <span style="margin-left:6px;">${inst.replied ? '済' : '未'}</span>
+    </span></div>
+    <div class="detail-row"><span class="detail-label">備考</span><span class="detail-value">
+      <input type="text" class="modal-input" value="${escapeHtml(inst.notes || '')}"
+        onclick="event.stopPropagation()"
+        onblur="event.stopPropagation();if(shiftData.instructors[${instIdx}].notes!==this.value){shiftData.instructors[${instIdx}].notes=this.value;markChanged();afterModalEdit();}">
+    </span></div>
+    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">全日程の可用性 <span style="font-size:11px;color:var(--text3);">(クリックで切替)</span></span><div style="padding-left:4px;">${availHtml || '<span style="color:var(--text3);">データなし</span>'}</div></div>
     <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">配置済みの研修</span><div style="padding-left:4px;">${assignedHtml}</div></div>
   `;
   openShiftModal(inst.name, body);
 }
 
-// -- Contact row modal --
+// Cycle availability from within modal
+function cycleModalAvail(instIdx, dateKey) {
+  const inst = shiftData.instructors[instIdx];
+  if (!inst.availability) inst.availability = {};
+  const current = inst.availability[dateKey] || '';
+  const idx = AVAIL_STATES.indexOf(current);
+  const next = AVAIL_STATES[(idx + 1) % AVAIL_STATES.length];
+  if (next === '') {
+    delete inst.availability[dateKey];
+  } else {
+    inst.availability[dateKey] = next;
+  }
+  markChanged();
+  afterModalEdit();
+}
+
+// -- Contact row modal (EDITABLE) --
 function openContactModal(instIdx) {
   const inst = shiftData.instructors[instIdx];
 
@@ -1552,10 +1760,26 @@ function openContactModal(instIdx) {
     <div class="detail-row"><span class="detail-label">名前</span><span class="detail-value">${escapeHtml(inst.name)}</span></div>
     <div class="detail-row"><span class="detail-label">タイプ</span><span class="detail-value">${escapeHtml(inst.type || '-')}</span></div>
     <div class="detail-row"><span class="detail-label">SlackユーザーID</span><span class="detail-value">${escapeHtml(inst.slackUserId || '-')}</span></div>
-    <div class="detail-row"><span class="detail-label">連絡</span><span class="detail-value">${inst.contacted ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
-    <div class="detail-row"><span class="detail-label">確認</span><span class="detail-value">${inst.confirmed ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
-    <div class="detail-row"><span class="detail-label">返信</span><span class="detail-value">${inst.replied ? '<span style="color:var(--green);">済</span>' : '<span style="color:var(--red);">未</span>'}</span></div>
-    <div class="detail-row"><span class="detail-label">備考</span><span class="detail-value">${escapeHtml(inst.notes || '-')}</span></div>
+    <div class="detail-row"><span class="detail-label">連絡</span><span class="detail-value">
+      <input type="checkbox" class="modal-checkbox" ${inst.contacted ? 'checked' : ''}
+        onclick="event.stopPropagation();shiftData.instructors[${instIdx}].contacted=this.checked;markChanged();afterModalEdit();refreshModal(openContactModal,${instIdx});">
+      <span style="margin-left:6px;">${inst.contacted ? '済' : '未'}</span>
+    </span></div>
+    <div class="detail-row"><span class="detail-label">確認</span><span class="detail-value">
+      <input type="checkbox" class="modal-checkbox" ${inst.confirmed ? 'checked' : ''}
+        onclick="event.stopPropagation();shiftData.instructors[${instIdx}].confirmed=this.checked;markChanged();afterModalEdit();refreshModal(openContactModal,${instIdx});">
+      <span style="margin-left:6px;">${inst.confirmed ? '済' : '未'}</span>
+    </span></div>
+    <div class="detail-row"><span class="detail-label">返信</span><span class="detail-value">
+      <input type="checkbox" class="modal-checkbox" ${inst.replied ? 'checked' : ''}
+        onclick="event.stopPropagation();shiftData.instructors[${instIdx}].replied=this.checked;markChanged();afterModalEdit();refreshModal(openContactModal,${instIdx});">
+      <span style="margin-left:6px;">${inst.replied ? '済' : '未'}</span>
+    </span></div>
+    <div class="detail-row"><span class="detail-label">備考</span><span class="detail-value">
+      <input type="text" class="modal-input" value="${escapeHtml(inst.notes || '')}"
+        onclick="event.stopPropagation()"
+        onblur="event.stopPropagation();if(shiftData.instructors[${instIdx}].notes!==this.value){shiftData.instructors[${instIdx}].notes=this.value;markChanged();afterModalEdit();}">
+    </span></div>
     <div class="detail-row"><span class="detail-label">可用性サマリー</span><span class="detail-value">
       <span style="color:var(--green);">全日 ${fullCount}件</span> /
       <span style="color:var(--blue);">AM ${amCount}件</span> /
@@ -1568,11 +1792,15 @@ function openContactModal(instIdx) {
   openShiftModal(inst.name, body);
 }
 
-// -- Assignment row modal --
+// -- Assignment row modal (EDITABLE) --
 function openAssignmentModal(schedIdx) {
   const s = shiftData.schedule[schedIdx];
   const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '-';
-  const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : 'なし';
+
+  // Build assigned tags (removable)
+  const assignedTags = (s.assigned || []).map((name, tagIdx) =>
+    `<span class="modal-assign-tag">${escapeHtml(name)}<span class="modal-remove-tag" onclick="event.stopPropagation();modalRemoveAssigned(${schedIdx}, ${tagIdx}, openAssignmentModal, ${schedIdx})">&times;</span></span>`
+  ).join('') || '<span style="color:var(--text3);font-size:12px;">なし</span>';
 
   // Find available instructors for this date/time
   const startH = parseInt(s.start.split(':')[0], 10);
@@ -1592,25 +1820,69 @@ function openAssignmentModal(schedIdx) {
 
     if (canWork) {
       const isAssigned = s.assigned && s.assigned.includes(inst.name);
-      const marker = isAssigned ? ' <span style="color:var(--green);font-size:11px;">(配置済)</span>' : '';
       const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
-      availableHtml += `<div style="padding:2px 0;color:var(--text);">${escapeHtml(inst.name)} <span style="color:${availColor};font-size:12px;">[${avail}]</span>${marker}</div>`;
+      const assignedClass = isAssigned ? ' is-assigned' : '';
+      const action = isAssigned
+        ? `onclick="event.stopPropagation();modalRemoveAssignedByName(${schedIdx},'${escapeHtml(inst.name)}',openAssignmentModal,${schedIdx});"`
+        : `onclick="event.stopPropagation();modalAddAssigned(${schedIdx},'${escapeHtml(inst.name)}',openAssignmentModal,${schedIdx});"`;
+      const statusLabel = isAssigned ? ' (配置済 - クリックで解除)' : ' (クリックで追加)';
+      availableHtml += `<div class="modal-inst-available${assignedClass}" ${action} style="margin-bottom:4px;">
+        ${escapeHtml(inst.name)} <span style="color:${availColor};font-size:12px;">[${avail}]</span>
+        <span style="font-size:10px;color:var(--text3);">${statusLabel}</span>
+      </div>`;
     }
   });
   if (!availableHtml) availableHtml = '<span style="color:var(--text3);">なし</span>';
+
+  const diff = (s.assigned ? s.assigned.length : 0) - s.instNeeded;
+  let diffText, diffColor;
+  if (s.instNeeded === 0) { diffText = '-'; diffColor = 'var(--text3)'; }
+  else if (diff >= 0) { diffText = '+' + diff; diffColor = 'var(--green)'; }
+  else { diffText = '' + diff; diffColor = 'var(--red)'; }
 
   const body = `
     <div class="detail-row"><span class="detail-label">日付</span><span class="detail-value">${escapeHtml(s.date)}(${escapeHtml(s.dow)})</span></div>
     <div class="detail-row"><span class="detail-label">時間</span><span class="detail-value">${escapeHtml(s.start)} - ${escapeHtml(s.end)}</span></div>
     <div class="detail-row"><span class="detail-label">顧客名</span><span class="detail-value">${escapeHtml(s.company)}</span></div>
     <div class="detail-row"><span class="detail-label">講師</span><span class="detail-value">${escapeHtml(teacherNames)}</span></div>
-    <div class="detail-row"><span class="detail-label">配置済み</span><span class="detail-value">${escapeHtml(assignedNames)}</span></div>
-    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">参加可能インストラクター</span><div style="padding-left:4px;">${availableHtml}</div></div>
+    <div class="detail-row"><span class="detail-label">必要数</span><span class="detail-value">${s.instNeeded}</span></div>
+    <div class="detail-row"><span class="detail-label">過不足</span><span class="detail-value" style="color:${diffColor};font-weight:700;">${diffText}</span></div>
+    <div class="detail-row"><span class="detail-label">配置済み</span><span class="detail-value">
+      <div class="modal-assign-tags">
+        ${assignedTags}
+        <span class="modal-add-btn" onclick="event.stopPropagation();showModalAssignDropdown(event, ${schedIdx}, openAssignmentModal, ${schedIdx})">+ 追加</span>
+      </div>
+    </span></div>
+    <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">参加可能インストラクター <span style="font-size:11px;color:var(--text3);">(クリックで追加/解除)</span></span><div style="padding-left:4px;">${availableHtml}</div></div>
   `;
   openShiftModal(`${s.date}(${s.dow}) ${s.company} - 配置詳細`, body);
 }
 
-// -- Calendar day modal --
+// Helper: add assigned by name from modal
+function modalAddAssigned(schedIdx, name, reopenFn, ...reopenArgs) {
+  if (!shiftData.schedule[schedIdx].assigned) shiftData.schedule[schedIdx].assigned = [];
+  if (!shiftData.schedule[schedIdx].assigned.includes(name)) {
+    shiftData.schedule[schedIdx].assigned.push(name);
+    markChanged();
+    afterModalEdit();
+    refreshModal(reopenFn, ...reopenArgs);
+  }
+}
+
+// Helper: remove assigned by name from modal
+function modalRemoveAssignedByName(schedIdx, name, reopenFn, ...reopenArgs) {
+  if (shiftData.schedule[schedIdx].assigned) {
+    const idx = shiftData.schedule[schedIdx].assigned.indexOf(name);
+    if (idx >= 0) {
+      shiftData.schedule[schedIdx].assigned.splice(idx, 1);
+      markChanged();
+      afterModalEdit();
+      refreshModal(reopenFn, ...reopenArgs);
+    }
+  }
+}
+
+// -- Calendar day modal (EDITABLE) --
 function openCalendarDayModal(day) {
   const year = 2026, month = 4;
   const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
@@ -1623,14 +1895,26 @@ function openCalendarDayModal(day) {
   let schedHtml = '';
   if (daySchedules.length > 0) {
     daySchedules.forEach(s => {
+      const origIdx = shiftData.schedule.indexOf(s);
       const assigned = s.assigned ? s.assigned.length : 0;
-      const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : 'なし';
       const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '-';
       const statusColor = s.instNeeded === 0 ? 'var(--text3)' : assigned >= s.instNeeded ? 'var(--green)' : assigned > 0 ? 'var(--yellow)' : 'var(--red)';
+
+      // Build removable assignment tags
+      const assignedTags = (s.assigned || []).map((name, tagIdx) =>
+        `<span class="modal-assign-tag">${escapeHtml(name)}<span class="modal-remove-tag" onclick="event.stopPropagation();modalRemoveAssigned(${origIdx}, ${tagIdx}, openCalendarDayModal, ${day})">&times;</span></span>`
+      ).join('');
+
       schedHtml += `<div style="padding:8px 0;border-bottom:1px solid var(--border-light);">
         <div style="font-weight:600;color:var(--text);">${escapeHtml(s.start)}-${escapeHtml(s.end)} ${escapeHtml(s.company)}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px;">${escapeHtml(s.content || '-')} / 講師: ${escapeHtml(teacherNames)}</div>
-        <div style="font-size:12px;margin-top:2px;color:${statusColor};">配置: ${assigned}/${s.instNeeded} ${assignedNames !== 'なし' ? '(' + escapeHtml(assignedNames) + ')' : ''}</div>
+        <div style="font-size:12px;margin-top:4px;color:${statusColor};">配置: ${assigned}/${s.instNeeded}</div>
+        <div style="margin-top:4px;">
+          <div class="modal-assign-tags">
+            ${assignedTags}
+            <span class="modal-add-btn" onclick="event.stopPropagation();showModalAssignDropdown(event, ${origIdx}, openCalendarDayModal, ${day})">+ 追加</span>
+          </div>
+        </div>
       </div>`;
     });
   } else {
