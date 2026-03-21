@@ -122,6 +122,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .avail-full { background: rgba(63,185,80,0.2); color: var(--green); }
 .avail-am { background: rgba(88,166,255,0.2); color: var(--blue); }
 .avail-pm { background: rgba(88,166,255,0.2); color: var(--blue); }
+.avail-hold { background: rgba(210,153,34,0.2); color: var(--yellow); }
 .avail-ng { background: rgba(248,81,73,0.2); color: var(--red); }
 .avail-empty { background: rgba(110,118,129,0.1); color: var(--text3); }
 .avail-name-cell { text-align: left !important; white-space: nowrap; font-weight: 500; font-size: 12px; position: sticky; left: 0; background: var(--card) !important; z-index: 1; }
@@ -574,8 +575,8 @@ function renderApp() {
   const app = document.getElementById('app');
   const d = shiftData;
 
-  // Sort schedule by date ascending by default
-  d.schedule.sort((a, b) => a.date.localeCompare(b.date));
+  // Sort schedule by date ascending, then time ascending
+  d.schedule.sort((a, b) => a.date.localeCompare(b.date) || (a.start || '').localeCompare(b.start || ''));
 
   const totalDays = d.schedule.filter(s => s.instNeeded > 0).length;
   const totalNeeded = d.schedule.reduce((s, r) => s + r.instNeeded, 0);
@@ -656,7 +657,7 @@ function getSortedSchedule() {
   sorted.sort((a, b) => {
     let va, vb;
     switch (col) {
-      case 'date': va = a.date; vb = b.date; break;
+      case 'date': va = a.date + ' ' + (a.start||''); vb = b.date + ' ' + (b.start||''); break;
       case 'company': va = a.company || ''; vb = b.company || ''; break;
       case 'content': va = a.content || ''; vb = b.content || ''; break;
       case 'time': va = a.start || ''; vb = b.start || ''; break;
@@ -716,9 +717,9 @@ function renderSchedule() {
         <thead>
           <tr>
             <th class="sortable" onclick="toggleSort('date')">日付${sortArrow('date')}</th>
+            <th class="sortable" onclick="toggleSort('time')">時間${sortArrow('time')}</th>
             <th class="sortable" onclick="toggleSort('company')">顧客${sortArrow('company')}</th>
             <th class="sortable" onclick="toggleSort('content')">内容${sortArrow('content')}</th>
-            <th class="sortable" onclick="toggleSort('time')">時間${sortArrow('time')}</th>
             <th class="sortable" onclick="toggleSort('location')">場所${sortArrow('location')}</th>
             <th class="sortable" onclick="toggleSort('participants')">人数${sortArrow('participants')}</th>
             <th class="sortable" onclick="toggleSort('mainTeacher')">主担当${sortArrow('mainTeacher')}</th>
@@ -746,9 +747,9 @@ function renderSchedule() {
             const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '';
             return `<tr class="${muted}">
               <td class="text-left" style="white-space:nowrap;font-weight:500;">${s.date}(${s.dow})</td>
+              <td style="white-space:nowrap;">${s.start}-${s.end}</td>
               <td class="text-left">${s.company}</td>
               <td>${s.content || ''}</td>
-              <td style="white-space:nowrap;">${s.start}-${s.end}</td>
               <td>${s.location || ''}</td>
               <td>${s.participants}名</td>
               <td>${s.mainTeacher || ''}</td>
@@ -789,9 +790,9 @@ function updateInstNeeded(idx, val) {
 // ============================================================
 // Availability Matrix
 // ============================================================
-const AVAIL_STATES = ['', '全日', 'AM', 'PM', 'NG'];
-const AVAIL_LABELS = { '': '', '全日': '全', 'AM': 'AM', 'PM': 'PM', 'NG': 'NG' };
-const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', 'AM': 'avail-am', 'PM': 'avail-pm', 'NG': 'avail-ng' };
+const AVAIL_STATES = ['', '全日', 'AM', 'PM', '保留', 'NG'];
+const AVAIL_LABELS = { '': '', '全日': '全', 'AM': 'AM', 'PM': 'PM', '保留': '保', 'NG': 'NG' };
+const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', 'AM': 'avail-am', 'PM': 'avail-pm', '保留': 'avail-hold', 'NG': 'avail-ng' };
 
 function renderAvailability() {
   const d = shiftData;
@@ -808,6 +809,7 @@ function renderAvailability() {
       <span class="legend-item"><span class="avail-cell avail-full" style="display:inline-flex;width:28px;height:22px;font-size:10px;">全</span> 全日</span>
       <span class="legend-item"><span class="avail-cell avail-am" style="display:inline-flex;width:28px;height:22px;font-size:10px;">AM</span> 午前</span>
       <span class="legend-item"><span class="avail-cell avail-pm" style="display:inline-flex;width:28px;height:22px;font-size:10px;">PM</span> 午後</span>
+      <span class="legend-item"><span class="avail-cell avail-hold" style="display:inline-flex;width:28px;height:22px;font-size:10px;">保</span> 保留</span>
       <span class="legend-item"><span class="avail-cell avail-ng" style="display:inline-flex;width:28px;height:22px;font-size:10px;">NG</span> 不可</span>
       <span class="legend-item"><span class="avail-cell avail-empty" style="display:inline-flex;width:28px;height:22px;font-size:10px;">&nbsp;</span> 未回答</span>
     </div>
