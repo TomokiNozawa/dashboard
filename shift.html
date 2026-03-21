@@ -110,22 +110,27 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .balanced { color: var(--text3); }
 
 /* Availability Matrix */
-.avail-table th, .avail-table td { padding: 6px 4px; min-width: 48px; }
-.avail-table th.date-header { writing-mode: vertical-rl; text-orientation: mixed; font-size: 11px; padding: 8px 2px; max-width: 36px; }
+.avail-table th, .avail-table td { padding: 8px 6px; min-width: 56px; }
+.avail-table th.date-header { font-size: 11px; padding: 10px 4px; white-space: nowrap; }
 .avail-cell {
-  width: 40px; height: 32px; border-radius: 4px; cursor: pointer;
+  width: 48px; height: 36px; border-radius: 6px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 600; user-select: none; transition: all 0.15s;
+  font-size: 12px; font-weight: 600; user-select: none; transition: all 0.15s;
   margin: 0 auto;
 }
-.avail-cell:hover { transform: scale(1.1); }
-.avail-full { background: rgba(63,185,80,0.2); color: var(--green); }
-.avail-am { background: rgba(88,166,255,0.2); color: var(--blue); }
-.avail-pm { background: rgba(88,166,255,0.2); color: var(--blue); }
-.avail-hold { background: rgba(210,153,34,0.2); color: var(--yellow); }
-.avail-ng { background: rgba(248,81,73,0.2); color: var(--red); }
-.avail-empty { background: rgba(110,118,129,0.1); color: var(--text3); }
-.avail-name-cell { text-align: left !important; white-space: nowrap; font-weight: 500; font-size: 12px; position: sticky; left: 0; background: var(--card) !important; z-index: 1; }
+.avail-cell:hover { transform: scale(1.15); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.avail-full { background: rgba(63,185,80,0.25); color: var(--green); }
+.avail-am { background: rgba(88,166,255,0.25); color: var(--blue); }
+.avail-pm { background: rgba(188,140,255,0.25); color: var(--purple); }
+.avail-hold { background: rgba(210,153,34,0.25); color: var(--yellow); }
+.avail-ng { background: rgba(248,81,73,0.25); color: var(--red); }
+.avail-empty { background: rgba(110,118,129,0.08); color: var(--text3); }
+.avail-name-cell { text-align: left !important; white-space: nowrap; font-weight: 500; font-size: 13px; position: sticky; left: 0; z-index: 1; padding: 10px 14px !important; min-width: 120px; }
+.avail-group-header { background: var(--border-light) !important; }
+.avail-group-header td { font-size: 12px; font-weight: 600; color: var(--text2); padding: 6px 14px !important; letter-spacing: 0.05em; }
+.avail-table tbody tr:nth-child(even) td:not(.avail-name-cell) { background: rgba(255,255,255,0.015); }
+.avail-table tbody tr:hover td { background: rgba(88,166,255,0.06) !important; }
+.avail-table tbody tr:hover .avail-name-cell { background: rgba(88,166,255,0.1) !important; }
 
 /* Contact table */
 .contact-check { width: 18px; height: 18px; cursor: pointer; accent-color: var(--green); }
@@ -804,35 +809,57 @@ function renderAvailability() {
     return;
   }
 
+  // Deduplicate dates (multiple sessions on same date)
+  const uniqueDates = [];
+  const seenDates = new Set();
+  dates.forEach(s => {
+    if (!seenDates.has(s.date)) {
+      seenDates.add(s.date);
+      uniqueDates.push({ date: s.date, dow: s.dow });
+    }
+  });
+
+  // Group instructors by type
+  const groups = [
+    { label: '社内インターン', instructors: d.instructors.filter(i => i.type === '社内インターン') },
+    { label: 'リピーター（外部委託）', instructors: d.instructors.filter(i => i.type === 'リピーター') },
+    { label: '初回（外部委託）', instructors: d.instructors.filter(i => i.type === '初回') },
+  ].filter(g => g.instructors.length > 0);
+
   let html = `<div class="section">
     <div class="legend">
-      <span class="legend-item"><span class="avail-cell avail-full" style="display:inline-flex;width:28px;height:22px;font-size:10px;">全</span> 全日</span>
-      <span class="legend-item"><span class="avail-cell avail-am" style="display:inline-flex;width:28px;height:22px;font-size:10px;">AM</span> 午前</span>
-      <span class="legend-item"><span class="avail-cell avail-pm" style="display:inline-flex;width:28px;height:22px;font-size:10px;">PM</span> 午後</span>
-      <span class="legend-item"><span class="avail-cell avail-hold" style="display:inline-flex;width:28px;height:22px;font-size:10px;">保</span> 保留</span>
-      <span class="legend-item"><span class="avail-cell avail-ng" style="display:inline-flex;width:28px;height:22px;font-size:10px;">NG</span> 不可</span>
-      <span class="legend-item"><span class="avail-cell avail-empty" style="display:inline-flex;width:28px;height:22px;font-size:10px;">&nbsp;</span> 未回答</span>
+      <span class="legend-item"><span class="avail-cell avail-full" style="display:inline-flex;width:32px;height:24px;font-size:10px;">全</span> 全日</span>
+      <span class="legend-item"><span class="avail-cell avail-am" style="display:inline-flex;width:32px;height:24px;font-size:10px;">AM</span> 午前</span>
+      <span class="legend-item"><span class="avail-cell avail-pm" style="display:inline-flex;width:32px;height:24px;font-size:10px;">PM</span> 午後</span>
+      <span class="legend-item"><span class="avail-cell avail-hold" style="display:inline-flex;width:32px;height:24px;font-size:10px;">保</span> 保留</span>
+      <span class="legend-item"><span class="avail-cell avail-ng" style="display:inline-flex;width:32px;height:24px;font-size:10px;">NG</span> 不可</span>
+      <span class="legend-item"><span class="avail-cell avail-empty" style="display:inline-flex;width:32px;height:24px;font-size:10px;">-</span> 未回答</span>
     </div>
-    <div class="table-wrap" style="max-height:500px;overflow:auto;">
+    <div class="table-wrap" style="max-height:700px;overflow:auto;">
     <table class="data-table avail-table">
       <thead>
         <tr>
-          <th style="text-align:left;min-width:100px;position:sticky;left:0;z-index:3;background:var(--card);">名前</th>
-          ${dates.map(s => `<th class="date-header">${s.date.slice(5)}(${s.dow})</th>`).join('')}
+          <th style="text-align:left;min-width:120px;position:sticky;left:0;z-index:3;background:var(--card);">名前</th>
+          ${uniqueDates.map(dt => `<th class="date-header">${dt.date.slice(5)}(${dt.dow})</th>`).join('')}
         </tr>
       </thead>
       <tbody>`;
 
-  d.instructors.forEach((inst, iIdx) => {
-    html += `<tr><td class="avail-name-cell">${inst.name}<br><span style="font-size:10px;color:${inst.type === 'リピーター' ? 'var(--green)' : 'var(--blue)'}">${inst.type}</span></td>`;
-    dates.forEach((s, dIdx) => {
-      const dateKey = s.date;
-      const avail = (inst.availability && inst.availability[dateKey]) || '';
-      const cls = AVAIL_CLASSES[avail] || 'avail-empty';
-      const label = AVAIL_LABELS[avail] || '';
-      html += `<td><div class="avail-cell ${cls}" data-inst="${iIdx}" data-date="${dateKey}" onclick="cycleAvail(this)">${label}</div></td>`;
+  groups.forEach(group => {
+    // Group header row
+    html += `<tr class="avail-group-header"><td colspan="${uniqueDates.length + 1}">${group.label}（${group.instructors.length}名）</td></tr>`;
+    group.instructors.forEach(inst => {
+      const iIdx = d.instructors.indexOf(inst);
+      const typeColor = inst.type === 'リピーター' ? 'var(--green)' : inst.type === '初回' ? 'var(--blue)' : 'var(--purple)';
+      html += `<tr><td class="avail-name-cell">${inst.name}</td>`;
+      uniqueDates.forEach(dt => {
+        const avail = (inst.availability && inst.availability[dt.date]) || '';
+        const cls = AVAIL_CLASSES[avail] || 'avail-empty';
+        const label = AVAIL_LABELS[avail] || '-';
+        html += `<td><div class="avail-cell ${cls}" data-inst="${iIdx}" data-date="${dt.date}" onclick="cycleAvail(this)">${label}</div></td>`;
+      });
+      html += '</tr>';
     });
-    html += '</tr>';
   });
 
   html += '</tbody></table></div></div>';
