@@ -1607,7 +1607,7 @@ function renderHistoryPanel() {
 
 function renderHistoryItem(c) {
   const dateStr = formatDateJP(c.commit.author.date);
-  const msg = c.commit.message;
+  const msg = c.commit.message.split('\n')[0].replace(/\s*Co-Authored-By:.*$/i, '');
   return `<div class="history-item">
     <div class="history-date">${dateStr}</div>
     <div class="history-msg">${escapeHtml(msg)}</div>
