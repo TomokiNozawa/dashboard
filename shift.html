@@ -582,7 +582,6 @@ async function showApp() {
     renderApp();
     document.getElementById('loadingScreen').style.display = 'none';
     updateSaveBadge();
-    loadHistory();
   } catch (e) {
     document.getElementById('loadingScreen').innerHTML =
       `<p style="color:var(--red);">データの読み込みに失敗しました: ${e.message}</p>
@@ -648,7 +647,7 @@ async function saveData() {
     changeCount = 0;
     updateSaveBadge();
     showToast('保存しました', 'success');
-    loadHistory();
+    if (historyLoaded) loadHistory();
   } catch (e) {
     showToast('保存に失敗しました: ' + e.message, 'error');
   }
@@ -680,7 +679,7 @@ async function reloadData() {
     changeCount = 0;
     renderApp();
     updateSaveBadge();
-    loadHistory();
+    if (historyLoaded) loadHistory();
     showToast('最新データを反映しました', 'success');
   } catch (e) {
     showToast('再読み込みに失敗: ' + e.message, 'error');
@@ -807,6 +806,7 @@ function renderApp() {
 // ============================================================
 // Tabs
 // ============================================================
+let historyLoaded = false;
 function initTabs() {
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -814,6 +814,11 @@ function initTabs() {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      // Lazy load history on first open
+      if (tab.dataset.tab === 'history' && !historyLoaded) {
+        historyLoaded = true;
+        loadHistory();
+      }
     });
   });
 }
@@ -1337,24 +1342,28 @@ function showAssignDropdown(event, schedIdx) {
   const s = shiftData.schedule[schedIdx];
   const assigned = s.assigned || [];
 
-  // Get all instructor names that are not already assigned and not teaching on that date
+  // Collect all assigned on this date (across all sessions)
+  const allAssignedOnDate = new Set();
+  shiftData.schedule.forEach(sc => {
+    if (sc.date === s.date) (sc.assigned || []).forEach(n => allAssignedOnDate.add(n));
+  });
   const available = shiftData.instructors
     .map(inst => inst.name)
     .filter(name => !assigned.includes(name))
+    .filter(name => !allAssignedOnDate.has(name))
     .filter(name => !isTeachingOnDate(name, s.date));
 
   if (available.length === 0) {
-    showToast('全てのインストラクターが配置済みです', 'error');
+    showToast('配置可能なインストラクターがいません', 'error');
     return;
   }
 
   const dropdown = document.createElement('div');
-  dropdown.className = 'assign-dropdown';
-  dropdown.id = 'assignDropdown';
+  dropdown.className = 'modal-dropdown';
 
   available.forEach(name => {
     const item = document.createElement('div');
-    item.className = 'assign-dropdown-item';
+    item.className = 'modal-dropdown-item';
     item.textContent = name;
     item.onclick = (e) => {
       e.stopPropagation();
@@ -1364,10 +1373,8 @@ function showAssignDropdown(event, schedIdx) {
     dropdown.appendChild(item);
   });
 
-  // Position near the button
-  const btn = event.target;
-  const td = btn.closest('td');
-  td.appendChild(dropdown);
+  const tagsContainer = event.target.closest('.assign-tags');
+  tagsContainer.insertAdjacentElement('afterend', dropdown);
   activeAssignDropdown = dropdown;
 
   // Close on outside click
