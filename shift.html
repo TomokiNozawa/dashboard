@@ -144,7 +144,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .editable-note:focus { border-color: var(--blue); background: var(--bg); color: var(--text); }
 
 /* Calendar - Sunday start with narrow weekends */
-.calendar-grid { display: grid; grid-template-columns: 0.6fr 1fr 1fr 1fr 1fr 1fr 0.6fr; gap: 4px; }
+.calendar-grid { display: grid; grid-template-columns: 0.3fr 1fr 1fr 1fr 1fr 1fr 0.3fr; gap: 4px; }
 .calendar-header { text-align: center; font-size: 12px; font-weight: 600; color: var(--text2); padding: 8px 4px; }
 .calendar-header-sun { color: var(--red); }
 .calendar-header-sat { color: var(--blue); }
@@ -155,7 +155,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .calendar-cell:hover { border-color: var(--border); }
 .calendar-cell.empty { background: transparent; border-color: transparent; }
 .calendar-day { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-.calendar-event { padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 10px; white-space: normal; word-break: break-all; line-height: 1.4; }
+.calendar-event { padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
 .cal-green { background: rgba(63,185,80,0.15); color: var(--green); }
 .cal-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
 .cal-red { background: rgba(248,81,73,0.15); color: var(--red); }
