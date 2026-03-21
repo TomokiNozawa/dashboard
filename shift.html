@@ -1028,6 +1028,14 @@ function renderAvailability() {
         const avail = (inst.availability && inst.availability[availFilterDate]) || '';
         return avail !== 'NG';
       });
+      // Sort: answered (全日/AM/PM/保留) first, unanswered (-) last
+      filteredInstructors.sort((a, b) => {
+        const av = (a.availability && a.availability[availFilterDate]) || '';
+        const bv = (b.availability && b.availability[availFilterDate]) || '';
+        if (av && !bv) return -1;
+        if (!av && bv) return 1;
+        return 0;
+      });
     }
     if (filteredInstructors.length === 0 && filterActive) return;
 
@@ -1649,12 +1657,19 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
 
   const s = shiftData.schedule[schedIdx];
   const assigned = s.assigned || [];
+  // Collect all assigned on this date (across all sessions)
+  const allAssignedOnDate = new Set();
+  shiftData.schedule.forEach(sc => {
+    if (sc.date === s.date) (sc.assigned || []).forEach(n => allAssignedOnDate.add(n));
+  });
   const available = shiftData.instructors
     .map(inst => inst.name)
-    .filter(name => !assigned.includes(name));
+    .filter(name => !assigned.includes(name))
+    .filter(name => !allAssignedOnDate.has(name))
+    .filter(name => !isTeachingOnDate(name, s.date));
 
   if (available.length === 0) {
-    showToast('全てのインストラクターが配置済みです', 'error');
+    showToast('配置可能なインストラクターがいません', 'error');
     return;
   }
 
@@ -2025,15 +2040,35 @@ function openCalendarDayModal(day) {
   }
 
   // Find available instructors on this day
+  // Collect all assigned instructors + teachers for this date (across all sessions)
+  const allAssignedOnDate = new Set();
+  const allTeachersOnDate = new Set();
+  daySchedules.forEach(s => {
+    (s.assigned || []).forEach(name => allAssignedOnDate.add(name));
+    (s.teachers || []).forEach(name => allTeachersOnDate.add(name));
+  });
+
   let availHtml = '';
+  let unavailHtml = '';
   shiftData.instructors.forEach(inst => {
     const avail = inst.availability && inst.availability[dateStr];
     if (avail && avail !== 'NG') {
       const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
-      availHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:${availColor};"></span><span style="color:var(--text);">${escapeHtml(inst.name)}</span><span style="color:${availColor};font-weight:600;">${avail}</span></div>`;
+
+      // Check if already assigned or teaching
+      if (allAssignedOnDate.has(inst.name)) {
+        unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">インスト配置済み</span></div>`;
+      } else if (allTeachersOnDate.has(inst.name)) {
+        unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">講師担当のため不可</span></div>`;
+      } else {
+        availHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:${availColor};"></span><span style="color:var(--text);">${escapeHtml(inst.name)}</span><span style="color:${availColor};font-weight:600;">${avail}</span></div>`;
+      }
     }
   });
   if (!availHtml) availHtml = '<span style="color:var(--text3);">なし</span>';
+  if (unavailHtml) {
+    availHtml += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);font-size:11px;color:var(--text3);margin-bottom:4px;">配置済み・講師担当</div>${unavailHtml}`;
+  }
 
   const body = `
     <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">研修一覧</span><div style="padding-left:4px;">${schedHtml}</div></div>
