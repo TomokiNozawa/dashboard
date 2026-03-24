@@ -1367,9 +1367,14 @@ function renderAssignment() {
   panel.innerHTML = html;
 }
 
-// Check if an instructor is teaching at any overlapping session on the same date
-function isTeachingOnDate(instName, date) {
-  return shiftData.schedule.some(s => s.date === date && s.teachers && s.teachers.includes(instName));
+// Check if an instructor is teaching at a TIME-OVERLAPPING session on the same date
+// (午前講師・午後インストラクター等、時間が被らなければOK)
+function isTeachingOnDate(instName, date, targetSession) {
+  return shiftData.schedule.some(s => {
+    if (s.date !== date || !s.teachers || !s.teachers.includes(instName)) return false;
+    if (!targetSession) return true;
+    return timesOverlap(targetSession.start, targetSession.end, s.start, s.end);
+  });
 }
 
 // Check if two time ranges overlap (HH:MM format)
@@ -1406,7 +1411,7 @@ function showAssignDropdown(event, schedIdx) {
     .map(inst => inst.name)
     .filter(name => !assigned.includes(name))
     .filter(name => !conflicting.has(name))
-    .filter(name => !isTeachingOnDate(name, s.date));
+    .filter(name => !isTeachingOnDate(name, s.date, s));
 
   if (available.length === 0) {
     showToast('配置可能なインストラクターがいません', 'error');
@@ -1524,10 +1529,10 @@ function generateSuggestions() {
     const isAM = endH <= 13;
     const isPM = startH >= 12;
 
-    // Find available instructors (exclude those teaching on this date)
+    // Find available instructors (exclude those teaching at overlapping times)
     let available = d.instructors.filter(inst => {
       if (assigned.includes(inst.name)) return false;
-      if (isTeachingOnDate(inst.name, dateKey)) return false;
+      if (isTeachingOnDate(inst.name, dateKey, s)) return false;
       const avail = inst.availability && inst.availability[dateKey];
       if (!avail) return false;
       if (avail === 'NG') return false;
@@ -1781,7 +1786,7 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
     .map(inst => inst.name)
     .filter(name => !assigned.includes(name))
     .filter(name => !conflicting.has(name))
-    .filter(name => !isTeachingOnDate(name, s.date));
+    .filter(name => !isTeachingOnDate(name, s.date, s));
 
   if (available.length === 0) {
     showToast('配置可能なインストラクターがいません', 'error');
