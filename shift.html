@@ -1506,6 +1506,13 @@ function removeAssigned(schedIdx, tagIdx) {
 // ============================================================
 // Auto-Assignment Suggestion
 // ============================================================
+let suggestFilterDate = null;
+
+function toggleSuggestFilter(date) {
+  suggestFilterDate = (suggestFilterDate === date) ? null : date;
+  renderSuggestPanel();
+}
+
 function renderSuggestPanel() {
   const panel = document.getElementById('panel-suggest');
   const d = shiftData;
@@ -1525,7 +1532,7 @@ function renderSuggestPanel() {
   const seenDates = new Set();
   dates.forEach(s => { if (!seenDates.has(s.date)) { seenDates.add(s.date); uniqueDates.push({ date: s.date, dow: s.dow }); } });
 
-  // Build assignment lookup: { date+start+end: [names] }
+  // Build assignment lookup
   const assignmentMap = {};
   const teacherMap = {};
   d.schedule.forEach(s => {
@@ -1536,28 +1543,68 @@ function renderSuggestPanel() {
     (s.teachers || []).forEach(n => teacherMap[key].add(n));
   });
 
+  // Filter label
+  const filterActive = suggestFilterDate !== null;
+  const filterLabel = filterActive
+    ? `<span style="font-size:12px;color:var(--blue);cursor:pointer;" onclick="toggleSuggestFilter(null)">🔍 ${suggestFilterDate.slice(5)} のNG以外を表示中 ✕</span>`
+    : '<span style="font-size:11px;color:var(--text3);">※ 日付をクリックで絞り込み</span>';
+
+  // Build matrix - filter instructors if date filter active
   let matrixHtml = `<table class="suggest-mini-matrix"><thead><tr><th>名前</th>`;
-  uniqueDates.forEach(dt => { matrixHtml += `<th>${dt.date.slice(5)}<br>(${dt.dow})</th>`; });
+  uniqueDates.forEach(dt => {
+    const isActive = suggestFilterDate === dt.date;
+    const style = isActive ? 'background:var(--blue);color:#fff;cursor:pointer;' : 'cursor:pointer;';
+    matrixHtml += `<th style="${style}" onclick="toggleSuggestFilter('${dt.date}')">${dt.date.slice(5)}<br>(${dt.dow})</th>`;
+  });
   matrixHtml += '</tr></thead><tbody>';
 
-  d.instructors.forEach(inst => {
-    matrixHtml += `<tr><td class="avail-name-cell">${inst.name}</td>`;
-    uniqueDates.forEach(dt => {
-      const avail = (inst.availability && inst.availability[dt.date]) || '';
-      const isAssigned = assignmentMap[dt.date] && assignmentMap[dt.date].has(inst.name);
-      const isTeacher = teacherMap[dt.date] && teacherMap[dt.date].has(inst.name);
-      let cls = '', label = '-';
-      if (isTeacher) { cls = 'teacher-mark'; label = '講師'; }
-      else if (isAssigned) { cls = 'assigned-mark'; label = '配置'; }
-      else if (avail === '全日') { cls = 'avail-full'; label = '全'; }
-      else if (avail === 'AM') { cls = 'avail-am'; label = 'AM'; }
-      else if (avail === 'PM') { cls = 'avail-pm'; label = 'PM'; }
-      else if (avail === '保留') { cls = 'avail-hold'; label = '保'; }
-      else if (avail === 'NG') { cls = 'avail-ng'; label = 'NG'; }
-      else { cls = 'avail-empty'; }
-      matrixHtml += `<td><div class="avail-cell ${cls}" style="width:32px;height:22px;font-size:10px;margin:auto;">${label}</div></td>`;
+  // Group instructors by type (same as availability tab)
+  const groups = [
+    { label: '社内インターン', instructors: d.instructors.filter(i => i.type === '社内インターン') },
+    { label: 'リピーター（外部委託）', instructors: d.instructors.filter(i => i.type === 'リピーター') },
+    { label: '初回（外部委託）', instructors: d.instructors.filter(i => i.type === '初回') },
+  ].filter(g => g.instructors.length > 0);
+
+  groups.forEach(group => {
+    let filteredInstructors = group.instructors;
+    if (filterActive) {
+      filteredInstructors = group.instructors.filter(inst => {
+        const avail = (inst.availability && inst.availability[suggestFilterDate]) || '';
+        return avail !== 'NG';
+      });
+      filteredInstructors.sort((a, b) => {
+        const av = (a.availability && a.availability[suggestFilterDate]) || '';
+        const bv = (b.availability && b.availability[suggestFilterDate]) || '';
+        if (av && !bv) return -1;
+        if (!av && bv) return 1;
+        return 0;
+      });
+    }
+    if (filteredInstructors.length === 0 && filterActive) return;
+
+    if (!filterActive) {
+      matrixHtml += `<tr class="avail-group-header"><td colspan="${uniqueDates.length + 1}" style="font-size:11px;padding:4px 6px;">${group.label}（${group.instructors.length}名）</td></tr>`;
+    }
+
+    filteredInstructors.forEach(inst => {
+      matrixHtml += `<tr><td class="avail-name-cell">${inst.name}</td>`;
+      uniqueDates.forEach(dt => {
+        const avail = (inst.availability && inst.availability[dt.date]) || '';
+        const isAssigned = assignmentMap[dt.date] && assignmentMap[dt.date].has(inst.name);
+        const isTeacher = teacherMap[dt.date] && teacherMap[dt.date].has(inst.name);
+        let cls = '', label = '-';
+        if (isTeacher) { cls = 'teacher-mark'; label = '講師'; }
+        else if (isAssigned) { cls = 'assigned-mark'; label = '配置'; }
+        else if (avail === '全日') { cls = 'avail-full'; label = '全'; }
+        else if (avail === 'AM') { cls = 'avail-am'; label = 'AM'; }
+        else if (avail === 'PM') { cls = 'avail-pm'; label = 'PM'; }
+        else if (avail === '保留') { cls = 'avail-hold'; label = '保'; }
+        else if (avail === 'NG') { cls = 'avail-ng'; label = 'NG'; }
+        else { cls = 'avail-empty'; }
+        matrixHtml += `<td><div class="avail-cell ${cls}" style="width:32px;height:22px;font-size:10px;margin:auto;">${label}</div></td>`;
+      });
+      matrixHtml += '</tr>';
     });
-    matrixHtml += '</tr>';
   });
   matrixHtml += '</tbody></table>';
 
@@ -1569,7 +1616,10 @@ function renderSuggestPanel() {
     </div>
     <div class="suggest-split">
       <div class="suggest-left">
-        <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--text);">可用性マトリクス</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-weight:600;font-size:14px;color:var(--text);">可用性マトリクス</span>
+          ${filterLabel}
+        </div>
         <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">
           <span style="color:var(--blue);">■配置</span>
           <span style="color:var(--purple);">■講師</span>
