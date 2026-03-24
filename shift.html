@@ -1656,23 +1656,17 @@ function renderSuggestPanel() {
         ${matrixHtml}
       </div>
       <div class="suggest-right">
-        <button class="generate-btn" onclick="generateSuggestions()">配置提案を生成</button>
-        <div id="suggestionResults"></div>
+        ${buildSuggestRightHtml(d)}
       </div>
     </div>
   </div>`;
 }
 
-function generateSuggestions() {
-  const d = shiftData;
-  const results = document.getElementById('suggestionResults');
-
-  // Show ALL sessions (not just understaffed)
+function buildSuggestRightHtml(d) {
   const allSessions = d.schedule.filter(s => s.instNeeded > 0);
 
   if (allSessions.length === 0) {
-    results.innerHTML = '<p style="color:var(--text2);padding:16px;">インストが必要な日程がありません。</p>';
-    return;
+    return '<p style="color:var(--text2);padding:16px;">インストが必要な日程がありません。</p>';
   }
 
   let html = '<div class="suggestion-list">';
@@ -1685,7 +1679,6 @@ function generateSuggestions() {
     const statusCls = needed <= 0 ? 'ok' : assigned > 0 ? 'warn' : 'ng';
     const statusLabel = needed <= 0 ? '充足' : `不足${needed}名`;
 
-    // Find available candidates for this session
     const startH = parseInt(s.start.split(':')[0], 10);
     const endH = parseInt(s.end.split(':')[0], 10);
     const isAM = endH <= 13;
@@ -1729,16 +1722,13 @@ function generateSuggestions() {
     </div>`;
   });
   html += '</div>';
-  results.innerHTML = html;
+  return html;
 }
 
 function openScheduleFromSuggest(schedIdx) {
-  // Open the same modal as schedule/calendar tabs, refresh suggest panel on close
   window._suggestReturnActive = true;
   openScheduleModal(schedIdx);
 }
-
-// applySuggestion removed - replaced by assignFromSuggest (manual per-person selection)
 
 // ============================================================
 // History
