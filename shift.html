@@ -1663,7 +1663,10 @@ function renderSuggestPanel() {
 }
 
 function buildSuggestRightHtml(d) {
-  const allSessions = d.schedule.filter(s => s.instNeeded > 0);
+  let allSessions = d.schedule.filter(s => s.instNeeded > 0);
+  if (suggestFilterDate) {
+    allSessions = allSessions.filter(s => s.date === suggestFilterDate);
+  }
 
   if (allSessions.length === 0) {
     return '<p style="color:var(--text2);padding:16px;">インストが必要な日程がありません。</p>';
