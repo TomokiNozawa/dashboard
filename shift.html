@@ -1098,7 +1098,15 @@ function renderAvailability() {
     }
     if (filteredInstructors.length === 0 && filterActive) return;
 
+    // Sort: people with any availability response first, all-unanswered ("-") last
     if (!filterActive) {
+      filteredInstructors.sort((a, b) => {
+        const aHas = uniqueDates.some(dt => { const v = (a.availability && a.availability[dt.date]) || ''; return v !== ''; });
+        const bHas = uniqueDates.some(dt => { const v = (b.availability && b.availability[dt.date]) || ''; return v !== ''; });
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+        return 0;
+      });
       html += `<tr class="avail-group-header"><td colspan="${uniqueDates.length + 1}">${group.label}（${group.instructors.length}名）</td></tr>`;
     }
     filteredInstructors.forEach(inst => {
@@ -1582,7 +1590,15 @@ function renderSuggestPanel() {
     }
     if (filteredInstructors.length === 0 && filterActive) return;
 
+    // Sort: people with any availability response first, all-unanswered ("-") last
     if (!filterActive) {
+      filteredInstructors.sort((a, b) => {
+        const aHas = uniqueDates.some(dt => { const v = (a.availability && a.availability[dt.date]) || ''; return v !== ''; });
+        const bHas = uniqueDates.some(dt => { const v = (b.availability && b.availability[dt.date]) || ''; return v !== ''; });
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+        return 0;
+      });
       matrixHtml += `<tr class="avail-group-header"><td colspan="${uniqueDates.length + 1}" style="font-size:11px;padding:4px 6px;">${group.label}（${group.instructors.length}名）</td></tr>`;
     }
 
