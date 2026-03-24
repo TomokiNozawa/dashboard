@@ -190,7 +190,25 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tl-red { background: rgba(248,81,73,0.15); border-color: var(--red); color: var(--red); }
 .tl-gray { background: rgba(110,118,129,0.1); border-color: var(--text3); color: var(--text3); }
 
-/* Suggestion */
+/* Suggestion - Split Layout */
+.suggest-split { display: flex; gap: 16px; }
+.suggest-left { flex: 0 0 55%; max-height: calc(100vh - 200px); overflow: auto; }
+.suggest-right { flex: 1; max-height: calc(100vh - 200px); overflow: auto; }
+@media (max-width: 1024px) {
+  .suggest-split { flex-direction: column; }
+  .suggest-left, .suggest-right { flex: none; max-height: none; }
+}
+.suggest-status-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.suggest-stat { padding: 6px 14px; border-radius: var(--radius); font-size: 13px; font-weight: 600; }
+.suggest-stat.ok { background: rgba(63,185,80,0.15); color: var(--green); }
+.suggest-stat.warn { background: rgba(240,136,62,0.15); color: var(--orange); }
+.suggest-stat.ng { background: rgba(248,81,73,0.15); color: var(--red); }
+.suggest-mini-matrix { border-collapse: collapse; font-size: 11px; width: 100%; }
+.suggest-mini-matrix th, .suggest-mini-matrix td { padding: 3px 6px; text-align: center; border: 1px solid var(--border); white-space: nowrap; }
+.suggest-mini-matrix th { background: var(--card); position: sticky; top: 0; z-index: 2; font-size: 10px; }
+.suggest-mini-matrix .avail-name-cell { text-align: left; position: sticky; left: 0; background: var(--bg); z-index: 1; min-width: 60px; font-weight: 500; }
+.suggest-mini-matrix .assigned-mark { background: rgba(88,166,255,0.25); color: var(--blue); font-weight: 700; }
+.suggest-mini-matrix .teacher-mark { background: rgba(188,140,255,0.25); color: var(--purple); font-weight: 700; }
 .suggestion-list { display: flex; flex-direction: column; gap: 8px; }
 .suggestion-item {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
@@ -201,9 +219,12 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .suggestion-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
 .suggestion-names { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .suggestion-name { background: rgba(88,166,255,0.12); color: var(--blue); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.suggestion-current { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.suggestion-current-name { background: rgba(139,148,165,0.15); color: var(--text2); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.suggestion-teacher-name { background: rgba(188,140,255,0.15); color: var(--purple); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
 .apply-btn { padding: 6px 14px; background: var(--green); color: #fff; border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .apply-btn:hover { opacity: 0.85; }
-.generate-btn { padding: 10px 20px; background: linear-gradient(135deg, #1f6feb, #58a6ff); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 16px; }
+.generate-btn { padding: 10px 20px; background: linear-gradient(135deg, #1f6feb, #58a6ff); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 12px; }
 .generate-btn:hover { opacity: 0.9; }
 
 /* History */
@@ -1487,9 +1508,83 @@ function removeAssigned(schedIdx, tagIdx) {
 // ============================================================
 function renderSuggestPanel() {
   const panel = document.getElementById('panel-suggest');
+  const d = shiftData;
+
+  // --- Status summary ---
+  let okCount = 0, warnCount = 0, ngCount = 0;
+  d.schedule.filter(s => s.instNeeded > 0).forEach(s => {
+    const assigned = (s.assigned || []).length;
+    if (assigned >= s.instNeeded) okCount++;
+    else if (assigned > 0) warnCount++;
+    else ngCount++;
+  });
+
+  // --- Mini availability matrix (left side) ---
+  const dates = d.schedule.filter(s => s.instNeeded > 0);
+  const uniqueDates = [];
+  const seenDates = new Set();
+  dates.forEach(s => { if (!seenDates.has(s.date)) { seenDates.add(s.date); uniqueDates.push({ date: s.date, dow: s.dow }); } });
+
+  // Build assignment lookup: { date+start+end: [names] }
+  const assignmentMap = {};
+  const teacherMap = {};
+  d.schedule.forEach(s => {
+    const key = s.date;
+    if (!assignmentMap[key]) assignmentMap[key] = new Set();
+    if (!teacherMap[key]) teacherMap[key] = new Set();
+    (s.assigned || []).forEach(n => assignmentMap[key].add(n));
+    (s.teachers || []).forEach(n => teacherMap[key].add(n));
+  });
+
+  let matrixHtml = `<table class="suggest-mini-matrix"><thead><tr><th>名前</th>`;
+  uniqueDates.forEach(dt => { matrixHtml += `<th>${dt.date.slice(5)}<br>(${dt.dow})</th>`; });
+  matrixHtml += '</tr></thead><tbody>';
+
+  d.instructors.forEach(inst => {
+    matrixHtml += `<tr><td class="avail-name-cell">${inst.name}</td>`;
+    uniqueDates.forEach(dt => {
+      const avail = (inst.availability && inst.availability[dt.date]) || '';
+      const isAssigned = assignmentMap[dt.date] && assignmentMap[dt.date].has(inst.name);
+      const isTeacher = teacherMap[dt.date] && teacherMap[dt.date].has(inst.name);
+      let cls = '', label = '-';
+      if (isTeacher) { cls = 'teacher-mark'; label = '講師'; }
+      else if (isAssigned) { cls = 'assigned-mark'; label = '配置'; }
+      else if (avail === '全日') { cls = 'avail-full'; label = '全'; }
+      else if (avail === 'AM') { cls = 'avail-am'; label = 'AM'; }
+      else if (avail === 'PM') { cls = 'avail-pm'; label = 'PM'; }
+      else if (avail === '保留') { cls = 'avail-hold'; label = '保'; }
+      else if (avail === 'NG') { cls = 'avail-ng'; label = 'NG'; }
+      else { cls = 'avail-empty'; }
+      matrixHtml += `<td><div class="avail-cell ${cls}" style="width:32px;height:22px;font-size:10px;margin:auto;">${label}</div></td>`;
+    });
+    matrixHtml += '</tr>';
+  });
+  matrixHtml += '</tbody></table>';
+
   panel.innerHTML = `<div class="section">
-    <button class="generate-btn" onclick="generateSuggestions()">配置提案を生成</button>
-    <div id="suggestionResults"></div>
+    <div class="suggest-status-bar">
+      <span class="suggest-stat ok">充足 ${okCount}件</span>
+      <span class="suggest-stat warn">一部不足 ${warnCount}件</span>
+      <span class="suggest-stat ng">未配置 ${ngCount}件</span>
+    </div>
+    <div class="suggest-split">
+      <div class="suggest-left">
+        <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--text);">可用性マトリクス</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">
+          <span style="color:var(--blue);">■配置</span>
+          <span style="color:var(--purple);">■講師</span>
+          <span style="color:var(--green);">■全日</span>
+          <span style="color:#58a6ff;">■AM</span>
+          <span style="color:#bc8cff;">■PM</span>
+          <span style="color:var(--red);">■NG</span>
+        </div>
+        ${matrixHtml}
+      </div>
+      <div class="suggest-right">
+        <button class="generate-btn" onclick="generateSuggestions()">配置提案を生成</button>
+        <div id="suggestionResults"></div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -1575,18 +1670,24 @@ function generateSuggestions() {
   let html = '<div class="suggestion-list">';
   suggestions.forEach((sg, idx) => {
     const s = sg.schedule;
-    const hasEnough = sg.suggested.length >= sg.needed;
-    html += `<div class="suggestion-item">
-      <div class="suggestion-info">
-        <div class="suggestion-date">${s.date}(${s.dow}) - ${s.company}</div>
-        <div class="suggestion-detail">${s.content} / ${s.start}-${s.end} / 不足: ${sg.needed}名</div>
-        <div class="suggestion-names">
-          ${sg.suggested.length > 0
-            ? sg.suggested.map(n => `<span class="suggestion-name">${n}</span>`).join('')
-            : '<span style="color:var(--red);font-size:12px;">候補なし（可用性未入力）</span>'}
+    const currentAssigned = s.assigned || [];
+    const currentTeachers = s.teachers || [];
+    html += `<div class="suggestion-item" style="flex-direction:column;align-items:stretch;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div class="suggestion-info">
+          <div class="suggestion-date">${s.date}(${s.dow}) - ${s.company}</div>
+          <div class="suggestion-detail">${s.content} / ${s.start}-${s.end} / 必要: ${s.instNeeded}名 / 不足: ${sg.needed}名</div>
         </div>
+        ${sg.suggested.length > 0 ? `<button class="apply-btn" onclick="applySuggestion(${idx})">適用</button>` : ''}
       </div>
-      ${sg.suggested.length > 0 ? `<button class="apply-btn" onclick="applySuggestion(${idx})">適用</button>` : ''}
+      ${currentTeachers.length > 0 ? `<div class="suggestion-current"><span style="font-size:11px;color:var(--text3);">講師:</span>${currentTeachers.map(n => `<span class="suggestion-teacher-name">${n}</span>`).join('')}</div>` : ''}
+      ${currentAssigned.length > 0 ? `<div class="suggestion-current"><span style="font-size:11px;color:var(--text3);">配置済:</span>${currentAssigned.map(n => `<span class="suggestion-current-name">${n}</span>`).join('')}</div>` : ''}
+      <div class="suggestion-names">
+        <span style="font-size:11px;color:var(--text3);">提案:</span>
+        ${sg.suggested.length > 0
+          ? sg.suggested.map(n => `<span class="suggestion-name">${n}</span>`).join('')
+          : '<span style="color:var(--red);font-size:12px;">候補なし（可用性未入力）</span>'}
+      </div>
     </div>`;
   });
   html += '</div>';
