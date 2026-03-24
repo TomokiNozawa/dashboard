@@ -1641,135 +1641,89 @@ function renderSuggestPanel() {
 function generateSuggestions() {
   const d = shiftData;
   const results = document.getElementById('suggestionResults');
-  const datesNeedingStaff = d.schedule.filter(s => {
-    const assigned = s.assigned ? s.assigned.length : 0;
-    return s.instNeeded > 0 && assigned < s.instNeeded;
-  });
 
-  if (datesNeedingStaff.length === 0) {
-    results.innerHTML = '<p style="color:var(--green);padding:16px;">全ての日程が充足しています。</p>';
-    return;
-  }
+  // Show ALL sessions (not just understaffed)
+  const allSessions = d.schedule.filter(s => s.instNeeded > 0);
 
-  // Track workload for balancing
-  const workload = {};
-  d.instructors.forEach(inst => { workload[inst.name] = 0; });
-  // Count existing assignments
-  d.schedule.forEach(s => {
-    if (s.assigned) s.assigned.forEach(name => {
-      if (workload[name] !== undefined) workload[name]++;
-    });
-  });
-
-  const suggestions = [];
-
-  datesNeedingStaff.forEach(s => {
-    const dateKey = s.date;
-    const assigned = s.assigned ? [...s.assigned] : [];
-    const needed = s.instNeeded - assigned.length;
-
-    // Determine time slot
-    const startH = parseInt(s.start.split(':')[0], 10);
-    const endH = parseInt(s.end.split(':')[0], 10);
-    const isAM = endH <= 13;
-    const isPM = startH >= 12;
-
-    // Find available instructors (exclude those teaching at overlapping times)
-    let available = d.instructors.filter(inst => {
-      if (assigned.includes(inst.name)) return false;
-      if (isTeachingOnDate(inst.name, dateKey, s)) return false;
-      const avail = inst.availability && inst.availability[dateKey];
-      if (!avail) return false;
-      if (avail === 'NG') return false;
-      if (avail === '全日') return true;
-      if (avail === 'AM' && isAM) return true;
-      if (avail === 'PM' && isPM) return true;
-      if (avail === 'AM' && !isPM) return true; // AM person for AM-only or full-day
-      if (avail === 'PM' && !isAM) return true;  // PM person for PM-only or full-day
-      if (avail === '全日') return true;
-      return false;
-    });
-
-    // Sort: repeaters first, then by workload (ascending)
-    available.sort((a, b) => {
-      const aRepeat = a.type === 'リピーター' ? 0 : 1;
-      const bRepeat = b.type === 'リピーター' ? 0 : 1;
-      if (aRepeat !== bRepeat) return aRepeat - bRepeat;
-      return (workload[a.name] || 0) - (workload[b.name] || 0);
-    });
-
-    const suggested = available.slice(0, needed);
-
-    // Update simulated workload
-    suggested.forEach(inst => {
-      workload[inst.name] = (workload[inst.name] || 0) + 1;
-    });
-
-    suggestions.push({
-      schedule: s,
-      suggested: suggested.map(inst => inst.name),
-      needed: needed
-    });
-  });
-
-  if (suggestions.length === 0) {
-    results.innerHTML = '<p style="color:var(--text2);padding:16px;">提案可能なデータがありません。可用性マトリクスを先に入力してください。</p>';
+  if (allSessions.length === 0) {
+    results.innerHTML = '<p style="color:var(--text2);padding:16px;">インストが必要な日程がありません。</p>';
     return;
   }
 
   let html = '<div class="suggestion-list">';
-  suggestions.forEach((sg, idx) => {
-    const s = sg.schedule;
+  allSessions.forEach(s => {
+    const schedIdx = d.schedule.indexOf(s);
     const currentAssigned = s.assigned || [];
     const currentTeachers = s.teachers || [];
+    const assigned = currentAssigned.length;
+    const needed = s.instNeeded - assigned;
+    const statusCls = needed <= 0 ? 'ok' : assigned > 0 ? 'warn' : 'ng';
+    const statusLabel = needed <= 0 ? '充足' : `不足${needed}名`;
+
+    // Find available candidates for this session
+    const startH = parseInt(s.start.split(':')[0], 10);
+    const endH = parseInt(s.end.split(':')[0], 10);
+    const isAM = endH <= 13;
+    const isPM = startH >= 12;
+    const conflicting = getConflictingAssigned(s);
+
+    const candidates = d.instructors.filter(inst => {
+      if (currentAssigned.includes(inst.name)) return false;
+      if (isTeachingOnDate(inst.name, s.date, s)) return false;
+      if (conflicting.has(inst.name)) return false;
+      const avail = inst.availability && inst.availability[s.date];
+      if (!avail || avail === 'NG') return false;
+      if (avail === '全日') return true;
+      if (avail === 'AM' && isAM) return true;
+      if (avail === 'PM' && isPM) return true;
+      if (avail === 'AM' && !isPM) return true;
+      if (avail === 'PM' && !isAM) return true;
+      return false;
+    });
+
     html += `<div class="suggestion-item" style="flex-direction:column;align-items:stretch;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <div class="suggestion-info">
-          <div class="suggestion-date">${s.date}(${s.dow}) - ${s.company}</div>
-          <div class="suggestion-detail">${s.content} / ${s.start}-${s.end} / 必要: ${s.instNeeded}名 / 不足: ${sg.needed}名</div>
+          <div class="suggestion-date">${s.date}(${s.dow}) ${s.start}-${s.end}</div>
+          <div class="suggestion-detail">${s.company} / ${s.content} / 必要: ${s.instNeeded}名</div>
         </div>
-        ${sg.suggested.length > 0 ? `<button class="apply-btn" onclick="applySuggestion(${idx})">適用</button>` : ''}
+        <span class="suggest-stat ${statusCls}" style="font-size:11px;padding:3px 10px;">${statusLabel}</span>
       </div>
       ${currentTeachers.length > 0 ? `<div class="suggestion-current"><span style="font-size:11px;color:var(--text3);">講師:</span>${currentTeachers.map(n => `<span class="suggestion-teacher-name">${n}</span>`).join('')}</div>` : ''}
       ${currentAssigned.length > 0 ? `<div class="suggestion-current"><span style="font-size:11px;color:var(--text3);">配置済:</span>${currentAssigned.map(n => `<span class="suggestion-current-name">${n}</span>`).join('')}</div>` : ''}
-      <div class="suggestion-names">
-        <span style="font-size:11px;color:var(--text3);">提案:</span>
-        ${sg.suggested.length > 0
-          ? sg.suggested.map(n => `<span class="suggestion-name">${n}</span>`).join('')
-          : '<span style="color:var(--red);font-size:12px;">候補なし（可用性未入力）</span>'}
+      <div style="margin-top:6px;">
+        <span style="font-size:11px;color:var(--text3);">候補者（クリックで配置）:</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+          ${candidates.length > 0
+            ? candidates.map(inst => {
+                const avail = (inst.availability && inst.availability[s.date]) || '';
+                const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : 'var(--purple)';
+                return `<span class="suggestion-name" style="cursor:pointer;" onclick="assignFromSuggest(${schedIdx},'${inst.name}')" title="${avail}">${inst.name}<span style="font-size:9px;color:${availColor};margin-left:3px;">${avail}</span></span>`;
+              }).join('')
+            : '<span style="color:var(--red);font-size:12px;">候補なし</span>'}
+        </div>
       </div>
     </div>`;
   });
   html += '</div>';
   results.innerHTML = html;
-
-  // Store suggestions for apply
-  window._suggestions = suggestions;
 }
 
-function applySuggestion(idx) {
-  const sg = window._suggestions[idx];
-  if (!sg) return;
-  const s = sg.schedule;
-  const schedIdx = shiftData.schedule.findIndex(r => r.date === s.date && r.company === s.company);
-  if (schedIdx < 0) return;
-
-  if (!shiftData.schedule[schedIdx].assigned) shiftData.schedule[schedIdx].assigned = [];
-  sg.suggested.forEach(name => {
-    if (!shiftData.schedule[schedIdx].assigned.includes(name)) {
-      shiftData.schedule[schedIdx].assigned.push(name);
-    }
-  });
-
+function assignFromSuggest(schedIdx, name) {
+  const s = shiftData.schedule[schedIdx];
+  if (!s.assigned) s.assigned = [];
+  if (s.assigned.includes(name)) return;
+  s.assigned.push(name);
   markChanged();
-  refreshSummary();
+  renderSuggestPanel();
+  generateSuggestions();
   renderSchedule();
   renderAssignment();
   renderCalendar();
-  // Re-generate to reflect changes
-  generateSuggestions();
-  showToast(`${s.date} に ${sg.suggested.length}名を配置しました`, 'success');
+  refreshSummary();
 }
+
+// applySuggestion removed - replaced by assignFromSuggest (manual per-person selection)
 
 // ============================================================
 // History
