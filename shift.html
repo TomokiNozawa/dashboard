@@ -1046,8 +1046,7 @@ function renderAvailability() {
   // Group instructors by type
   const groups = [
     { label: '社内インターン', instructors: d.instructors.filter(i => i.type === '社内インターン') },
-    { label: 'リピーター（外部委託）', instructors: d.instructors.filter(i => i.type === 'リピーター') },
-    { label: '初回（外部委託）', instructors: d.instructors.filter(i => i.type === '初回') },
+    { label: '外部委託', instructors: d.instructors.filter(i => i.type === '外部委託') },
   ].filter(g => g.instructors.length > 0);
 
   const filterActive = availFilterDate !== null;
@@ -1211,7 +1210,7 @@ function renderContact() {
       <tbody>`;
 
   d.instructors.forEach((inst, i) => {
-    const typeColor = inst.type === 'リピーター' ? 'var(--green)' : 'var(--blue)';
+    const typeColor = inst.type === '社内インターン' ? 'var(--blue)' : 'var(--green)';
     const confirmed = inst.confirmed || false;
     html += `<tr class="clickable-row" onclick="openContactModal(${i})" style="cursor:pointer;">
       <td>${i + 1}</td>
@@ -1576,8 +1575,7 @@ function renderSuggestPanel() {
   // Group instructors by type (same as availability tab)
   const groups = [
     { label: '社内インターン', instructors: d.instructors.filter(i => i.type === '社内インターン') },
-    { label: 'リピーター（外部委託）', instructors: d.instructors.filter(i => i.type === 'リピーター') },
-    { label: '初回（外部委託）', instructors: d.instructors.filter(i => i.type === '初回') },
+    { label: '外部委託', instructors: d.instructors.filter(i => i.type === '外部委託') },
   ].filter(g => g.instructors.length > 0);
 
   // Helper to render one instructor row in mini matrix
