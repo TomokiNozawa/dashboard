@@ -111,8 +111,8 @@ async function decryptAndShow(password) {
     throw new Error('Invalid password');
   }
 
-  sessionStorage.setItem('dk_pass', password);
-  sessionStorage.setItem('dk_ts', Date.now().toString());
+  localStorage.setItem('dk_pass', password);
+  localStorage.setItem('dk_ts', Date.now().toString());
 
   document.open();
   document.write(html);
@@ -142,16 +142,16 @@ async function unlock() {
 
 // Auto-login if session exists
 (async function() {
-  const storedPass = sessionStorage.getItem('dk_pass');
-  const storedTs = sessionStorage.getItem('dk_ts');
+  const storedPass = localStorage.getItem('dk_pass');
+  const storedTs = localStorage.getItem('dk_ts');
   if (storedPass && storedTs) {
     const elapsed = Date.now() - parseInt(storedTs, 10);
-    if (elapsed < 4 * 60 * 60 * 1000) {
+    if (elapsed < 30 * 24 * 60 * 60 * 1000) {
       try {
         await decryptAndShow(storedPass);
       } catch (e) {
-        sessionStorage.removeItem('dk_pass');
-        sessionStorage.removeItem('dk_ts');
+        localStorage.removeItem('dk_pass');
+        localStorage.removeItem('dk_ts');
       }
     }
   }
