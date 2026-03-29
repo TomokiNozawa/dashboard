@@ -225,7 +225,8 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
           <tr>
             <th class="text-left" data-col="company">企業名</th>
             <th class="text-left" data-col="content">研修内容</th>
-            <th data-col="days">日程</th>
+            <th data-col="day">Day</th>
+            <th data-col="date">日程</th>
             <th data-col="formType">フォーム</th>
             <th data-col="created">作成</th>
             <th data-col="sent">送付</th>
@@ -455,52 +456,46 @@ function renderSummary() {
 
 function renderTable() {
   const tbody = document.getElementById('tableBody');
-  const sorted = [...materialsData.trainings];
+
+  // Flatten: 1 row per Day
+  const rows = [];
+  materialsData.trainings.forEach((t, idx) => {
+    t.days.forEach(d => {
+      rows.push({ t, idx, d });
+    });
+  });
 
   // Sort
-  sorted.sort((a, b) => {
+  rows.sort((a, b) => {
     let va, vb;
     switch (sortState.column) {
-      case 'company': va = a.company; vb = b.company; break;
-      case 'content': va = a.content; vb = b.content; break;
-      case 'days': va = a.days[0]?.date || ''; vb = b.days[0]?.date || ''; break;
-      case 'formType': va = a.formType; vb = b.formType; break;
-      case 'created': va = Object.values(a.created).filter(v=>v).length / Object.keys(a.created).length; vb = Object.values(b.created).filter(v=>v).length / Object.keys(b.created).length; break;
-      case 'sent': va = a.sent ? 1 : 0; vb = b.sent ? 1 : 0; break;
-      default: va = a.days[0]?.date || ''; vb = b.days[0]?.date || '';
+      case 'company': va = a.t.company; vb = b.t.company; break;
+      case 'content': va = a.t.content; vb = b.t.content; break;
+      case 'day': va = a.d.n; vb = b.d.n; break;
+      case 'date': va = a.d.date; vb = b.d.date; break;
+      case 'formType': va = a.t.formType; vb = b.t.formType; break;
+      case 'created': va = a.t.created[String(a.d.n)] ? 1 : 0; vb = b.t.created[String(b.d.n)] ? 1 : 0; break;
+      case 'sent': va = a.t.sent ? 1 : 0; vb = b.t.sent ? 1 : 0; break;
+      default: va = a.d.date; vb = b.d.date;
     }
     const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
     return sortState.direction === 'asc' ? cmp : -cmp;
   });
 
-  tbody.innerHTML = sorted.map(t => {
-    const idx = materialsData.trainings.indexOf(t);
+  tbody.innerHTML = rows.map(({ t, idx, d }) => {
+    const created = t.created[String(d.n)];
     const allCreated = Object.values(t.created).every(v => v);
     const isDone = allCreated && t.sent;
-    const dayCount = t.days.length;
-    const firstDate = t.days[0]?.date.slice(5) || '';
-    const lastDate = t.days[t.days.length - 1]?.date.slice(5) || '';
-    const firstDow = t.days[0]?.dow || '';
-    const lastDow = t.days[t.days.length - 1]?.dow || '';
 
-    let dayStr;
-    if (dayCount === 1) {
-      dayStr = `<span class="day-count">Day1</span><span class="day-dates">${firstDate}(${firstDow})</span>`;
-    } else {
-      dayStr = `<span class="day-count">Day1-${dayCount}</span><span class="day-dates">${firstDate}(${firstDow})～${lastDate}(${lastDow})</span>`;
-    }
+    const dateStr = `${d.date.slice(5)}(${d.dow})`;
 
     const formBadge = t.formType === 'Google Forms'
       ? `<span class="badge badge-gforms" onclick="toggleForm(${idx})">G Forms</span>`
       : `<span class="badge badge-tforms" onclick="toggleForm(${idx})">T Forms</span>`;
 
-    const createdBadges = t.days.map(d => {
-      const done = t.created[String(d.n)];
-      const cls = done ? 'day-badge-done' : 'day-badge-pending';
-      const label = done ? `D${d.n}✓` : `D${d.n}—`;
-      return `<span class="day-badge ${cls}" onclick="toggleCreated(${idx},${d.n})">${label}</span>`;
-    }).join('');
-    const createdCell = `<div class="day-badges">${createdBadges}</div>`;
+    const createdBadge = created
+      ? `<span class="badge badge-done" onclick="toggleCreated(${idx},${d.n})">&#10003; 済</span>`
+      : `<span class="badge badge-pending" onclick="toggleCreated(${idx},${d.n})">— 未</span>`;
 
     const sentBadge = t.sent
       ? `<span class="badge badge-done" onclick="toggleSent(${idx})">&#10003; 済</span>`
@@ -509,9 +504,10 @@ function renderTable() {
     return `<tr class="${isDone ? 'row-done' : ''}">
       <td class="text-left">${esc(t.company)}</td>
       <td class="text-left">${esc(t.content)}</td>
-      <td><span class="day-info">${dayStr}</span></td>
+      <td><span class="day-count">Day${d.n}</span></td>
+      <td>${dateStr}</td>
       <td>${formBadge}</td>
-      <td>${createdCell}</td>
+      <td>${createdBadge}</td>
       <td>${sentBadge}</td>
     </tr>`;
   }).join('');
