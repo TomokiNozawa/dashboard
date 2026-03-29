@@ -1550,6 +1550,15 @@ function handleKeydown(e) {
     switchView(views[e.key - 1]);
     return;
   }
+  // Alt&↑: left tab, Alt&↓: right tab
+  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault();
+    const views = ['kanban', 'timeline', 'calendar', 'company', 'stats'];
+    const idx = views.indexOf(currentView);
+    const next = e.key === 'ArrowUp' ? (idx - 1 + views.length) % views.length : (idx + 1) % views.length;
+    switchView(views[next]);
+    return;
+  }
   // 1-3: Focus column (kanban only)
   if (currentView === 'kanban' && e.key >= '1' && e.key <= '3') {
     const cols = ['colTodo', 'colInProgress', 'colDone'];
