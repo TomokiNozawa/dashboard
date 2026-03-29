@@ -712,11 +712,11 @@ html { scroll-behavior: smooth; }
       <button class="topbar-btn" onclick="toggleFilter()" title="フィルター (F)">
         <span>&#9881;</span><span class="label-text">フィルター</span><span class="kbd">F</span>
       </button>
-      <button class="topbar-btn" onclick="openSearch()" title="検索 (Ctrl+K)">
-        <span>&#128269;</span><span class="label-text">検索</span><span class="kbd">Ctrl+K</span>
+      <button class="topbar-btn" onclick="openSearch()" title="検索 (Ctrl&K)">
+        <span>&#128269;</span><span class="label-text">検索</span><span class="kbd">Ctrl&K</span>
       </button>
-      <button class="topbar-btn primary" onclick="openNewTask()" title="新規タスク (Ctrl+;)">
-        <span>+</span><span class="label-text">新規タスク</span><span class="kbd">Ctrl+;</span>
+      <button class="topbar-btn primary" onclick="openNewTask()" title="新規タスク (Ctrl&;)">
+        <span>+</span><span class="label-text">新規タスク</span><span class="kbd">Ctrl&;</span>
       </button>
       <button class="topbar-icon-btn" onclick="toggleTheme()" title="テーマ切替">&#9681;</button>
     </div>
@@ -783,11 +783,11 @@ html { scroll-behavior: smooth; }
 
   <!-- Tab Bar -->
   <div class="tab-bar" id="tabBar">
-    <button class="tab-item active" onclick="switchView('kanban')" data-view="kanban">カンバン<span class="tab-kbd">Alt+1</span></button>
-    <button class="tab-item" onclick="switchView('timeline')" data-view="timeline">タイムライン<span class="tab-kbd">Alt+2</span></button>
-    <button class="tab-item" onclick="switchView('calendar')" data-view="calendar">カレンダー<span class="tab-kbd">Alt+3</span></button>
-    <button class="tab-item" onclick="switchView('company')" data-view="company">企業別<span class="tab-kbd">Alt+4</span></button>
-    <button class="tab-item" onclick="switchView('stats')" data-view="stats">統計<span class="tab-kbd">Alt+5</span></button>
+    <button class="tab-item active" onclick="switchView('kanban')" data-view="kanban">カンバン<span class="tab-kbd">Alt&1</span></button>
+    <button class="tab-item" onclick="switchView('timeline')" data-view="timeline">タイムライン<span class="tab-kbd">Alt&2</span></button>
+    <button class="tab-item" onclick="switchView('calendar')" data-view="calendar">カレンダー<span class="tab-kbd">Alt&3</span></button>
+    <button class="tab-item" onclick="switchView('company')" data-view="company">企業別<span class="tab-kbd">Alt&4</span></button>
+    <button class="tab-item" onclick="switchView('stats')" data-view="stats">統計<span class="tab-kbd">Alt&5</span></button>
   </div>
 
   <!-- Kanban Board -->
@@ -1535,15 +1535,15 @@ function handleKeydown(e) {
 
   if (isInput) return;
 
-  // Ctrl+K: Search
+  // Ctrl&K: Search
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }
-  // Ctrl+;: New task
+  // Ctrl&;: New task
   if ((e.ctrlKey || e.metaKey) && e.key === ';') { e.preventDefault(); openNewTask(); return; }
   // F: Filter
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFilter(); return; }
   // T: Toggle theme
   if (e.key === 't' || e.key === 'T') { e.preventDefault(); toggleTheme(); return; }
-  // Alt+1-5: Switch views
+  // Alt&1-5: Switch views
   if (e.altKey && e.key >= '1' && e.key <= '5') {
     e.preventDefault();
     const views = ['kanban', 'timeline', 'calendar', 'company', 'stats'];
