@@ -1221,7 +1221,7 @@ function renderTaskCard(t) {
       <div class="task-card-title">${escHtml(t.title)}</div>
       <div class="task-card-meta">
         ${t.company ? `<span class="task-company">${escHtml(t.company)}</span>` : ''}
-        ${dueInfo.label ? `<span class="task-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}
+        ${dueInfo.label ? `<span class="task-due ${dueInfo.type}">期限: ${dueInfo.label}</span>` : ''}
       </div>
       ${t.trainingType ? `<div class="task-card-tags"><span class="task-tag">${escHtml(t.trainingType)}</span></div>` : ''}
     </div>`;
