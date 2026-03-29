@@ -671,19 +671,8 @@ html { scroll-behavior: smooth; }
 </head>
 <body>
 
-<!-- Login Screen -->
-<div class="login-screen" id="loginScreen">
-  <div class="login-box">
-    <h1>TaskBoard</h1>
-    <p>NozaBoard Task Management</p>
-    <input type="password" class="login-input" id="loginPassword" placeholder="Password" autocomplete="off">
-    <button class="login-btn" id="loginBtn" onclick="doLogin()">Login</button>
-    <div class="login-error" id="loginError">パスワードが正しくありません</div>
-  </div>
-</div>
-
-<!-- Setup Screen (shown if Firebase not configured) -->
-<div class="setup-screen" id="setupScreen">
+<!-- Setup Screen (shown only if Firebase config override needed) -->
+<div class="setup-screen" id="setupScreen" style="display:none">
   <h2>Firebase Setup</h2>
   <p>TaskBoardにはFirebase Realtime Databaseが必要です。</p>
   <div class="setup-step">
@@ -1010,15 +999,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const dateStr = `${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}（${'日月火水木金土'[today.getDay()]}）`;
   document.getElementById('taskDate').textContent = dateStr;
 
-  // Check session
-  const session = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-  if (session && Date.now() - session.ts < SESSION_DAYS * 86400000) {
-    // Also share session with shift.html / materials.html
-    sessionStorage.setItem('dk_pass', session.pw);
-    initApp();
-  } else {
-    document.getElementById('loginScreen').style.display = 'flex';
-  }
+  // Auto-login (no password gate)
+  initApp();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', handleKeydown);
@@ -1074,14 +1056,17 @@ document.getElementById('loginPassword').addEventListener('keydown', e => {
 // Firebase Init
 // ────────────────────────────────────────────
 function initApp() {
-  const configStr = localStorage.getItem(CONFIG_KEY);
-  if (!configStr) {
-    document.getElementById('setupScreen').classList.add('active');
-    return;
-  }
+  const config = JSON.parse(localStorage.getItem(CONFIG_KEY)) || {
+    apiKey: "AIzaSyBFSjOheMb_epwOXCjviAA_FLQFPNiED6g",
+    authDomain: "task-board-fbf1e.firebaseapp.com",
+    databaseURL: "https://task-board-fbf1e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "task-board-fbf1e",
+    storageBucket: "task-board-fbf1e.firebasestorage.app",
+    messagingSenderId: "174442724697",
+    appId: "1:174442724697:web:06ac83b275780717c06048"
+  };
 
   try {
-    const config = JSON.parse(configStr);
     firebase.initializeApp(config);
     db = firebase.database();
 
