@@ -95,6 +95,13 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .day-count { font-weight: 600; color: var(--purple); }
 .day-dates { color: var(--text2); margin-left: 4px; }
 
+/* Per-day badges */
+.day-badges { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+.day-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; cursor: pointer; user-select: none; transition: all 0.15s; white-space: nowrap; }
+.day-badge:hover { transform: scale(1.08); }
+.day-badge-done { background: rgba(63,185,80,0.15); color: var(--green); }
+.day-badge-pending { background: rgba(248,81,73,0.15); color: var(--red); }
+
 /* Save Button */
 .save-fab {
   position: fixed; bottom: 24px; right: 24px; z-index: 100;
@@ -431,15 +438,15 @@ function renderSummary() {
   const t = materialsData.trainings;
   const total = t.length;
   const totalDays = t.reduce((s, x) => s + x.days.length, 0);
-  const created = t.filter(x => x.created).length;
+  const createdDays = t.reduce((s, x) => s + Object.values(x.created).filter(v => v).length, 0);
   const sent = t.filter(x => x.sent).length;
 
   document.getElementById('sumTrainings').textContent = total;
   document.getElementById('sumDays').textContent = totalDays;
 
   const createdEl = document.getElementById('sumCreated');
-  createdEl.textContent = `${created}/${total}`;
-  createdEl.style.color = created === total ? 'var(--green)' : created >= total / 2 ? 'var(--yellow)' : 'var(--red)';
+  createdEl.textContent = `${createdDays}/${totalDays}`;
+  createdEl.style.color = createdDays === totalDays ? 'var(--green)' : createdDays >= totalDays / 2 ? 'var(--yellow)' : 'var(--red)';
 
   const sentEl = document.getElementById('sumSent');
   sentEl.textContent = `${sent}/${total}`;
@@ -458,7 +465,7 @@ function renderTable() {
       case 'content': va = a.content; vb = b.content; break;
       case 'days': va = a.days[0]?.date || ''; vb = b.days[0]?.date || ''; break;
       case 'formType': va = a.formType; vb = b.formType; break;
-      case 'created': va = a.created ? 1 : 0; vb = b.created ? 1 : 0; break;
+      case 'created': va = Object.values(a.created).filter(v=>v).length / Object.keys(a.created).length; vb = Object.values(b.created).filter(v=>v).length / Object.keys(b.created).length; break;
       case 'sent': va = a.sent ? 1 : 0; vb = b.sent ? 1 : 0; break;
       default: va = a.days[0]?.date || ''; vb = b.days[0]?.date || '';
     }
@@ -468,7 +475,8 @@ function renderTable() {
 
   tbody.innerHTML = sorted.map(t => {
     const idx = materialsData.trainings.indexOf(t);
-    const isDone = t.created && t.sent;
+    const allCreated = Object.values(t.created).every(v => v);
+    const isDone = allCreated && t.sent;
     const dayCount = t.days.length;
     const firstDate = t.days[0]?.date.slice(5) || '';
     const lastDate = t.days[t.days.length - 1]?.date.slice(5) || '';
@@ -486,9 +494,13 @@ function renderTable() {
       ? `<span class="badge badge-gforms" onclick="toggleForm(${idx})">G Forms</span>`
       : `<span class="badge badge-tforms" onclick="toggleForm(${idx})">T Forms</span>`;
 
-    const createdBadge = t.created
-      ? `<span class="badge badge-done" onclick="toggleCreated(${idx})">&#10003; 済</span>`
-      : `<span class="badge badge-pending" onclick="toggleCreated(${idx})">— 未</span>`;
+    const createdBadges = t.days.map(d => {
+      const done = t.created[String(d.n)];
+      const cls = done ? 'day-badge-done' : 'day-badge-pending';
+      const label = done ? `D${d.n}✓` : `D${d.n}—`;
+      return `<span class="day-badge ${cls}" onclick="toggleCreated(${idx},${d.n})">${label}</span>`;
+    }).join('');
+    const createdCell = `<div class="day-badges">${createdBadges}</div>`;
 
     const sentBadge = t.sent
       ? `<span class="badge badge-done" onclick="toggleSent(${idx})">&#10003; 済</span>`
@@ -499,7 +511,7 @@ function renderTable() {
       <td class="text-left">${esc(t.content)}</td>
       <td><span class="day-info">${dayStr}</span></td>
       <td>${formBadge}</td>
-      <td>${createdBadge}</td>
+      <td>${createdCell}</td>
       <td>${sentBadge}</td>
     </tr>`;
   }).join('');
@@ -523,8 +535,9 @@ function toggleForm(idx) {
   markChanged();
 }
 
-function toggleCreated(idx) {
-  materialsData.trainings[idx].created = !materialsData.trainings[idx].created;
+function toggleCreated(idx, dayN) {
+  const key = String(dayN);
+  materialsData.trainings[idx].created[key] = !materialsData.trainings[idx].created[key];
   markChanged();
 }
 
