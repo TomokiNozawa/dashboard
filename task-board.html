@@ -398,6 +398,219 @@ body {
 .sync-dot.error { background: var(--accent-red); }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
+/* ── Tab Bar ── */
+.tab-bar {
+  display: flex; gap: 2px; padding: 0 20px;
+  background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; overflow-x: auto;
+}
+.tab-item {
+  padding: 10px 18px; font-size: 12px; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; border-bottom: 2px solid transparent; transition: all var(--transition);
+  white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none;
+  font-family: var(--font);
+}
+.tab-item:hover { color: var(--text-secondary); }
+.tab-item.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+.tab-item .tab-kbd { font-size: 9px; color: var(--text-muted); margin-left: 4px; opacity: 0.5; }
+
+.view-container { display: none; flex: 1; overflow: auto; }
+.view-container.active { display: flex; flex-direction: column; }
+
+/* ── Timeline View (C1) ── */
+.timeline-view { padding: 16px 20px; overflow: auto; }
+.timeline-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.timeline-header h3 { font-size: 15px; font-weight: 600; }
+.timeline-nav { display: flex; gap: 4px; margin-left: auto; }
+.timeline-nav button {
+  padding: 4px 12px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 12px;
+  font-family: var(--font); cursor: pointer; transition: all var(--transition);
+}
+.timeline-nav button:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+.timeline-nav button.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+.timeline-grid { position: relative; min-width: 100%; }
+.timeline-dates {
+  display: flex; position: sticky; top: 0; z-index: 10;
+  background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+}
+.timeline-date-cell {
+  min-width: 40px; padding: 6px 2px; text-align: center; font-size: 10px;
+  color: var(--text-muted); border-right: 1px solid var(--border-light);
+}
+.timeline-date-cell.weekend { background: rgba(90,173,255,0.04); }
+.timeline-date-cell.today { background: rgba(90,173,255,0.1); color: var(--accent-blue); font-weight: 700; }
+.timeline-date-day { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.timeline-company-row {
+  display: flex; align-items: stretch; border-bottom: 1px solid var(--border-light);
+  min-height: 36px;
+}
+.timeline-company-label {
+  min-width: 160px; max-width: 160px; padding: 8px 12px; font-size: 11px;
+  font-weight: 600; color: var(--text-primary); background: var(--bg-card);
+  border-right: 1px solid var(--border); display: flex; align-items: center;
+  position: sticky; left: 0; z-index: 5; cursor: pointer;
+}
+.timeline-company-label:hover { background: var(--bg-card-hover); }
+.timeline-cells { display: flex; flex: 1; position: relative; }
+.timeline-cell {
+  min-width: 40px; border-right: 1px solid var(--border-light); position: relative;
+}
+.timeline-cell.weekend { background: rgba(90,173,255,0.02); }
+.timeline-cell.today { background: rgba(90,173,255,0.06); }
+.timeline-bar {
+  position: absolute; height: 20px; top: 50%; transform: translateY(-50%);
+  border-radius: 3px; font-size: 9px; color: #fff; padding: 2px 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; z-index: 2; font-weight: 600;
+}
+.timeline-bar.prep { background: var(--accent-blue); }
+.timeline-bar.material { background: var(--accent-purple); }
+.timeline-bar.instructor { background: var(--accent-orange); }
+.timeline-bar.billing { background: var(--accent-green); }
+.timeline-bar.review { background: var(--accent-cyan); }
+.timeline-bar.other { background: var(--text-muted); }
+.timeline-bar:hover { opacity: 0.85; z-index: 3; }
+.timeline-training-marker {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: var(--accent-red); z-index: 1; opacity: 0.6;
+}
+.timeline-conflict {
+  position: absolute; top: 2px; right: 2px; width: 14px; height: 14px;
+  background: var(--accent-red); color: #fff; border-radius: 50%;
+  font-size: 9px; font-weight: 700; display: flex; align-items: center;
+  justify-content: center; cursor: help; z-index: 4;
+}
+
+/* ── Company View (C2) ── */
+.company-view { padding: 16px 20px; }
+.company-list { display: flex; flex-direction: column; gap: 8px; }
+.company-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; transition: all var(--transition);
+}
+.company-card-header {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  cursor: pointer; transition: background var(--transition);
+}
+.company-card-header:hover { background: var(--bg-card-hover); }
+.company-card-name { font-size: 14px; font-weight: 600; flex: 1; }
+.company-card-stats { display: flex; gap: 12px; align-items: center; }
+.company-stat { font-size: 11px; color: var(--text-muted); }
+.company-stat strong { color: var(--text-primary); }
+.company-progress-bar { width: 80px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.company-progress-fill { height: 100%; background: var(--gradient-green); border-radius: 3px; transition: width 0.5s ease; }
+.company-chevron { color: var(--text-muted); transition: transform var(--transition); font-size: 12px; }
+.company-card.expanded .company-chevron { transform: rotate(90deg); }
+.company-card-body { display: none; padding: 0 16px 14px; border-top: 1px solid var(--border-light); }
+.company-card.expanded .company-card-body { display: block; }
+.company-task-row {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--border-light); font-size: 12px;
+}
+.company-task-row:last-child { border-bottom: none; }
+.company-task-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.company-task-status.todo { background: var(--accent-blue); }
+.company-task-status.in_progress { background: var(--accent-yellow); }
+.company-task-status.done { background: var(--accent-green); }
+.company-task-title { flex: 1; }
+.company-task-due { font-size: 11px; color: var(--text-muted); }
+.company-shift-link {
+  font-size: 10px; color: var(--accent-orange); text-decoration: none;
+  padding: 2px 6px; border: 1px solid rgba(240,136,62,0.3);
+  border-radius: 3px; white-space: nowrap;
+}
+.company-shift-link:hover { background: rgba(240,136,62,0.1); }
+
+/* ── Calendar View (C4) ── */
+.calendar-view { padding: 16px 20px; }
+.cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.cal-header h3 { font-size: 15px; font-weight: 600; min-width: 140px; }
+.cal-nav-btn {
+  padding: 6px 14px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 14px;
+  font-family: var(--font); cursor: pointer; transition: all var(--transition);
+}
+.cal-nav-btn:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
+  background: var(--border-light); border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.cal-day-header {
+  padding: 8px; text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--text-muted); background: var(--bg-secondary);
+}
+.cal-day {
+  min-height: 90px; padding: 6px; background: var(--bg-card);
+  cursor: pointer; transition: background var(--transition); position: relative;
+}
+.cal-day:hover { background: var(--bg-card-hover); }
+.cal-day.other-month { opacity: 0.3; }
+.cal-day.today { background: rgba(90,173,255,0.08); }
+.cal-day.today .cal-day-num { color: var(--accent-blue); font-weight: 700; }
+.cal-day-num { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+.cal-day-tasks { display: flex; flex-direction: column; gap: 2px; }
+.cal-task-dot {
+  font-size: 9px; padding: 1px 4px; border-radius: 2px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+.cal-task-dot.prep { background: rgba(90,173,255,0.15); color: var(--accent-blue); }
+.cal-task-dot.material { background: rgba(184,140,255,0.15); color: var(--accent-purple); }
+.cal-task-dot.instructor { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
+.cal-task-dot.billing { background: rgba(66,199,96,0.15); color: var(--accent-green); }
+.cal-task-dot.review { background: rgba(86,212,221,0.15); color: var(--accent-cyan); }
+.cal-task-dot.other { background: rgba(139,149,165,0.1); color: var(--text-secondary); }
+.cal-task-dot.overdue { border-left: 2px solid var(--accent-red); }
+.cal-day-more { font-size: 9px; color: var(--text-muted); margin-top: 2px; cursor: pointer; }
+.cal-day-conflict {
+  position: absolute; top: 4px; right: 4px; width: 6px; height: 6px;
+  background: var(--accent-red); border-radius: 50%;
+}
+
+/* ── Stats View (C5) ── */
+.stats-view { padding: 16px 20px; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.stats-panel {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+}
+.stats-panel h4 { font-size: 13px; font-weight: 600; margin-bottom: 16px; color: var(--text-secondary); }
+.stats-bar-chart { display: flex; flex-direction: column; gap: 10px; }
+.stats-bar-row { display: flex; align-items: center; gap: 10px; }
+.stats-bar-label { font-size: 11px; min-width: 80px; color: var(--text-secondary); text-align: right; }
+.stats-bar-track { flex: 1; height: 20px; background: var(--border-light); border-radius: 4px; overflow: hidden; position: relative; }
+.stats-bar-fill {
+  height: 100%; border-radius: 4px; transition: width 0.8s ease;
+  display: flex; align-items: center; padding-left: 8px;
+  font-size: 10px; font-weight: 600; color: #fff;
+}
+.stats-bar-fill.blue { background: var(--accent-blue); }
+.stats-bar-fill.purple { background: var(--accent-purple); }
+.stats-bar-fill.orange { background: var(--accent-orange); }
+.stats-bar-fill.green { background: var(--accent-green); }
+.stats-bar-fill.cyan { background: var(--accent-cyan); }
+.stats-bar-fill.gray { background: var(--text-muted); }
+.stats-bar-fill.red { background: var(--accent-red); }
+.stats-bar-fill.yellow { background: var(--accent-yellow); }
+.stats-bar-value { font-size: 11px; color: var(--text-muted); min-width: 30px; text-align: right; }
+.stats-donut-wrap { display: flex; align-items: center; gap: 24px; justify-content: center; }
+.stats-donut { width: 120px; height: 120px; position: relative; }
+.stats-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.stats-donut-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center;
+}
+.stats-donut-center .big { font-size: 24px; font-weight: 700; }
+.stats-donut-center .small { font-size: 10px; color: var(--text-muted); }
+.stats-legend { display: flex; flex-direction: column; gap: 8px; }
+.stats-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.stats-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.stats-kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.stats-kpi { text-align: center; padding: 12px; background: var(--bg-column); border-radius: var(--radius); }
+.stats-kpi-value { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stats-kpi-label { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
 /* ── Setup Screen ── */
 .setup-screen { display: none; padding: 40px 20px; max-width: 600px; margin: 0 auto; }
 .setup-screen.active { display: block; }
@@ -429,6 +642,15 @@ body {
   .filter-bar { padding: 8px 12px; }
   .modal { padding: 20px; }
   .form-row { grid-template-columns: 1fr; }
+  .tab-bar { padding: 0 12px; }
+  .tab-item { padding: 8px 12px; font-size: 11px; }
+  .tab-item .tab-kbd { display: none; }
+  .timeline-company-label { min-width: 100px; max-width: 100px; font-size: 10px; }
+  .cal-day { min-height: 60px; padding: 4px; }
+  .cal-day-num { font-size: 11px; }
+  .cal-task-dot { font-size: 8px; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .stats-kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 480px) {
@@ -570,7 +792,17 @@ html { scroll-behavior: smooth; }
     <button class="filter-clear" onclick="clearFilters()">クリア</button>
   </div>
 
+  <!-- Tab Bar -->
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-item active" onclick="switchView('kanban')" data-view="kanban">カンバン<span class="tab-kbd">Alt+1</span></button>
+    <button class="tab-item" onclick="switchView('timeline')" data-view="timeline">タイムライン<span class="tab-kbd">Alt+2</span></button>
+    <button class="tab-item" onclick="switchView('calendar')" data-view="calendar">カレンダー<span class="tab-kbd">Alt+3</span></button>
+    <button class="tab-item" onclick="switchView('company')" data-view="company">企業別<span class="tab-kbd">Alt+4</span></button>
+    <button class="tab-item" onclick="switchView('stats')" data-view="stats">統計<span class="tab-kbd">Alt+5</span></button>
+  </div>
+
   <!-- Kanban Board -->
+  <div class="view-container active" id="view-kanban">
   <div class="board-container" id="boardContainer">
     <div class="kanban-column" data-status="todo">
       <div class="column-header todo">
@@ -597,6 +829,56 @@ html { scroll-behavior: smooth; }
       <div class="column-body" id="colDone"></div>
     </div>
   </div>
+  </div>
+  </div>
+
+  <!-- Timeline View (C1) -->
+  <div class="view-container" id="view-timeline">
+    <div class="timeline-view">
+      <div class="timeline-header">
+        <h3 id="timelineTitle">タイムライン</h3>
+        <div class="timeline-nav">
+          <button onclick="shiftTimeline(-7)">&larr; 1週</button>
+          <button onclick="shiftTimeline(0)" class="active">今週</button>
+          <button onclick="shiftTimeline(7)">1週 &rarr;</button>
+        </div>
+      </div>
+      <div id="timelineGrid" style="overflow-x:auto"></div>
+    </div>
+  </div>
+
+  <!-- Calendar View (C4) -->
+  <div class="view-container" id="view-calendar">
+    <div class="calendar-view">
+      <div class="cal-header">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">&larr;</button>
+        <h3 id="calTitle"></h3>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">&rarr;</button>
+        <button class="cal-nav-btn" onclick="changeMonth(0)" style="margin-left:8px;font-size:11px">今月</button>
+      </div>
+      <div id="calGrid"></div>
+    </div>
+  </div>
+
+  <!-- Company View (C2) -->
+  <div class="view-container" id="view-company">
+    <div class="company-view">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <h3 style="font-size:15px;font-weight:600">企業別タスク一覧</h3>
+        <span id="companyCount" style="font-size:11px;color:var(--text-muted)"></span>
+      </div>
+      <div class="company-list" id="companyList2"></div>
+    </div>
+  </div>
+
+  <!-- Stats View (C5) -->
+  <div class="view-container" id="view-stats">
+    <div class="stats-view">
+      <div class="stats-kpi-grid" id="statsKpis" style="margin-bottom:16px"></div>
+      <div class="stats-grid" id="statsGrid"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Task Modal (New/Edit) -->
@@ -711,6 +993,9 @@ let db = null;
 let allTasks = {};
 let currentFilters = { company: '', category: '', priority: '', due: '' };
 let searchSelectedIdx = -1;
+let currentView = 'kanban';
+let timelineOffset = 0;
+let calYear, calMonth;
 
 // ────────────────────────────────────────────
 // Init
@@ -836,12 +1121,30 @@ function saveFirebaseConfig() {
 // ────────────────────────────────────────────
 function listenTasks() {
   if (!db) return;
+  const now = new Date();
+  calYear = now.getFullYear(); calMonth = now.getMonth();
   db.ref('tasks').on('value', snap => {
     allTasks = snap.val() || {};
-    renderBoard();
+    renderCurrentView();
     updateSummary();
     updateCompanyFilter();
   });
+}
+
+function renderCurrentView() {
+  renderBoard();
+  if (currentView === 'timeline') renderTimeline();
+  if (currentView === 'calendar') renderCalendar();
+  if (currentView === 'company') renderCompanyView();
+  if (currentView === 'stats') renderStats();
+}
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view)?.classList.add('active');
+  renderCurrentView();
 }
 
 function setSyncStatus(status, text) {
@@ -1255,8 +1558,15 @@ function handleKeydown(e) {
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFilter(); return; }
   // T: Toggle theme
   if (e.key === 't' || e.key === 'T') { e.preventDefault(); toggleTheme(); return; }
-  // 1-3: Focus column
-  if (e.key >= '1' && e.key <= '3') {
+  // Alt+1-5: Switch views
+  if (e.altKey && e.key >= '1' && e.key <= '5') {
+    e.preventDefault();
+    const views = ['kanban', 'timeline', 'calendar', 'company', 'stats'];
+    switchView(views[e.key - 1]);
+    return;
+  }
+  // 1-3: Focus column (kanban only)
+  if (currentView === 'kanban' && e.key >= '1' && e.key <= '3') {
     const cols = ['colTodo', 'colInProgress', 'colDone'];
     document.getElementById(cols[e.key - 1])?.scrollIntoView({ behavior: 'smooth', inline: 'center' });
   }
@@ -1308,6 +1618,396 @@ function showToast(msg, type = 'info') {
 function escHtml(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ────────────────────────────────────────────
+// Helper: get filtered active tasks
+// ────────────────────────────────────────────
+function getActiveTasks() {
+  return Object.entries(allTasks).map(([id, t]) => ({ ...t, _id: id })).filter(t => t.status !== 'done');
+}
+function getAllTasksArr() {
+  return Object.entries(allTasks).map(([id, t]) => ({ ...t, _id: id }));
+}
+
+// ────────────────────────────────────────────
+// C1: Timeline View
+// ────────────────────────────────────────────
+function shiftTimeline(days) {
+  if (days === 0) timelineOffset = 0;
+  else timelineOffset += days;
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const container = document.getElementById('timelineGrid');
+  const tasks = getActiveTasks();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - startDate.getDay() + 1 + timelineOffset); // Monday
+  const numDays = 28; // 4 weeks
+  const dates = [];
+  for (let i = 0; i < numDays; i++) {
+    const d = new Date(startDate); d.setDate(d.getDate() + i);
+    dates.push(d);
+  }
+
+  // Title
+  const s = dates[0], e = dates[numDays - 1];
+  document.getElementById('timelineTitle').textContent =
+    `${s.getMonth()+1}/${s.getDate()} - ${e.getMonth()+1}/${e.getDate()}`;
+
+  // Group tasks by company
+  const companies = {};
+  tasks.forEach(t => {
+    const c = t.company || 'その他';
+    if (!companies[c]) companies[c] = [];
+    companies[c].push(t);
+  });
+
+  // Detect conflicts (E5): same training date, multiple companies
+  const dateTrainings = {};
+  tasks.forEach(t => {
+    if (t.trainingDate) {
+      if (!dateTrainings[t.trainingDate]) dateTrainings[t.trainingDate] = new Set();
+      dateTrainings[t.trainingDate].add(t.company);
+    }
+  });
+  const conflictDates = {};
+  Object.entries(dateTrainings).forEach(([d, comps]) => {
+    if (comps.size > 1) conflictDates[d] = comps.size;
+  });
+
+  // Date header
+  let html = '<div style="display:flex;flex-direction:column">';
+  html += '<div style="display:flex"><div style="min-width:160px;max-width:160px;position:sticky;left:0;z-index:6;background:var(--bg-secondary)"></div><div class="timeline-dates">';
+  dates.forEach(d => {
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const isToday = d.getTime() === today.getTime();
+    const ds = toDateStr(d);
+    const conflictN = conflictDates[ds];
+    html += `<div class="timeline-date-cell${isWeekend ? ' weekend' : ''}${isToday ? ' today' : ''}">
+      <div style="font-size:9px">${'日月火水木金土'[d.getDay()]}</div>
+      <div class="timeline-date-day">${d.getDate()}</div>
+      ${conflictN ? `<div class="timeline-conflict" title="同日${conflictN}社">${conflictN}</div>` : ''}
+    </div>`;
+  });
+  html += '</div></div>';
+
+  // Company rows
+  const sortedCompanies = Object.keys(companies).sort();
+  const startMs = dates[0].getTime();
+  const dayWidth = 40;
+
+  sortedCompanies.forEach(comp => {
+    const compTasks = companies[comp];
+    html += `<div class="timeline-company-row">`;
+    html += `<div class="timeline-company-label" onclick="switchView('company')">${escHtml(comp)}</div>`;
+    html += `<div class="timeline-cells" style="position:relative">`;
+
+    // Background cells
+    dates.forEach(d => {
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const isToday = d.getTime() === today.getTime();
+      html += `<div class="timeline-cell${isWeekend ? ' weekend' : ''}${isToday ? ' today' : ''}" style="min-width:${dayWidth}px"></div>`;
+    });
+
+    // Task bars
+    compTasks.forEach(t => {
+      if (!t.dueDate) return;
+      const due = new Date(t.dueDate + 'T00:00:00');
+      const dueMs = due.getTime();
+      const daysDiff = Math.floor((dueMs - startMs) / 86400000);
+      if (daysDiff < -1 || daysDiff >= numDays) return;
+
+      const left = Math.max(0, daysDiff) * dayWidth;
+      const cat = t.category || 'other';
+      const shortTitle = (t.title || '').replace(/^[^:]+:\s*/, '').replace(comp, '').trim();
+      html += `<div class="timeline-bar ${cat}" style="left:${left}px;width:${dayWidth - 2}px" title="${escHtml(t.title)}" onclick="openEditTask('${t._id}')">${escHtml(shortTitle).substring(0, 8)}</div>`;
+    });
+
+    // Training date markers
+    const trainingDates = new Set(compTasks.map(t => t.trainingDate).filter(Boolean));
+    trainingDates.forEach(td => {
+      const tDate = new Date(td + 'T00:00:00');
+      const daysDiff = Math.floor((tDate.getTime() - startMs) / 86400000);
+      if (daysDiff >= 0 && daysDiff < numDays) {
+        html += `<div class="timeline-training-marker" style="left:${daysDiff * dayWidth + dayWidth/2}px" title="研修日: ${td}"></div>`;
+      }
+    });
+
+    html += '</div></div>';
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function toDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ────────────────────────────────────────────
+// C4: Calendar View
+// ────────────────────────────────────────────
+function changeMonth(delta) {
+  if (delta === 0) { const now = new Date(); calYear = now.getFullYear(); calMonth = now.getMonth(); }
+  else { calMonth += delta; if (calMonth > 11) { calMonth = 0; calYear++; } if (calMonth < 0) { calMonth = 11; calYear--; } }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = `${calYear}年${calMonth + 1}月`;
+
+  const tasks = getAllTasksArr();
+  // Index tasks by due date
+  const tasksByDate = {};
+  tasks.forEach(t => {
+    if (!t.dueDate || t.status === 'done') return;
+    if (!tasksByDate[t.dueDate]) tasksByDate[t.dueDate] = [];
+    tasksByDate[t.dueDate].push(t);
+  });
+
+  // Detect conflicts (E5)
+  const trainingsByDate = {};
+  tasks.forEach(t => {
+    if (t.trainingDate && t.status !== 'done') {
+      if (!trainingsByDate[t.trainingDate]) trainingsByDate[t.trainingDate] = new Set();
+      trainingsByDate[t.trainingDate].add(t.company);
+    }
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  const startDow = firstDay.getDay();
+  const startOffset = startDow === 0 ? 6 : startDow - 1; // Monday start
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let html = '<div class="cal-grid">';
+  // Headers
+  ['月','火','水','木','金','土','日'].forEach(d => {
+    html += `<div class="cal-day-header">${d}</div>`;
+  });
+
+  // Cells
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startOffset + 1;
+    const isOther = dayNum < 1 || dayNum > daysInMonth;
+    const date = new Date(calYear, calMonth, dayNum);
+    const ds = toDateStr(date);
+    const isToday = date.getTime() === today.getTime();
+    const dayTasks = tasksByDate[ds] || [];
+    const trainComps = trainingsByDate[ds];
+    const hasConflict = trainComps && trainComps.size > 1;
+
+    html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}" onclick="filterByDateAndSwitch('${ds}')">`;
+    if (hasConflict) html += '<div class="cal-day-conflict" title="同日複数社研修"></div>';
+    html += `<div class="cal-day-num">${isOther ? '' : dayNum}</div>`;
+    if (!isOther && dayTasks.length) {
+      html += '<div class="cal-day-tasks">';
+      const show = dayTasks.slice(0, 3);
+      show.forEach(t => {
+        const isOverdue = getDueInfo(t.dueDate).type === 'overdue';
+        html += `<div class="cal-task-dot ${t.category || 'other'}${isOverdue ? ' overdue' : ''}" onclick="event.stopPropagation();openEditTask('${t._id}')">${escHtml((t.title||'').substring(0, 12))}</div>`;
+      });
+      if (dayTasks.length > 3) html += `<div class="cal-day-more">+${dayTasks.length - 3}件</div>`;
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '</div>';
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+function filterByDateAndSwitch(ds) {
+  // Switch to kanban with date filter (show all tasks for that date)
+  currentFilters = { company: '', category: '', priority: '', due: '' };
+  switchView('kanban');
+}
+
+// ────────────────────────────────────────────
+// C2: Company View
+// ────────────────────────────────────────────
+function renderCompanyView() {
+  const tasks = getAllTasksArr();
+  const companies = {};
+  tasks.forEach(t => {
+    const c = t.company || 'その他';
+    if (!companies[c]) companies[c] = { tasks: [], done: 0, total: 0 };
+    companies[c].tasks.push(t);
+    companies[c].total++;
+    if (t.status === 'done') companies[c].done++;
+  });
+
+  const sorted = Object.entries(companies).sort((a, b) => {
+    // Sort by completion rate (ascending = most work remaining first)
+    const ra = a[1].done / a[1].total;
+    const rb = b[1].done / b[1].total;
+    return ra - rb;
+  });
+
+  document.getElementById('companyCount').textContent = `${sorted.length}社`;
+
+  let html = '';
+  sorted.forEach(([name, data]) => {
+    const pct = Math.round(data.done / data.total * 100);
+    const remaining = data.total - data.done;
+    // Sort tasks: todo first, then in_progress, then done
+    const statusOrder = { todo: 0, in_progress: 1, done: 2 };
+    data.tasks.sort((a, b) => (statusOrder[a.status] ?? 1) - (statusOrder[b.status] ?? 1));
+
+    html += `<div class="company-card" id="comp-${escHtml(name).replace(/[^a-zA-Z0-9]/g, '_')}">
+      <div class="company-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+        <div class="company-card-name">${escHtml(name)}</div>
+        <div class="company-card-stats">
+          <span class="company-stat">残 <strong>${remaining}</strong>件</span>
+          <span class="company-stat">${pct}%</span>
+          <div class="company-progress-bar"><div class="company-progress-fill" style="width:${pct}%"></div></div>
+        </div>
+        <span class="company-chevron">&#9654;</span>
+      </div>
+      <div class="company-card-body">`;
+
+    data.tasks.forEach(t => {
+      const dueInfo = getDueInfo(t.dueDate);
+      const isInstructor = t.category === 'instructor';
+      html += `<div class="company-task-row" onclick="openEditTask('${t._id}')" style="cursor:pointer">
+        <span class="company-task-status ${t.status}"></span>
+        <span class="task-category ${t.category || 'other'}" style="font-size:8px">${CATEGORY_LABELS[t.category] || ''}</span>
+        <span class="company-task-title">${escHtml(t.title).replace(escHtml(name), '').replace(/^[：:\s]+/, '')}</span>
+        ${dueInfo.label ? `<span class="company-task-due task-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}
+        ${isInstructor ? '<a class="company-shift-link" href="shift.html" onclick="event.stopPropagation()" title="シフト管理">Shift</a>' : ''}
+      </div>`;
+    });
+
+    html += '</div></div>';
+  });
+
+  document.getElementById('companyList2').innerHTML = html;
+}
+
+// ────────────────────────────────────────────
+// C5: Stats View
+// ────────────────────────────────────────────
+function renderStats() {
+  const tasks = getAllTasksArr();
+  const total = tasks.length;
+  const done = tasks.filter(t => t.status === 'done').length;
+  const todo = tasks.filter(t => t.status === 'todo').length;
+  const inProg = tasks.filter(t => t.status === 'in_progress').length;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const overdue = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate+'T00:00:00') < today).length;
+  const autoGen = tasks.filter(t => t.autoGenerated).length;
+
+  // KPIs
+  document.getElementById('statsKpis').innerHTML = `
+    <div class="stats-kpi"><div class="stats-kpi-value" style="color:var(--accent-blue)">${total}</div><div class="stats-kpi-label">総タスク</div></div>
+    <div class="stats-kpi"><div class="stats-kpi-value" style="color:var(--accent-green)">${done}</div><div class="stats-kpi-label">完了</div></div>
+    <div class="stats-kpi"><div class="stats-kpi-value" style="color:var(--accent-red)">${overdue}</div><div class="stats-kpi-label">期限超過</div></div>
+    <div class="stats-kpi"><div class="stats-kpi-value" style="color:var(--accent-purple)">${autoGen}</div><div class="stats-kpi-label">自動生成</div></div>
+  `;
+
+  // Category breakdown
+  const catCounts = {};
+  Object.keys(CATEGORY_LABELS).forEach(k => catCounts[k] = 0);
+  tasks.forEach(t => { catCounts[t.category || 'other'] = (catCounts[t.category || 'other'] || 0) + 1; });
+  const catColors = { prep: 'blue', material: 'purple', instructor: 'orange', billing: 'green', review: 'cyan', other: 'gray' };
+  const maxCat = Math.max(...Object.values(catCounts), 1);
+
+  let catBars = '';
+  Object.entries(CATEGORY_LABELS).forEach(([k, label]) => {
+    const n = catCounts[k] || 0;
+    const pct = Math.round(n / maxCat * 100);
+    catBars += `<div class="stats-bar-row">
+      <div class="stats-bar-label">${label}</div>
+      <div class="stats-bar-track"><div class="stats-bar-fill ${catColors[k]}" style="width:${pct}%">${n > 0 ? n : ''}</div></div>
+      <div class="stats-bar-value">${n}</div>
+    </div>`;
+  });
+
+  // Status donut
+  const r = 50, cx = 60, cy = 60, circ = 2 * Math.PI * r;
+  const donuts = [
+    { n: done, color: '#42c760', label: '完了' },
+    { n: inProg, color: '#e8b840', label: '進行中' },
+    { n: todo, color: '#5aadff', label: '未着手' },
+  ];
+  let donutSvg = `<svg viewBox="0 0 120 120">`;
+  let offset = 0;
+  donuts.forEach(d => {
+    const pct = total ? d.n / total : 0;
+    const dash = pct * circ;
+    donutSvg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="16" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="-${offset}" opacity="0.85"/>`;
+    offset += dash;
+  });
+  donutSvg += '</svg>';
+
+  const completionPct = total ? Math.round(done / total * 100) : 0;
+  let legend = '';
+  donuts.forEach(d => {
+    legend += `<div class="stats-legend-item"><div class="stats-legend-dot" style="background:${d.color}"></div>${d.label}: ${d.n}件</div>`;
+  });
+
+  // Priority breakdown
+  const prioCounts = { urgent: 0, high: 0, medium: 0, low: 0 };
+  tasks.filter(t => t.status !== 'done').forEach(t => { prioCounts[t.priority || 'medium']++; });
+  const prioColors = { urgent: 'red', high: 'orange', medium: 'yellow', low: 'blue' };
+  const maxPrio = Math.max(...Object.values(prioCounts), 1);
+  let prioBars = '';
+  Object.entries(PRIORITY_LABELS).forEach(([k, label]) => {
+    const n = prioCounts[k] || 0;
+    const pct = Math.round(n / maxPrio * 100);
+    prioBars += `<div class="stats-bar-row">
+      <div class="stats-bar-label">${label}</div>
+      <div class="stats-bar-track"><div class="stats-bar-fill ${prioColors[k]}" style="width:${pct}%">${n > 0 ? n : ''}</div></div>
+      <div class="stats-bar-value">${n}</div>
+    </div>`;
+  });
+
+  // Company progress top 10
+  const compProgress = {};
+  tasks.forEach(t => {
+    const c = t.company || 'その他';
+    if (!compProgress[c]) compProgress[c] = { done: 0, total: 0 };
+    compProgress[c].total++;
+    if (t.status === 'done') compProgress[c].done++;
+  });
+  const topComps = Object.entries(compProgress).sort((a, b) => a[1].done/a[1].total - b[1].done/b[1].total).slice(0, 10);
+  let compBars = '';
+  topComps.forEach(([name, data]) => {
+    const pct = Math.round(data.done / data.total * 100);
+    compBars += `<div class="stats-bar-row">
+      <div class="stats-bar-label" style="min-width:100px;font-size:10px">${escHtml(name).substring(0, 10)}</div>
+      <div class="stats-bar-track"><div class="stats-bar-fill green" style="width:${pct}%">${pct}%</div></div>
+      <div class="stats-bar-value">${data.done}/${data.total}</div>
+    </div>`;
+  });
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stats-panel">
+      <h4>ステータス分布</h4>
+      <div class="stats-donut-wrap">
+        <div class="stats-donut">${donutSvg}
+          <div class="stats-donut-center"><div class="big">${completionPct}%</div><div class="small">完了率</div></div>
+        </div>
+        <div class="stats-legend">${legend}</div>
+      </div>
+    </div>
+    <div class="stats-panel">
+      <h4>カテゴリ別タスク数</h4>
+      <div class="stats-bar-chart">${catBars}</div>
+    </div>
+    <div class="stats-panel">
+      <h4>優先度分布（未完了）</h4>
+      <div class="stats-bar-chart">${prioBars}</div>
+    </div>
+    <div class="stats-panel">
+      <h4>企業別進捗</h4>
+      <div class="stats-bar-chart">${compBars}</div>
+    </div>
+  `;
 }
 </script>
 </body>
