@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教材準備 | NozaBoard</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117; --card: #161b22; --card-hover: #1c2129;
+  --border: #30363d; --border-light: #21262d;
+  --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+  --blue: #58a6ff; --green: #3fb950; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; --orange: #f0883e;
+  --radius: 8px;
+}
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+
+/* Login */
+.login-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; justify-content: center; align-items: center;
+}
+.login-container {
+  text-align: center; padding: 48px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  max-width: 400px; width: 90%;
+}
+.login-container h1 {
+  font-size: 20px; font-weight: 700; margin-bottom: 8px;
+  background: linear-gradient(135deg, #e6edf3, #58a6ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.login-container p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.login-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+}
+.login-input:focus { border-color: var(--blue); }
+.login-btn {
+  width: 100%; padding: 12px; margin-top: 16px;
+  background: linear-gradient(135deg, #238636, #3fb950);
+  border: none; border-radius: 8px; color: white;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+}
+.login-btn:hover { opacity: 0.9; }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-error { color: var(--red); font-size: 13px; margin-top: 12px; display: none; }
+.login-loading { color: var(--text2); font-size: 13px; margin-top: 12px; display: none; }
+
+/* Main App */
+.container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 100px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Header */
+.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+.back-btn { padding: 6px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-size: 13px; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block; }
+.back-btn:hover { background: var(--card-hover); color: var(--text); text-decoration: none; }
+.page-header h1 { font-size: 22px; font-weight: 700; }
+.page-header .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* Summary Cards */
+.summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+.summary-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.summary-val { font-size: 28px; font-weight: 700; }
+.summary-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border-light); }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); text-align: center; }
+.data-table th { background: var(--card); color: var(--text2); font-weight: 600; position: sticky; top: 0; z-index: 2; white-space: nowrap; cursor: pointer; user-select: none; }
+.data-table th:hover { color: var(--text); }
+.data-table td { background: var(--bg); }
+.data-table tbody tr:hover td { background: var(--card); }
+.data-table .text-left { text-align: left; }
+.row-done td { opacity: 0.45; }
+
+/* Status badges */
+.badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; user-select: none; transition: all 0.15s; }
+.badge:hover { transform: scale(1.08); }
+.badge-gforms { background: rgba(63,185,80,0.15); color: var(--green); }
+.badge-tforms { background: rgba(88,166,255,0.15); color: var(--blue); }
+.badge-done { background: rgba(63,185,80,0.15); color: var(--green); }
+.badge-pending { background: rgba(248,81,73,0.15); color: var(--red); }
+
+/* Day info */
+.day-info { font-size: 12px; white-space: nowrap; }
+.day-count { font-weight: 600; color: var(--purple); }
+.day-dates { color: var(--text2); margin-left: 4px; }
+
+/* Save Button */
+.save-fab {
+  position: fixed; bottom: 24px; right: 24px; z-index: 100;
+  display: none; align-items: center; gap: 8px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #238636, #3fb950);
+  border: none; border-radius: 12px;
+  color: white; font-size: 14px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(63,185,80,0.3);
+  transition: all 0.2s;
+}
+.save-fab:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(63,185,80,0.4); }
+.save-fab:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.save-badge { background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+
+/* Reload */
+.reload-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #1f6feb, #58a6ff);
+  border: none; border-radius: 8px;
+  color: white; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.reload-btn:hover { opacity: 0.9; }
+
+/* Toast */
+.toast {
+  position: fixed; top: 70px; right: 24px; z-index: 200;
+  padding: 12px 20px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 500;
+  transform: translateX(120%); transition: transform 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.toast.show { transform: translateX(0); }
+.toast-success { background: #238636; color: white; }
+.toast-error { background: var(--red); color: white; }
+
+/* Loading */
+@keyframes loadFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes loadSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+.load-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 70vh; gap: 24px; animation: loadFadeIn 0.5s ease;
+}
+.load-logo { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #e6edf3, #58a6ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.load-sub { font-size: 14px; color: var(--text3); }
+.load-bar { width: 200px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.load-bar-inner { width: 40%; height: 100%; background: var(--blue); border-radius: 2px; animation: loadSlide 1.2s ease infinite; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { padding: 16px 12px 100px; }
+  .page-header h1 { font-size: 18px; }
+  .summary { grid-template-columns: repeat(2, 1fr); }
+  .summary-val { font-size: 22px; }
+  .data-table { font-size: 11px; }
+  .data-table th, .data-table td { padding: 8px 6px; }
+  .badge { font-size: 10px; padding: 2px 6px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-overlay" id="loginOverlay" style="display:none;">
+  <div class="login-container">
+    <h1>NozaBoard</h1>
+    <p>教材準備状況</p>
+    <input type="password" class="login-input" id="loginPassword" placeholder="パスワードを入力" autofocus>
+    <button class="login-btn" id="loginBtn">ログイン</button>
+    <div class="login-error" id="loginError">パスワードが正しくありません</div>
+    <div class="login-loading" id="loginLoading">認証中...</div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app" style="display:none;">
+
+  <!-- Loading -->
+  <div class="load-screen" id="loadingScreen" style="display:none;">
+    <div class="load-logo">NozaBoard</div>
+    <div class="load-sub">教材準備データを読み込み中...</div>
+    <div class="load-bar"><div class="load-bar-inner"></div></div>
+  </div>
+
+  <div class="container" id="mainContent" style="display:none;">
+    <!-- Header -->
+    <div class="page-header">
+      <a href="index.html" class="back-btn">← ダッシュボード</a>
+      <h1>教材準備状況</h1>
+      <div class="header-right">
+        <span class="sub" id="lastEditInfo"></span>
+        <button class="reload-btn" onclick="reloadData()">再読込</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary">
+      <div class="summary-card">
+        <div class="summary-val" id="sumTrainings" style="color:var(--blue)">-</div>
+        <div class="summary-label">研修案件</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="sumDays" style="color:var(--purple)">-</div>
+        <div class="summary-label">総Day数</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="sumCreated">-</div>
+        <div class="summary-label">教材作成</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="sumSent">-</div>
+        <div class="summary-label">教材送付</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table class="data-table" id="materialsTable">
+        <thead>
+          <tr>
+            <th class="text-left" data-col="company">企業名</th>
+            <th class="text-left" data-col="content">研修内容</th>
+            <th data-col="days">日程</th>
+            <th data-col="formType">フォーム</th>
+            <th data-col="created">作成</th>
+            <th data-col="sent">送付</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Save FAB -->
+<button class="save-fab" id="saveFab" onclick="saveData()">
+  保存 <span class="save-badge" id="saveBadge">0</span>
+</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// Config
+// ============================================================
+const API_BASE = 'https://api.github.com';
+const REPO = 'TomokiNozawa/dashboard-data';
+const FILE_PATH = 'materials-data.json';
+const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4h
+
+let pat = null;
+let materialsData = null;
+let fileSha = null;
+let changeCount = 0;
+let sortState = { column: 'days', direction: 'asc' };
+
+// ============================================================
+// Authentication (shared with shift.html via sessionStorage)
+// ============================================================
+async function init() {
+  const storedPass = sessionStorage.getItem('dk_pass');
+  const storedTs = sessionStorage.getItem('dk_ts');
+
+  if (storedPass && storedTs) {
+    const elapsed = Date.now() - parseInt(storedTs, 10);
+    if (elapsed < SESSION_TIMEOUT) {
+      try {
+        pat = await decryptPAT(storedPass);
+        sessionStorage.setItem('dk_ts', Date.now().toString());
+        showApp();
+        return;
+      } catch (e) {
+        sessionStorage.removeItem('dk_pass');
+        sessionStorage.removeItem('dk_ts');
+      }
+    } else {
+      sessionStorage.removeItem('dk_pass');
+      sessionStorage.removeItem('dk_ts');
+    }
+  }
+  showLogin();
+}
+
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  const pwInput = document.getElementById('loginPassword');
+  pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  setTimeout(() => pwInput.focus(), 100);
+}
+
+async function doLogin() {
+  const password = document.getElementById('loginPassword').value;
+  if (!password) return;
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  const loadEl = document.getElementById('loginLoading');
+  btn.disabled = true;
+  errEl.style.display = 'none';
+  loadEl.style.display = 'block';
+
+  try {
+    pat = await decryptPAT(password);
+    sessionStorage.setItem('dk_pass', password);
+    sessionStorage.setItem('dk_ts', Date.now().toString());
+    showApp();
+  } catch (e) {
+    errEl.style.display = 'block';
+    loadEl.style.display = 'none';
+    btn.disabled = false;
+    document.getElementById('loginPassword').select();
+  }
+}
+
+async function decryptPAT(password) {
+  const resp = await fetch('encrypted-pat.json');
+  const payload = await resp.json();
+  const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+  const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-CBC', length: 256 }, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, encData);
+  const token = new TextDecoder().decode(decrypted).replace(/[\x00-\x1f]/g, '').trim();
+  if (!token || token.length < 10) throw new Error('Invalid');
+  return token;
+}
+
+// ============================================================
+// App
+// ============================================================
+async function showApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('loadingScreen').style.display = 'flex';
+  document.getElementById('mainContent').style.display = 'none';
+
+  try {
+    await loadData();
+    renderApp();
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+  } catch (e) {
+    document.getElementById('loadingScreen').innerHTML =
+      `<p style="color:var(--red);">読み込みに失敗しました: ${e.message}</p>
+       <button class="back-btn" onclick="location.reload()" style="margin-top:12px;">再試行</button>`;
+  }
+}
+
+// ============================================================
+// GitHub API
+// ============================================================
+function apiHeaders() {
+  return { 'Authorization': `token ${pat}`, 'Accept': 'application/vnd.github.v3+json' };
+}
+
+async function loadData() {
+  const url = `${API_BASE}/repos/${REPO}/contents/${FILE_PATH}?t=${Date.now()}`;
+  const resp = await fetch(url, { headers: apiHeaders(), cache: 'no-store' });
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+  const json = await resp.json();
+  fileSha = json.sha;
+  const binary = atob(json.content.replace(/\n/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  materialsData = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+}
+
+async function saveData() {
+  const fab = document.getElementById('saveFab');
+  fab.disabled = true;
+  fab.textContent = '保存中...';
+
+  try {
+    materialsData.lastEditedInBrowser = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '-');
+    const jsonStr = JSON.stringify(materialsData, null, 2);
+    const utf8Bytes = new TextEncoder().encode(jsonStr);
+    let binaryStr = '';
+    utf8Bytes.forEach(b => binaryStr += String.fromCharCode(b));
+    const content = btoa(binaryStr);
+
+    const resp = await fetch(`${API_BASE}/repos/${REPO}/contents/${FILE_PATH}`, {
+      method: 'PUT',
+      headers: apiHeaders(),
+      body: JSON.stringify({ message: '教材データ更新（ブラウザ編集）', content, sha: fileSha })
+    });
+
+    if (resp.status === 409) {
+      showToast('他で更新されています。再読み込みしてください。', 'error');
+      fab.disabled = false;
+      fab.innerHTML = '保存 <span class="save-badge" id="saveBadge">' + changeCount + '</span>';
+      return;
+    }
+    if (!resp.ok) throw new Error(`Save failed: ${resp.status}`);
+
+    const result = await resp.json();
+    fileSha = result.content.sha;
+    changeCount = 0;
+    updateSaveBadge();
+    showToast('保存しました', 'success');
+  } catch (e) {
+    showToast('保存に失敗: ' + e.message, 'error');
+  }
+  fab.disabled = false;
+  fab.innerHTML = '保存 <span class="save-badge" id="saveBadge">' + changeCount + '</span>';
+}
+
+async function reloadData() {
+  if (changeCount > 0 && !confirm('未保存の変更があります。再読み込みしますか？')) return;
+  try {
+    await loadData();
+    changeCount = 0;
+    renderApp();
+    updateSaveBadge();
+    showToast('再読み込みしました', 'success');
+  } catch (e) {
+    showToast('再読み込み失敗: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// Render
+// ============================================================
+function renderApp() {
+  renderSummary();
+  renderTable();
+  document.getElementById('lastEditInfo').textContent = '最終編集: ' + (materialsData.lastEditedInBrowser || '-');
+}
+
+function renderSummary() {
+  const t = materialsData.trainings;
+  const total = t.length;
+  const totalDays = t.reduce((s, x) => s + x.days.length, 0);
+  const created = t.filter(x => x.created).length;
+  const sent = t.filter(x => x.sent).length;
+
+  document.getElementById('sumTrainings').textContent = total;
+  document.getElementById('sumDays').textContent = totalDays;
+
+  const createdEl = document.getElementById('sumCreated');
+  createdEl.textContent = `${created}/${total}`;
+  createdEl.style.color = created === total ? 'var(--green)' : created >= total / 2 ? 'var(--yellow)' : 'var(--red)';
+
+  const sentEl = document.getElementById('sumSent');
+  sentEl.textContent = `${sent}/${total}`;
+  sentEl.style.color = sent === total ? 'var(--green)' : sent >= total / 2 ? 'var(--yellow)' : 'var(--red)';
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  const sorted = [...materialsData.trainings];
+
+  // Sort
+  sorted.sort((a, b) => {
+    let va, vb;
+    switch (sortState.column) {
+      case 'company': va = a.company; vb = b.company; break;
+      case 'content': va = a.content; vb = b.content; break;
+      case 'days': va = a.days[0]?.date || ''; vb = b.days[0]?.date || ''; break;
+      case 'formType': va = a.formType; vb = b.formType; break;
+      case 'created': va = a.created ? 1 : 0; vb = b.created ? 1 : 0; break;
+      case 'sent': va = a.sent ? 1 : 0; vb = b.sent ? 1 : 0; break;
+      default: va = a.days[0]?.date || ''; vb = b.days[0]?.date || '';
+    }
+    const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+    return sortState.direction === 'asc' ? cmp : -cmp;
+  });
+
+  tbody.innerHTML = sorted.map(t => {
+    const idx = materialsData.trainings.indexOf(t);
+    const isDone = t.created && t.sent;
+    const dayCount = t.days.length;
+    const firstDate = t.days[0]?.date.slice(5) || '';
+    const lastDate = t.days[t.days.length - 1]?.date.slice(5) || '';
+    const firstDow = t.days[0]?.dow || '';
+    const lastDow = t.days[t.days.length - 1]?.dow || '';
+
+    let dayStr;
+    if (dayCount === 1) {
+      dayStr = `<span class="day-count">Day1</span><span class="day-dates">${firstDate}(${firstDow})</span>`;
+    } else {
+      dayStr = `<span class="day-count">Day1-${dayCount}</span><span class="day-dates">${firstDate}(${firstDow})～${lastDate}(${lastDow})</span>`;
+    }
+
+    const formBadge = t.formType === 'Google Forms'
+      ? `<span class="badge badge-gforms" onclick="toggleForm(${idx})">G Forms</span>`
+      : `<span class="badge badge-tforms" onclick="toggleForm(${idx})">T Forms</span>`;
+
+    const createdBadge = t.created
+      ? `<span class="badge badge-done" onclick="toggleCreated(${idx})">&#10003; 済</span>`
+      : `<span class="badge badge-pending" onclick="toggleCreated(${idx})">— 未</span>`;
+
+    const sentBadge = t.sent
+      ? `<span class="badge badge-done" onclick="toggleSent(${idx})">&#10003; 済</span>`
+      : `<span class="badge badge-pending" onclick="toggleSent(${idx})">— 未</span>`;
+
+    return `<tr class="${isDone ? 'row-done' : ''}">
+      <td class="text-left">${esc(t.company)}</td>
+      <td class="text-left">${esc(t.content)}</td>
+      <td><span class="day-info">${dayStr}</span></td>
+      <td>${formBadge}</td>
+      <td>${createdBadge}</td>
+      <td>${sentBadge}</td>
+    </tr>`;
+  }).join('');
+
+  // Sort arrows
+  document.querySelectorAll('#materialsTable th').forEach(th => {
+    const col = th.dataset.col;
+    const arrow = col === sortState.column ? (sortState.direction === 'asc' ? ' ↑' : ' ↓') : '';
+    th.textContent = th.textContent.replace(/ [↑↓]$/, '') + arrow;
+  });
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ============================================================
+// Actions
+// ============================================================
+function toggleForm(idx) {
+  const t = materialsData.trainings[idx];
+  t.formType = t.formType === 'Google Forms' ? 'Teams Forms' : 'Google Forms';
+  markChanged();
+}
+
+function toggleCreated(idx) {
+  materialsData.trainings[idx].created = !materialsData.trainings[idx].created;
+  markChanged();
+}
+
+function toggleSent(idx) {
+  materialsData.trainings[idx].sent = !materialsData.trainings[idx].sent;
+  markChanged();
+}
+
+function markChanged() {
+  changeCount++;
+  updateSaveBadge();
+  renderApp();
+}
+
+function updateSaveBadge() {
+  const fab = document.getElementById('saveFab');
+  const badge = document.getElementById('saveBadge');
+  if (changeCount > 0) {
+    fab.style.display = 'flex';
+    badge.textContent = changeCount;
+  } else {
+    fab.style.display = 'none';
+  }
+}
+
+// ============================================================
+// Sort
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('#materialsTable th').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (!col) return;
+      if (sortState.column === col) {
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.column = col;
+        sortState.direction = 'asc';
+      }
+      renderTable();
+    });
+  });
+});
+
+// ============================================================
+// Toast
+// ============================================================
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast toast-${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// Start
+// ============================================================
+init();
+</script>
+</body>
+</html>
