@@ -1636,99 +1636,133 @@ function shiftTimeline(days) {
 
 function renderTimeline() {
   const container = document.getElementById('timelineGrid');
-  const tasks = getActiveTasks();
+  const tasks = getAllTasksArr();
   const today = new Date(); today.setHours(0,0,0,0);
-  const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() - startDate.getDay() + 1 + timelineOffset); // Monday
-  const numDays = 28; // 4 weeks
-  const dates = [];
-  for (let i = 0; i < numDays; i++) {
-    const d = new Date(startDate); d.setDate(d.getDate() + i);
-    dates.push(d);
-  }
 
-  // Title
-  const s = dates[0], e = dates[numDays - 1];
-  document.getElementById('timelineTitle').textContent =
-    `${s.getMonth()+1}/${s.getDate()} - ${e.getMonth()+1}/${e.getDate()}`;
-
-  // Group tasks by company
+  // Group by company, collect training dates
   const companies = {};
   tasks.forEach(t => {
     const c = t.company || 'その他';
-    if (!companies[c]) companies[c] = [];
-    companies[c].push(t);
+    if (!companies[c]) companies[c] = { tasks: [], trainingDates: new Set() };
+    companies[c].tasks.push(t);
+    if (t.trainingDate) companies[c].trainingDates.add(t.trainingDate);
   });
 
-  // Detect conflicts (E5): same training date, multiple companies
-  const dateTrainings = {};
+  // Sort companies by earliest training date
+  const sorted = Object.entries(companies).sort((a, b) => {
+    const aMin = [...a[1].trainingDates].sort()[0] || '9999';
+    const bMin = [...b[1].trainingDates].sort()[0] || '9999';
+    return aMin.localeCompare(bMin);
+  });
+
+  // Detect conflicts (E5)
+  const dateCompanies = {};
   tasks.forEach(t => {
-    if (t.trainingDate) {
-      if (!dateTrainings[t.trainingDate]) dateTrainings[t.trainingDate] = new Set();
-      dateTrainings[t.trainingDate].add(t.company);
+    if (t.trainingDate && t.status !== 'done') {
+      if (!dateCompanies[t.trainingDate]) dateCompanies[t.trainingDate] = new Set();
+      dateCompanies[t.trainingDate].add(t.company);
     }
   });
-  const conflictDates = {};
-  Object.entries(dateTrainings).forEach(([d, comps]) => {
-    if (comps.size > 1) conflictDates[d] = comps.size;
-  });
 
-  // Date header
-  let html = '<div style="display:flex;flex-direction:column">';
-  html += '<div style="display:flex"><div style="min-width:160px;max-width:160px;position:sticky;left:0;z-index:6;background:var(--bg-secondary)"></div><div class="timeline-dates">';
-  dates.forEach(d => {
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-    const isToday = d.getTime() === today.getTime();
-    const ds = toDateStr(d);
-    const conflictN = conflictDates[ds];
-    html += `<div class="timeline-date-cell${isWeekend ? ' weekend' : ''}${isToday ? ' today' : ''}">
-      <div style="font-size:9px">${'日月火水木金土'[d.getDay()]}</div>
-      <div class="timeline-date-day">${d.getDate()}</div>
-      ${conflictN ? `<div class="timeline-conflict" title="同日${conflictN}社">${conflictN}</div>` : ''}
-    </div>`;
-  });
-  html += '</div></div>';
+  // Prep steps in order
+  const STEP_ORDER = ['instructor','premtg','roster_send','material_create','survey_prep','material_send'];
+  const STEP_LABELS = { instructor:'インストラクター調整', premtg:'事前mtg', roster_send:'名簿送付', material_create:'教材作成', survey_prep:'アンケート準備', material_send:'教材送付', invoice:'請求書', report:'報告資料', review_remind:'復習リマインド' };
+  const STEP_COLORS = { instructor:'var(--accent-orange)', premtg:'var(--accent-blue)', roster_send:'var(--accent-blue)', material_create:'var(--accent-purple)', survey_prep:'var(--accent-blue)', material_send:'var(--accent-purple)', invoice:'var(--accent-green)', report:'var(--accent-green)', review_remind:'var(--accent-cyan)' };
 
-  // Company rows
-  const sortedCompanies = Object.keys(companies).sort();
-  const startMs = dates[0].getTime();
-  const dayWidth = 40;
+  let html = '<div style="display:flex;flex-direction:column;gap:12px">';
 
-  sortedCompanies.forEach(comp => {
-    const compTasks = companies[comp];
-    html += `<div class="timeline-company-row">`;
-    html += `<div class="timeline-company-label" onclick="switchView('company')">${escHtml(comp)}</div>`;
-    html += `<div class="timeline-cells" style="position:relative">`;
+  // Legend
+  html += '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-secondary);align-items:center">';
+  html += '<span style="font-weight:600;color:var(--text-muted)">凡例:</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--accent-green);border-radius:50%"></span>完了</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--accent-yellow);border-radius:2px"></span>進行中</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--text-muted);border-radius:2px"></span>未着手</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--accent-red);border-radius:2px"></span>期限超過</span>';
+  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:3px;background:var(--accent-red);border-radius:1px"></span>研修日</span>';
+  html += '</div>';
 
-    // Background cells
-    dates.forEach(d => {
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      const isToday = d.getTime() === today.getTime();
-      html += `<div class="timeline-cell${isWeekend ? ' weekend' : ''}${isToday ? ' today' : ''}" style="min-width:${dayWidth}px"></div>`;
+  sorted.forEach(([comp, data]) => {
+    const activeTasks = data.tasks.filter(t => t.status !== 'done');
+    const doneTasks = data.tasks.filter(t => t.status === 'done');
+    const total = data.tasks.length;
+    const doneCount = doneTasks.length;
+    const pct = total ? Math.round(doneCount / total * 100) : 0;
+    const trainingDatesArr = [...data.trainingDates].sort();
+
+    // Check for conflicts
+    const hasConflict = trainingDatesArr.some(td => dateCompanies[td] && dateCompanies[td].size > 1);
+
+    html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;${hasConflict ? 'border-left:3px solid var(--accent-red);' : ''}">`;
+
+    // Company header
+    html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">`;
+    html += `<div style="font-size:14px;font-weight:600;flex:1">${escHtml(comp)}</div>`;
+    if (trainingDatesArr.length) {
+      html += `<div style="display:flex;gap:6px;align-items:center">`;
+      trainingDatesArr.forEach(td => {
+        const d = new Date(td + 'T00:00:00');
+        const dow = '日月火水木金土'[d.getDay()];
+        const m = String(d.getMonth()+1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
+        const diff = Math.floor((d - today) / 86400000);
+        const urgency = diff < 0 ? 'color:var(--text-muted)' : diff <= 7 ? 'color:var(--accent-red);font-weight:700' : 'color:var(--accent-orange)';
+        const conflictN = dateCompanies[td]?.size || 0;
+        html += `<span style="font-size:12px;${urgency}" title="${conflictN > 1 ? '同日'+conflictN+'社研修' : '研修日'}">${m}/${day}(${dow})${diff >= 0 ? ' '+diff+'日後' : ''}</span>`;
+      });
+      html += `</div>`;
+    }
+    html += `<div style="display:flex;align-items:center;gap:6px">`;
+    html += `<div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--accent-green);border-radius:3px"></div></div>`;
+    html += `<span style="font-size:11px;color:var(--text-muted)">${doneCount}/${total}</span>`;
+    html += `</div></div>`;
+
+    // Preparation steps as a pipeline
+    html += `<div style="display:flex;flex-wrap:wrap;gap:6px">`;
+
+    // Collect steps for this company
+    const tasksByRule = {};
+    data.tasks.forEach(t => {
+      const rule = t.ruleId || 'manual';
+      if (!tasksByRule[rule]) tasksByRule[rule] = [];
+      tasksByRule[rule].push(t);
     });
 
-    // Task bars
-    compTasks.forEach(t => {
-      if (!t.dueDate) return;
-      const due = new Date(t.dueDate + 'T00:00:00');
-      const dueMs = due.getTime();
-      const daysDiff = Math.floor((dueMs - startMs) / 86400000);
-      if (daysDiff < -1 || daysDiff >= numDays) return;
+    // Show ordered steps
+    const stepsToShow = [...STEP_ORDER];
+    // Also add any other rules not in STEP_ORDER
+    Object.keys(tasksByRule).forEach(r => { if (!stepsToShow.includes(r) && r !== 'manual') stepsToShow.push(r); });
+    // Add manual tasks
+    if (tasksByRule['manual']) stepsToShow.push('manual');
 
-      const left = Math.max(0, daysDiff) * dayWidth;
-      const cat = t.category || 'other';
-      const shortTitle = (t.title || '').replace(/^[^:]+:\s*/, '').replace(comp, '').trim();
-      html += `<div class="timeline-bar ${cat}" style="left:${left}px;width:${dayWidth - 2}px" title="${escHtml(t.title)}" onclick="openEditTask('${t._id}')">${escHtml(shortTitle).substring(0, 8)}</div>`;
-    });
+    stepsToShow.forEach(ruleId => {
+      const ruleTasks = tasksByRule[ruleId];
+      if (!ruleTasks) return;
 
-    // Training date markers
-    const trainingDates = new Set(compTasks.map(t => t.trainingDate).filter(Boolean));
-    trainingDates.forEach(td => {
-      const tDate = new Date(td + 'T00:00:00');
-      const daysDiff = Math.floor((tDate.getTime() - startMs) / 86400000);
-      if (daysDiff >= 0 && daysDiff < numDays) {
-        html += `<div class="timeline-training-marker" style="left:${daysDiff * dayWidth + dayWidth/2}px" title="研修日: ${td}"></div>`;
-      }
+      ruleTasks.forEach(t => {
+        const isDone = t.status === 'done';
+        const isInProgress = t.status === 'in_progress';
+        const dueInfo = getDueInfo(t.dueDate);
+        const isOverdue = dueInfo.type === 'overdue';
+
+        let bg, textColor, borderStyle;
+        if (isDone) { bg = 'rgba(66,199,96,0.12)'; textColor = 'var(--accent-green)'; borderStyle = '1px solid rgba(66,199,96,0.3)'; }
+        else if (isOverdue) { bg = 'rgba(248,81,73,0.12)'; textColor = 'var(--accent-red)'; borderStyle = '1px solid rgba(248,81,73,0.3)'; }
+        else if (isInProgress) { bg = 'rgba(232,184,64,0.12)'; textColor = 'var(--accent-yellow)'; borderStyle = '1px solid rgba(232,184,64,0.3)'; }
+        else { bg = 'var(--bg-column)'; textColor = 'var(--text-secondary)'; borderStyle = '1px solid var(--border-light)'; }
+
+        const label = STEP_LABELS[ruleId] || (t.title || '').replace(/^[^:]+:\s*/, '');
+        const shortLabel = label.length > 12 ? label.substring(0, 12) + '…' : label;
+        // Show training type for per-day tasks
+        const extra = (ruleId !== 'premtg' && ruleId !== 'roster_send' && ruleId !== 'invoice' && ruleId !== 'manual' && t.trainingType)
+          ? `<div style="font-size:8px;opacity:0.7;margin-top:1px">${escHtml(t.trainingType).substring(0, 16)}</div>` : '';
+        const dueLine = !isDone && t.dueDate ? `<div style="font-size:8px;opacity:0.7;margin-top:1px">${dueInfo.label.replace('期限: ','')}</div>` : '';
+
+        html += `<div onclick="openEditTask('${t._id}')" style="cursor:pointer;padding:6px 10px;background:${bg};border:${borderStyle};border-radius:6px;color:${textColor};font-size:11px;font-weight:500;min-width:80px;transition:all 0.15s" title="${escHtml(t.title)}${t.dueDate ? '\n期限: '+t.dueDate : ''}">`;
+        html += `${isDone ? '<s>' : ''}${escHtml(shortLabel)}${isDone ? '</s>' : ''}`;
+        html += extra;
+        html += dueLine;
+        html += `</div>`;
+      });
     });
 
     html += '</div></div>';
