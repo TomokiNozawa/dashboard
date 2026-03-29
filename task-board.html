@@ -1232,14 +1232,16 @@ function getDueInfo(dueDate) {
   const today = new Date(); today.setHours(0,0,0,0);
   const due = new Date(dueDate + 'T00:00:00'); due.setHours(0,0,0,0);
   const diff = Math.floor((due - today) / 86400000);
-
-  if (diff < 0) return { type: 'overdue', label: `${Math.abs(diff)}日超過` };
-  if (diff === 0) return { type: 'today', label: '今日' };
-  if (diff <= 3) return { type: 'soon', label: `${diff}日後` };
-  // Format as MM/DD
+  const dow = '日月火水木金土'[due.getDay()];
   const m = String(due.getMonth()+1).padStart(2,'0');
   const d = String(due.getDate()).padStart(2,'0');
-  return { type: 'normal', label: `${m}/${d}` };
+  const dateStr = `${m}/${d}(${dow})`;
+
+  if (diff < 0) return { type: 'overdue', label: `${dateStr} ${Math.abs(diff)}日超過` };
+  if (diff === 0) return { type: 'today', label: `${dateStr} 今日` };
+  if (diff === 1) return { type: 'soon', label: `${dateStr} 明日` };
+  if (diff <= 7) return { type: 'soon', label: `${dateStr} ${diff}日後` };
+  return { type: 'normal', label: dateStr };
 }
 
 // ────────────────────────────────────────────
