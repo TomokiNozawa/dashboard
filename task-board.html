@@ -1245,8 +1245,8 @@ function renderTaskCard(t) {
       ${t.trainingType ? `<div class="task-card-tags"><span class="task-tag">${escHtml(t.trainingType)}</span></div>` : ''}
       <div class="task-card-actions" onclick="event.stopPropagation()">
         ${t.status !== 'todo' ? `<button class="task-action-btn" onclick="moveTask('${t._id}','todo')" title="未着手に戻す">&#9664; 未着手</button>` : ''}
-        ${t.status === 'todo' ? `<button class="task-action-btn progress" onclick="moveTask('${t._id}','in_progress')" title="進行中へ">進行中 &#9654;</button>` : ''}
-        ${t.status === 'in_progress' ? `<button class="task-action-btn done" onclick="moveTask('${t._id}','done')" title="完了へ">&#10003; 完了</button>` : ''}
+        ${t.status !== 'in_progress' ? `<button class="task-action-btn progress" onclick="moveTask('${t._id}','in_progress')" title="進行中へ">進行中</button>` : ''}
+        ${t.status !== 'done' ? `<button class="task-action-btn done" onclick="moveTask('${t._id}','done')" title="完了へ">&#10003; 完了</button>` : ''}
       </div>
     </div>`;
 }
