@@ -203,8 +203,9 @@ body {
 
 /* ── Kanban Board ── */
 .board-container {
-  flex: 1; display: flex; gap: 14px; padding: 14px 20px;
+  display: flex; gap: 14px; padding: 14px 20px;
   overflow-x: auto; overflow-y: hidden;
+  height: 100%;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -414,11 +415,11 @@ body {
 .tab-item.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
 .tab-item .tab-kbd { font-size: 9px; color: var(--text-muted); margin-left: 4px; opacity: 0.5; }
 
-.view-container { display: none; flex: 1; overflow: auto; }
-.view-container.active { display: flex; flex-direction: column; }
+.view-container { display: none; flex: 1; overflow: auto; min-height: 0; }
+.view-container.active { display: block; height: 100%; }
 
 /* ── Timeline View (C1) ── */
-.timeline-view { padding: 16px 20px; overflow: auto; }
+.timeline-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .timeline-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .timeline-header h3 { font-size: 15px; font-weight: 600; }
 .timeline-nav { display: flex; gap: 4px; margin-left: auto; }
@@ -483,7 +484,7 @@ body {
 }
 
 /* ── Company View (C2) ── */
-.company-view { padding: 16px 20px; }
+.company-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .company-list { display: flex; flex-direction: column; gap: 8px; }
 .company-card {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -523,7 +524,7 @@ body {
 .company-shift-link:hover { background: rgba(240,136,62,0.1); }
 
 /* ── Calendar View (C4) ── */
-.calendar-view { padding: 16px 20px; }
+.calendar-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
 .cal-header h3 { font-size: 15px; font-weight: 600; min-width: 140px; }
 .cal-nav-btn {
@@ -569,7 +570,7 @@ body {
 }
 
 /* ── Stats View (C5) ── */
-.stats-view { padding: 16px 20px; }
+.stats-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .stats-panel {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -1211,7 +1212,7 @@ function renderTaskCard(t) {
   return `
     <div class="task-card" draggable="true" data-id="${t._id}"
          ondragstart="onDragStart(event)" ondragend="onDragEnd(event)"
-         onclick="openEditTask('${t._id}')">
+         onmouseup="if(!window._dragged)openEditTask('${t._id}')" onmousedown="window._dragged=false">
       <div class="task-card-header">
         <span class="task-priority ${t.priority || 'medium'}"></span>
         <span class="task-category ${catClass}">${catLabel}</span>
@@ -1329,11 +1330,11 @@ let dragInitialized = false;
 function onDragStart(e) {
   const card = e.target.closest('.task-card');
   if (!card) return;
+  window._dragged = true;
   draggedId = card.dataset.id;
   card.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', draggedId);
-  // Delay to let browser capture drag image before visual change
   setTimeout(() => { card.style.opacity = '0.4'; }, 0);
 }
 
