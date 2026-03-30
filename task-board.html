@@ -237,7 +237,7 @@ body {
   display: flex; flex-direction: column; gap: 8px;
   min-height: 100px;
 }
-.column-body.drag-over { background: rgba(90,173,255,0.04); }
+.column-body.drag-over { background: rgba(90,173,255,0.1); outline: 2px dashed var(--accent-blue); outline-offset: -2px; border-radius: var(--radius); }
 
 /* ── Task Card ── */
 .task-card {
@@ -1197,10 +1197,10 @@ function renderBoard() {
     }
 
     col.innerHTML = html;
-
-    // Setup drag & drop
-    setupDragDrop(col, status);
   });
+
+  // Init drag & drop once (event delegation)
+  initDragDrop();
 }
 
 function renderTaskCard(t) {
@@ -1321,69 +1321,71 @@ function clearFilters() {
 }
 
 // ────────────────────────────────────────────
-// Drag & Drop
+// Drag & Drop (event delegation on boardContainer)
 // ────────────────────────────────────────────
 let draggedId = null;
+let dragInitialized = false;
 
 function onDragStart(e) {
-  draggedId = e.target.closest('.task-card').dataset.id;
-  e.target.closest('.task-card').classList.add('dragging');
+  const card = e.target.closest('.task-card');
+  if (!card) return;
+  draggedId = card.dataset.id;
+  card.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', draggedId);
+  // Delay to let browser capture drag image before visual change
+  setTimeout(() => { card.style.opacity = '0.4'; }, 0);
 }
 
 function onDragEnd(e) {
+  const card = e.target.closest('.task-card');
+  if (card) { card.classList.remove('dragging'); card.style.opacity = ''; }
   draggedId = null;
-  document.querySelectorAll('.task-card.dragging').forEach(c => c.classList.remove('dragging'));
   document.querySelectorAll('.column-body.drag-over').forEach(c => c.classList.remove('drag-over'));
 }
 
-function setupDragDrop(colBody, status) {
-  colBody.addEventListener('dragover', e => {
+function initDragDrop() {
+  if (dragInitialized) return;
+  dragInitialized = true;
+  const board = document.getElementById('boardContainer');
+  if (!board) return;
+
+  board.addEventListener('dragover', e => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    colBody.classList.add('drag-over');
+    const colBody = e.target.closest('.column-body');
+    if (colBody) {
+      document.querySelectorAll('.column-body.drag-over').forEach(c => { if (c !== colBody) c.classList.remove('drag-over'); });
+      colBody.classList.add('drag-over');
+    }
   });
-  colBody.addEventListener('dragleave', e => {
-    if (!colBody.contains(e.relatedTarget)) colBody.classList.remove('drag-over');
+
+  board.addEventListener('dragleave', e => {
+    const colBody = e.target.closest('.column-body');
+    if (colBody && !colBody.contains(e.relatedTarget)) {
+      colBody.classList.remove('drag-over');
+    }
   });
-  colBody.addEventListener('drop', e => {
+
+  board.addEventListener('drop', e => {
     e.preventDefault();
-    colBody.classList.remove('drag-over');
+    document.querySelectorAll('.column-body.drag-over').forEach(c => c.classList.remove('drag-over'));
+    const colBody = e.target.closest('.column-body');
+    if (!colBody) return;
+    const column = colBody.closest('.kanban-column');
+    if (!column) return;
+    const status = column.dataset.status;
     const taskId = e.dataTransfer.getData('text/plain');
-    if (!taskId || !db) return;
-    const updates = { status };
+    if (!taskId || !db || !status) return;
+    // Don't update if same status
+    if (allTasks[taskId] && allTasks[taskId].status === status) return;
+    const updates = { status, updatedAt: firebase.database.ServerValue.TIMESTAMP };
     if (status === 'done') updates.completedAt = firebase.database.ServerValue.TIMESTAMP;
     db.ref('tasks/' + taskId).update(updates).then(() => {
-      showToast(`タスクを「${STATUS_LABELS[status]}」に移動しました`, 'success');
+      showToast(`「${STATUS_LABELS[status]}」に移動しました`, 'success');
     });
   });
 }
-
-// ── Mobile touch drag ──
-let touchDragId = null, touchStartX = 0, touchStartY = 0, touchMoved = false;
-
-document.addEventListener('touchstart', e => {
-  const card = e.target.closest('.task-card');
-  if (!card) return;
-  touchDragId = card.dataset.id;
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
-  touchMoved = false;
-}, { passive: true });
-
-document.addEventListener('touchmove', e => {
-  if (!touchDragId) return;
-  const dx = Math.abs(e.touches[0].clientX - touchStartX);
-  const dy = Math.abs(e.touches[0].clientY - touchStartY);
-  if (dx > 10 || dy > 10) touchMoved = true;
-}, { passive: true });
-
-document.addEventListener('touchend', e => {
-  if (touchMoved || !touchDragId) { touchDragId = null; return; }
-  // Tap → open detail (handled by onclick)
-  touchDragId = null;
-});
 
 // ────────────────────────────────────────────
 // Task CRUD
