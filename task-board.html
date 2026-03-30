@@ -289,6 +289,16 @@ body {
 .task-tag { font-size: 9px; color: var(--text-muted); background: var(--border-light); padding: 1px 6px; border-radius: 3px; }
 .task-auto-badge { font-size: 9px; color: var(--accent-purple); }
 
+.task-card-actions { display: flex; gap: 4px; margin-top: 6px; }
+.task-action-btn {
+  padding: 3px 8px; font-size: 10px; font-weight: 600; font-family: var(--font);
+  border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+  background: var(--bg-column); color: var(--text-muted); transition: all var(--transition);
+}
+.task-action-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.08); }
+.task-action-btn.progress:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); background: rgba(232,184,64,0.08); }
+.task-action-btn.done:hover { border-color: var(--accent-green); color: var(--accent-green); background: rgba(66,199,96,0.08); }
+
 /* ── Add Task Placeholder ── */
 .add-task-placeholder {
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -1233,6 +1243,11 @@ function renderTaskCard(t) {
         ${dueInfo.label ? `<span class="task-due ${dueInfo.type}">期限: ${dueInfo.label}</span>` : ''}
       </div>
       ${t.trainingType ? `<div class="task-card-tags"><span class="task-tag">${escHtml(t.trainingType)}</span></div>` : ''}
+      <div class="task-card-actions" onclick="event.stopPropagation()">
+        ${t.status !== 'todo' ? `<button class="task-action-btn" onclick="moveTask('${t._id}','todo')" title="未着手に戻す">&#9664; 未着手</button>` : ''}
+        ${t.status === 'todo' ? `<button class="task-action-btn progress" onclick="moveTask('${t._id}','in_progress')" title="進行中へ">進行中 &#9654;</button>` : ''}
+        ${t.status === 'in_progress' ? `<button class="task-action-btn done" onclick="moveTask('${t._id}','done')" title="完了へ">&#10003; 完了</button>` : ''}
+      </div>
     </div>`;
 }
 
@@ -1470,6 +1485,15 @@ function saveTask(e) {
     });
   }
   return false;
+}
+
+function moveTask(id, newStatus) {
+  if (!db) return;
+  const updates = { status: newStatus, updatedAt: firebase.database.ServerValue.TIMESTAMP };
+  if (newStatus === 'done') updates.completedAt = firebase.database.ServerValue.TIMESTAMP;
+  db.ref('tasks/' + id).update(updates).then(() => {
+    showToast(`「${STATUS_LABELS[newStatus]}」に移動しました`, 'success');
+  });
 }
 
 function deleteTask() {
