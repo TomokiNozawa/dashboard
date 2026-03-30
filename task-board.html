@@ -416,7 +416,7 @@ body {
 .tab-item .tab-kbd { font-size: 9px; color: var(--text-muted); margin-left: 4px; opacity: 0.5; }
 
 .view-container { display: none; flex: 1; overflow: auto; min-height: 0; }
-.view-container.active { display: block; height: 100%; }
+.view-container.active { display: flex; flex-direction: column; }
 
 /* ── Timeline View (C1) ── */
 .timeline-view { padding: 16px 20px; overflow: auto; height: 100%; }
@@ -1117,11 +1117,13 @@ function listenTasks() {
 }
 
 function renderCurrentView() {
-  renderBoard();
-  if (currentView === 'timeline') renderTimeline();
-  if (currentView === 'calendar') renderCalendar();
-  if (currentView === 'company') renderCompanyView();
-  if (currentView === 'stats') renderStats();
+  try { renderBoard(); } catch(e) { console.error('renderBoard:', e); }
+  try {
+    if (currentView === 'timeline') renderTimeline();
+    else if (currentView === 'calendar') renderCalendar();
+    else if (currentView === 'company') renderCompanyView();
+    else if (currentView === 'stats') renderStats();
+  } catch(e) { console.error('renderView:', e); }
 }
 
 function switchView(view) {
@@ -1129,7 +1131,14 @@ function switchView(view) {
   document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view)?.classList.add('active');
-  renderCurrentView();
+  // Render the target view
+  try {
+    if (view === 'kanban') renderBoard();
+    else if (view === 'timeline') renderTimeline();
+    else if (view === 'calendar') renderCalendar();
+    else if (view === 'company') renderCompanyView();
+    else if (view === 'stats') renderStats();
+  } catch(e) { console.error('switchView render:', e); }
 }
 
 function setSyncStatus(status, text) {
@@ -1212,7 +1221,7 @@ function renderTaskCard(t) {
   return `
     <div class="task-card" draggable="true" data-id="${t._id}"
          ondragstart="onDragStart(event)" ondragend="onDragEnd(event)"
-         onmouseup="if(!window._dragged)openEditTask('${t._id}')" onmousedown="window._dragged=false">
+         onclick="if(!window._wasDragged){openEditTask('${t._id}')}">
       <div class="task-card-header">
         <span class="task-priority ${t.priority || 'medium'}"></span>
         <span class="task-category ${catClass}">${catLabel}</span>
@@ -1327,10 +1336,12 @@ function clearFilters() {
 let draggedId = null;
 let dragInitialized = false;
 
+window._wasDragged = false;
+
 function onDragStart(e) {
   const card = e.target.closest('.task-card');
   if (!card) return;
-  window._dragged = true;
+  window._wasDragged = true;
   draggedId = card.dataset.id;
   card.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
@@ -1343,6 +1354,8 @@ function onDragEnd(e) {
   if (card) { card.classList.remove('dragging'); card.style.opacity = ''; }
   draggedId = null;
   document.querySelectorAll('.column-body.drag-over').forEach(c => c.classList.remove('drag-over'));
+  // Reset drag flag after a tick so onclick sees the correct value
+  setTimeout(() => { window._wasDragged = false; }, 0);
 }
 
 function initDragDrop() {
