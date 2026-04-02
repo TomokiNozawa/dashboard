@@ -660,37 +660,21 @@ function matchTaskBoardToDashboard(doneTasks) {
 // Sync Diff Modal
 // ============================================================
 function showSyncDiffModal(sheetDiffs, tbDiffs) {
-  // sheetDiffs: [{company, dayN, date, sheetSent, dashSent, sheetRow, training}]
-  // tbDiffs: [{source:'TaskBoard', type:'created'|'sent', company, dayN, date, training}]
   const sheetConflicts = (sheetDiffs || []).filter(d => d.sheetSent !== d.dashSent);
   const tbConflicts = tbDiffs || [];
 
   const allDiffs = [];
 
-  // Normalize sheet diffs
   for (const d of sheetConflicts) {
-    allDiffs.push({
-      ...d,
-      source: d.sheetSent ? 'スプシ' : 'ダッシュボード',
-      target: d.sheetSent ? 'ダッシュボード' : 'スプシ',
-      field: 'sent',
-      fieldLabel: '送付',
-      sourceStatus: '済',
-      targetStatus: '未',
-    });
+    if (d.sheetSent && !d.dashSent) {
+      allDiffs.push({ ...d, field: 'sent', description: `スプシでは送付済になっています。このダッシュボードの「送付」を済にしますか？` });
+    } else {
+      allDiffs.push({ ...d, field: 'sent', description: `ダッシュボードでは送付済ですが、スプシはまだ未です。スプシを済に更新しますか？` });
+    }
   }
-
-  // Normalize TaskBoard diffs
   for (const d of tbConflicts) {
-    allDiffs.push({
-      ...d,
-      source: 'TaskBoard',
-      target: 'ダッシュボード',
-      field: d.type, // 'created' or 'sent'
-      fieldLabel: d.type === 'created' ? '作成' : '送付',
-      sourceStatus: '済',
-      targetStatus: '未',
-    });
+    const label = d.type === 'created' ? '作成' : '送付';
+    allDiffs.push({ ...d, field: d.type, description: `TaskBoardで「教材${label}」タスクが完了済です。このダッシュボードの「${label}」を済にしますか？` });
   }
 
   if (!allDiffs.length) {
@@ -700,26 +684,19 @@ function showSyncDiffModal(sheetDiffs, tbDiffs) {
 
   pendingSyncDiffs = allDiffs;
 
-  const infoParts = [];
-  const sheetToDash = sheetConflicts.filter(d => d.sheetSent && !d.dashSent);
-  const dashToSheet = sheetConflicts.filter(d => d.dashSent && !d.sheetSent);
-  if (sheetToDash.length) infoParts.push(`スプシ→ダッシュ: ${sheetToDash.length}件`);
-  if (dashToSheet.length) infoParts.push(`ダッシュ→スプシ: ${dashToSheet.length}件`);
-  if (tbConflicts.length) infoParts.push(`TaskBoard→ダッシュ: ${tbConflicts.length}件`);
-  document.getElementById('syncModalInfo').textContent = infoParts.join('　');
+  document.getElementById('syncModalTitle').textContent = `外部データとの差分（${allDiffs.length}件）`;
+  document.getElementById('syncModalInfo').textContent = 'チェックを入れた項目を反映します。';
 
   const listEl = document.getElementById('syncDiffList');
   listEl.innerHTML = allDiffs.map((d, i) => {
     const dateStr = d.date.slice(5).replace(/-/g, '/');
-    const srcBadge = `<span class="diff-status diff-status-done">${esc(d.source)}: 済</span>`;
-    const tgtBadge = `<span class="diff-status diff-status-pending">${esc(d.target)}: 未</span>`;
-    const fieldTag = d.fieldLabel === '作成' ? ' [作成]' : '';
-    return `<div class="diff-item">
-      <label>
+    const fieldLabel = d.field === 'created' ? '作成' : '送付';
+    return `<div class="diff-item" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <label style="width:100%;">
         <input type="checkbox" checked data-diff-idx="${i}">
-        <span>${esc(d.company)} Day${d.dayN} (${dateStr})${fieldTag}</span>
+        <strong>${esc(d.company)}</strong>　Day${d.dayN} (${dateStr})　<span class="diff-status diff-status-pending" style="font-size:10px;">${fieldLabel}: 未 → 済</span>
       </label>
-      ${tgtBadge} <span class="diff-arrow">→</span> ${srcBadge}
+      <span style="font-size:11px;color:var(--text2);padding-left:26px;">${esc(d.description)}</span>
     </div>`;
   }).join('');
 
