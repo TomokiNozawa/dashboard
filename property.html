@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物件探し | NozaBoard</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117; --card: #161b22; --card-hover: #1c2129;
+  --border: #30363d; --border-light: #21262d;
+  --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+  --blue: #58a6ff; --green: #3fb950; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; --orange: #f0883e;
+  --radius: 8px;
+}
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+
+/* Login */
+.login-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; justify-content: center; align-items: center;
+}
+.login-container {
+  text-align: center; padding: 48px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  max-width: 400px; width: 90%;
+}
+.login-container h1 {
+  font-size: 20px; font-weight: 700; margin-bottom: 8px;
+  background: linear-gradient(135deg, #e6edf3, #58a6ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.login-container p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.login-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+}
+.login-input:focus { border-color: var(--blue); }
+.login-btn {
+  width: 100%; padding: 12px; margin-top: 16px;
+  background: linear-gradient(135deg, #238636, #3fb950);
+  border: none; border-radius: 8px; color: white;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+}
+.login-btn:hover { opacity: 0.9; }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-error { color: var(--red); font-size: 13px; margin-top: 12px; display: none; }
+.login-loading { color: var(--text2); font-size: 13px; margin-top: 12px; display: none; }
+
+/* Main App */
+.container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 100px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Header */
+.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+.back-btn { padding: 6px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-size: 13px; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block; }
+.back-btn:hover { background: var(--card-hover); color: var(--text); text-decoration: none; }
+.page-header h1 { font-size: 22px; font-weight: 700; }
+.page-header .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* Summary Cards */
+.summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.summary-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.summary-val { font-size: 28px; font-weight: 700; }
+.summary-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* Filter Bar */
+.filter-bar {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 24px;
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;
+}
+.filter-group { display: flex; flex-direction: column; gap: 6px; }
+.filter-group label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+.filter-checkboxes { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-chip {
+  padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 500;
+  background: var(--bg); border: 1px solid var(--border); color: var(--text2);
+  cursor: pointer; user-select: none; transition: all 0.15s;
+}
+.filter-chip.active { background: rgba(88,166,255,0.15); border-color: var(--blue); color: var(--blue); }
+.filter-chip:hover { border-color: var(--text2); }
+.filter-rent {
+  display: flex; align-items: center; gap: 6px;
+}
+.filter-rent input {
+  width: 70px; padding: 4px 8px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 12px; outline: none; text-align: center;
+}
+.filter-rent input:focus { border-color: var(--blue); }
+.filter-rent span { font-size: 12px; color: var(--text3); }
+.filter-select {
+  padding: 4px 8px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 12px; outline: none; cursor: pointer;
+}
+.filter-select:focus { border-color: var(--blue); }
+.filter-count {
+  font-size: 13px; color: var(--text2); margin-left: auto; align-self: center; white-space: nowrap;
+}
+
+/* Property Cards Grid */
+.property-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+}
+.property-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; transition: all 0.2s; position: relative;
+}
+.property-card:hover { border-color: var(--text3); background: var(--card-hover); }
+.property-card.dimmed { opacity: 0.45; }
+.property-card.today-new {
+  box-shadow: 0 0 12px rgba(88,166,255,0.15);
+  border-color: rgba(88,166,255,0.3);
+}
+
+.property-name {
+  font-size: 15px; font-weight: 600; margin-bottom: 10px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+}
+.property-name a {
+  color: var(--text); transition: color 0.15s;
+  line-height: 1.4;
+}
+.property-name a:hover { color: var(--blue); text-decoration: none; }
+
+.property-rent {
+  margin-bottom: 12px; padding: 10px 12px;
+  background: var(--bg); border-radius: 6px;
+}
+.property-rent-total {
+  font-size: 22px; font-weight: 700; color: var(--yellow);
+}
+.property-rent-total .unit { font-size: 13px; font-weight: 500; color: var(--text2); }
+.property-rent-detail {
+  font-size: 11px; color: var(--text3); margin-top: 2px;
+}
+
+.property-details {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;
+  font-size: 12px; color: var(--text2);
+}
+.property-details span { white-space: nowrap; }
+.property-details .sep { color: var(--border); }
+
+.property-address {
+  font-size: 11px; color: var(--text3); margin-bottom: 10px;
+}
+
+.property-footer {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.property-first-seen {
+  font-size: 11px; color: var(--text3);
+}
+
+/* Status badges */
+.badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; user-select: none; transition: all 0.15s; }
+.badge:hover { transform: scale(1.08); }
+.badge-new { background: rgba(88,166,255,0.15); color: var(--blue); }
+.badge-candidate { background: rgba(188,140,255,0.15); color: var(--purple); }
+.badge-applied { background: rgba(240,136,62,0.15); color: var(--orange); }
+.badge-rejected { background: rgba(110,118,129,0.15); color: var(--text3); }
+.badge-gone { background: rgba(248,81,73,0.15); color: var(--red); }
+
+/* Reload */
+.reload-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #1f6feb, #58a6ff);
+  border: none; border-radius: 8px;
+  color: white; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.reload-btn:hover { opacity: 0.9; }
+
+/* Save FAB */
+.save-fab {
+  position: fixed; bottom: 24px; right: 24px; z-index: 100;
+  display: none; align-items: center; gap: 8px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #238636, #3fb950);
+  border: none; border-radius: 12px;
+  color: white; font-size: 14px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(63,185,80,0.3);
+  transition: all 0.2s;
+}
+.save-fab:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(63,185,80,0.4); }
+.save-fab:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.save-badge { background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+
+/* Toast */
+.toast {
+  position: fixed; top: 70px; right: 24px; z-index: 200;
+  padding: 12px 20px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 500;
+  transform: translateX(120%); transition: transform 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.toast.show { transform: translateX(0); }
+.toast-success { background: #238636; color: white; }
+.toast-error { background: var(--red); color: white; }
+
+/* Loading */
+@keyframes loadFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes loadSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+.load-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 70vh; gap: 24px; animation: loadFadeIn 0.5s ease;
+}
+.load-logo { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #e6edf3, #58a6ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.load-sub { font-size: 14px; color: var(--text3); }
+.load-bar { width: 200px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.load-bar-inner { width: 40%; height: 100%; background: var(--blue); border-radius: 2px; animation: loadSlide 1.2s ease infinite; }
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--text3); font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { padding: 16px 12px 100px; }
+  .page-header h1 { font-size: 18px; }
+  .summary { grid-template-columns: repeat(2, 1fr); }
+  .summary-val { font-size: 22px; }
+  .property-grid { grid-template-columns: 1fr; }
+  .filter-bar { gap: 12px; padding: 12px 14px; }
+  .filter-count { margin-left: 0; width: 100%; text-align: center; }
+  .property-rent-total { font-size: 18px; }
+}
+@media (min-width: 1100px) {
+  .property-grid { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-overlay" id="loginOverlay" style="display:none;">
+  <div class="login-container">
+    <h1>NozaBoard</h1>
+    <p>物件探し</p>
+    <input type="password" class="login-input" id="loginPassword" placeholder="パスワードを入力" autofocus>
+    <button class="login-btn" id="loginBtn">ログイン</button>
+    <div class="login-error" id="loginError">パスワードが正しくありません</div>
+    <div class="login-loading" id="loginLoading">認証中...</div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app" style="display:none;">
+
+  <!-- Loading -->
+  <div class="load-screen" id="loadingScreen" style="display:none;">
+    <div class="load-logo">NozaBoard</div>
+    <div class="load-sub">物件データを読み込み中...</div>
+    <div class="load-bar"><div class="load-bar-inner"></div></div>
+  </div>
+
+  <div class="container" id="mainContent" style="display:none;">
+    <!-- Header -->
+    <div class="page-header">
+      <a href="index.html" class="back-btn">&larr; ダッシュボード</a>
+      <h1>物件探し</h1>
+      <div class="header-right">
+        <span class="sub" id="lastFetchInfo" style="font-size:12px;color:var(--text3);"></span>
+        <button class="reload-btn" onclick="reloadData()">再読込</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary">
+      <div class="summary-card">
+        <div class="summary-val" id="sumTotal" style="color:var(--blue)">-</div>
+        <div class="summary-label">総物件数</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="sumNew" style="color:var(--green)">-</div>
+        <div class="summary-label">新着</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="sumCandidate" style="color:var(--purple)">-</div>
+        <div class="summary-label">候補</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="sumAvgRent" style="color:var(--yellow)">-</div>
+        <div class="summary-label">平均家賃</div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar" id="filterBar">
+      <div class="filter-group">
+        <label>駅</label>
+        <div class="filter-checkboxes" id="filterStations">
+          <span class="filter-chip active" data-station="all">すべて</span>
+          <span class="filter-chip" data-station="和光市">和光市</span>
+          <span class="filter-chip" data-station="朝霞">朝霞</span>
+          <span class="filter-chip" data-station="朝霞台">朝霞台</span>
+          <span class="filter-chip" data-station="志木">志木</span>
+          <span class="filter-chip" data-station="みずほ台">みずほ台</span>
+          <span class="filter-chip" data-station="鶴瀬">鶴瀬</span>
+          <span class="filter-chip" data-station="ふじみ野">ふじみ野</span>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>家賃</label>
+        <div class="filter-rent">
+          <input type="number" id="rentMin" placeholder="下限" step="0.5"> <span>〜</span>
+          <input type="number" id="rentMax" placeholder="上限" step="0.5"> <span>万</span>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>間取り</label>
+        <div class="filter-checkboxes" id="filterLayout">
+          <span class="filter-chip active" data-layout="all">すべて</span>
+          <span class="filter-chip" data-layout="1LDK">1LDK</span>
+          <span class="filter-chip" data-layout="2LDK">2LDK</span>
+          <span class="filter-chip" data-layout="3LDK">3LDK</span>
+          <span class="filter-chip" data-layout="2DK">2DK</span>
+          <span class="filter-chip" data-layout="3DK">3DK</span>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>ステータス</label>
+        <div class="filter-checkboxes" id="filterStatus">
+          <span class="filter-chip active" data-status="all">すべて</span>
+          <span class="filter-chip" data-status="new">新着</span>
+          <span class="filter-chip" data-status="candidate">候補</span>
+          <span class="filter-chip" data-status="applied">問合せ済</span>
+          <span class="filter-chip" data-status="rejected">見送り</span>
+          <span class="filter-chip" data-status="gone">掲載終了</span>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>ソート</label>
+        <select class="filter-select" id="sortSelect">
+          <option value="rent-asc">家賃安い順</option>
+          <option value="age-asc">築浅順</option>
+          <option value="walk-asc">駅近順</option>
+          <option value="area-desc">広い順</option>
+          <option value="firstSeen-desc" selected>新着順</option>
+        </select>
+      </div>
+      <div class="filter-count" id="filterCount">-</div>
+    </div>
+
+    <!-- Property Cards -->
+    <div class="property-grid" id="propertyGrid"></div>
+    <div class="empty-state" id="emptyState" style="display:none;">条件に一致する物件がありません</div>
+  </div>
+</div>
+
+<!-- Save FAB -->
+<button class="save-fab" id="saveFab" onclick="saveData()" style="display:none;">
+  保存 <span class="save-badge" id="saveBadge">0</span>
+</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// Config
+// ============================================================
+const API_BASE = 'https://api.github.com';
+const REPO = 'TomokiNozawa/dashboard-data';
+const FILE_PATH = 'property-data.json';
+const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4h
+
+const STATUS_CYCLE = ['new', 'candidate', 'applied', 'rejected'];
+const STATUS_LABELS = { new: '新着', candidate: '候補', applied: '問合せ済', rejected: '見送り', gone: '掲載終了' };
+const STATUS_CLASSES = { new: 'badge-new', candidate: 'badge-candidate', applied: 'badge-applied', rejected: 'badge-rejected', gone: 'badge-gone' };
+
+let pat = null;
+let properties = {};
+let fileSha = null;
+let pendingSaves = 0;
+let filters = {
+  stations: [],
+  rentMin: null,
+  rentMax: null,
+  layouts: [],
+  statuses: [],
+  sort: 'firstSeen-desc',
+};
+
+// ============================================================
+// Authentication (shared session with other NozaBoard pages)
+// ============================================================
+async function init() {
+  const storedPass = sessionStorage.getItem('dk_pass');
+  const storedTs = sessionStorage.getItem('dk_ts');
+
+  if (storedPass && storedTs) {
+    const elapsed = Date.now() - parseInt(storedTs, 10);
+    if (elapsed < SESSION_TIMEOUT) {
+      try {
+        pat = await decryptPAT(storedPass);
+        sessionStorage.setItem('dk_ts', Date.now().toString());
+        showApp();
+        return;
+      } catch (e) {
+        sessionStorage.removeItem('dk_pass');
+        sessionStorage.removeItem('dk_ts');
+      }
+    } else {
+      sessionStorage.removeItem('dk_pass');
+      sessionStorage.removeItem('dk_ts');
+    }
+  }
+  showLogin();
+}
+
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  const pwInput = document.getElementById('loginPassword');
+  pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  setTimeout(() => pwInput.focus(), 100);
+}
+
+async function doLogin() {
+  const password = document.getElementById('loginPassword').value;
+  if (!password) return;
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  const loadEl = document.getElementById('loginLoading');
+  btn.disabled = true;
+  errEl.style.display = 'none';
+  loadEl.style.display = 'block';
+
+  try {
+    pat = await decryptPAT(password);
+    sessionStorage.setItem('dk_pass', password);
+    sessionStorage.setItem('dk_ts', Date.now().toString());
+    showApp();
+  } catch (e) {
+    errEl.style.display = 'block';
+    loadEl.style.display = 'none';
+    btn.disabled = false;
+    document.getElementById('loginPassword').select();
+  }
+}
+
+async function decryptPAT(password) {
+  const resp = await fetch('encrypted-pat.json');
+  const payload = await resp.json();
+  const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+  const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-CBC', length: 256 }, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, encData);
+  const token = new TextDecoder().decode(decrypted).replace(/[\x00-\x1f]/g, '').trim();
+  if (!token || token.length < 10) throw new Error('Invalid');
+  return token;
+}
+
+// ============================================================
+// App
+// ============================================================
+async function showApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('loadingScreen').style.display = 'flex';
+  document.getElementById('mainContent').style.display = 'none';
+
+  loadFilters();
+  applyFilterUI();
+  setupFilterListeners();
+
+  try {
+    await fetchProperties();
+  } catch (e) {
+    console.error('Failed to fetch properties:', e);
+    showToast('データ取得に失敗しました', 'error');
+  }
+
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+  renderAll();
+}
+
+// ============================================================
+// GitHub API (property-data.json in dashboard-data repo)
+// ============================================================
+function apiHeaders() {
+  return { 'Authorization': `token ${pat}`, 'Accept': 'application/vnd.github.v3+json' };
+}
+
+async function fetchProperties() {
+  const url = `${API_BASE}/repos/${REPO}/contents/${FILE_PATH}?t=${Date.now()}`;
+  const resp = await fetch(url, { headers: apiHeaders(), cache: 'no-store' });
+  if (resp.status === 404) {
+    // File doesn't exist yet - start empty
+    properties = {};
+    fileSha = null;
+    updateLastFetch('-');
+    return;
+  }
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+  const json = await resp.json();
+  fileSha = json.sha;
+  const binary = atob(json.content.replace(/\n/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const data = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+  properties = data.properties || {};
+  updateLastFetch(data.lastScraped || '-');
+}
+
+async function saveProperties() {
+  const data = { properties, lastEdited: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }).replace(/\//g, '-') };
+  const jsonStr = JSON.stringify(data, null, 2);
+  const utf8Bytes = new TextEncoder().encode(jsonStr);
+  let binaryStr = '';
+  utf8Bytes.forEach(b => binaryStr += String.fromCharCode(b));
+  const content = btoa(binaryStr);
+
+  const body = { message: '物件ステータス更新（ブラウザ編集）', content, sha: fileSha };
+  const resp = await fetch(`${API_BASE}/repos/${REPO}/contents/${FILE_PATH}`, {
+    method: 'PUT', headers: apiHeaders(),
+    body: JSON.stringify(body)
+  });
+  if (resp.status === 409) {
+    showToast('他で更新されています。再読込してください。', 'error');
+    return false;
+  }
+  if (!resp.ok) throw new Error(`Save failed: ${resp.status}`);
+  const result = await resp.json();
+  fileSha = result.content.sha;
+  return true;
+}
+
+async function updatePropertyStatus(id, status) {
+  if (properties[id]) properties[id].status = status;
+  pendingSaves++;
+  updateSaveBadge();
+}
+
+function updateSaveBadge() {
+  const fab = document.getElementById('saveFab');
+  const badge = document.getElementById('saveBadge');
+  if (pendingSaves > 0) {
+    fab.style.display = 'flex';
+    badge.textContent = pendingSaves;
+  } else {
+    fab.style.display = 'none';
+  }
+}
+
+async function saveData() {
+  const fab = document.getElementById('saveFab');
+  fab.disabled = true;
+  fab.textContent = '保存中...';
+  try {
+    const ok = await saveProperties();
+    if (ok) {
+      pendingSaves = 0;
+      updateSaveBadge();
+      showToast('保存しました', 'success');
+    }
+  } catch (e) {
+    showToast('保存に失敗: ' + e.message, 'error');
+  }
+  fab.disabled = false;
+  fab.innerHTML = '保存 <span class="save-badge" id="saveBadge">' + pendingSaves + '</span>';
+}
+
+function updateLastFetch(dateStr) {
+  document.getElementById('lastFetchInfo').textContent = '最終取得: ' + (dateStr || '-');
+}
+
+async function reloadData() {
+  if (pendingSaves > 0 && !confirm('未保存の変更があります。再読込しますか？')) return;
+  document.getElementById('loadingScreen').style.display = 'flex';
+  document.getElementById('mainContent').style.display = 'none';
+  try {
+    await fetchProperties();
+    pendingSaves = 0;
+    updateSaveBadge();
+    showToast('データを再読込しました', 'success');
+  } catch (e) {
+    showToast('再読込に失敗しました', 'error');
+  }
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+  renderAll();
+}
+
+// ============================================================
+// Filters
+// ============================================================
+function setupFilterListeners() {
+  // Station chips
+  document.getElementById('filterStations').addEventListener('click', e => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    const station = chip.dataset.station;
+    handleChipToggle('filterStations', 'stations', station, 'station');
+  });
+
+  // Layout chips
+  document.getElementById('filterLayout').addEventListener('click', e => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    const layout = chip.dataset.layout;
+    handleChipToggle('filterLayout', 'layouts', layout, 'layout');
+  });
+
+  // Status chips
+  document.getElementById('filterStatus').addEventListener('click', e => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    const status = chip.dataset.status;
+    handleChipToggle('filterStatus', 'statuses', status, 'status');
+  });
+
+  // Rent inputs
+  document.getElementById('rentMin').addEventListener('input', () => {
+    const v = document.getElementById('rentMin').value;
+    filters.rentMin = v ? parseFloat(v) : null;
+    saveFilters(); renderAll();
+  });
+  document.getElementById('rentMax').addEventListener('input', () => {
+    const v = document.getElementById('rentMax').value;
+    filters.rentMax = v ? parseFloat(v) : null;
+    saveFilters(); renderAll();
+  });
+
+  // Sort
+  document.getElementById('sortSelect').addEventListener('change', () => {
+    filters.sort = document.getElementById('sortSelect').value;
+    saveFilters(); renderAll();
+  });
+}
+
+function handleChipToggle(containerId, filterKey, value, dataAttr) {
+  const container = document.getElementById(containerId);
+  if (value === 'all') {
+    filters[filterKey] = [];
+    container.querySelectorAll('.filter-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset[dataAttr] === 'all');
+    });
+  } else {
+    const allChip = container.querySelector(`[data-${dataAttr}="all"]`);
+    const idx = filters[filterKey].indexOf(value);
+    if (idx >= 0) {
+      filters[filterKey].splice(idx, 1);
+    } else {
+      filters[filterKey].push(value);
+    }
+    // Update UI
+    allChip.classList.toggle('active', filters[filterKey].length === 0);
+    container.querySelectorAll('.filter-chip').forEach(c => {
+      if (c.dataset[dataAttr] === 'all') return;
+      c.classList.toggle('active', filters[filterKey].includes(c.dataset[dataAttr]));
+    });
+  }
+  saveFilters();
+  renderAll();
+}
+
+function saveFilters() {
+  try { localStorage.setItem('noza_property_filters', JSON.stringify(filters)); } catch(e) {}
+}
+
+function loadFilters() {
+  try {
+    const saved = localStorage.getItem('noza_property_filters');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      filters.stations = parsed.stations || [];
+      filters.rentMin = parsed.rentMin ?? null;
+      filters.rentMax = parsed.rentMax ?? null;
+      filters.layouts = parsed.layouts || [];
+      filters.statuses = parsed.statuses || [];
+      filters.sort = parsed.sort || 'firstSeen-desc';
+    }
+  } catch(e) {}
+}
+
+function applyFilterUI() {
+  // Stations
+  document.querySelectorAll('#filterStations .filter-chip').forEach(c => {
+    if (c.dataset.station === 'all') c.classList.toggle('active', filters.stations.length === 0);
+    else c.classList.toggle('active', filters.stations.includes(c.dataset.station));
+  });
+  // Layouts
+  document.querySelectorAll('#filterLayout .filter-chip').forEach(c => {
+    if (c.dataset.layout === 'all') c.classList.toggle('active', filters.layouts.length === 0);
+    else c.classList.toggle('active', filters.layouts.includes(c.dataset.layout));
+  });
+  // Statuses
+  document.querySelectorAll('#filterStatus .filter-chip').forEach(c => {
+    if (c.dataset.status === 'all') c.classList.toggle('active', filters.statuses.length === 0);
+    else c.classList.toggle('active', filters.statuses.includes(c.dataset.status));
+  });
+  // Rent
+  if (filters.rentMin !== null) document.getElementById('rentMin').value = filters.rentMin;
+  if (filters.rentMax !== null) document.getElementById('rentMax').value = filters.rentMax;
+  // Sort
+  document.getElementById('sortSelect').value = filters.sort;
+}
+
+// ============================================================
+// Render
+// ============================================================
+function getPropertyList() {
+  return Object.entries(properties).map(([id, p]) => ({ id, ...p }));
+}
+
+function getTodayStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+function totalRent(p) {
+  return (p.rent || 0) + (p.managementFee || 0);
+}
+
+function filterProperties(list) {
+  return list.filter(p => {
+    // Station filter
+    if (filters.stations.length > 0 && !filters.stations.includes(p.station)) return false;
+    // Rent filter (in 万)
+    const total = totalRent(p) / 10000;
+    if (filters.rentMin !== null && total < filters.rentMin) return false;
+    if (filters.rentMax !== null && total > filters.rentMax) return false;
+    // Layout filter
+    if (filters.layouts.length > 0 && !filters.layouts.includes(p.layout)) return false;
+    // Status filter
+    if (filters.statuses.length > 0 && !filters.statuses.includes(p.status || 'new')) return false;
+    return true;
+  });
+}
+
+function sortProperties(list) {
+  const [field, dir] = filters.sort.split('-');
+  const mul = dir === 'desc' ? -1 : 1;
+  return [...list].sort((a, b) => {
+    let va, vb;
+    switch (field) {
+      case 'rent': va = totalRent(a); vb = totalRent(b); break;
+      case 'age': va = a.builtYear || 0; vb = b.builtYear || 0;
+        // 築浅 = higher built year first, so invert for asc
+        return (vb - va) * mul;
+      case 'walk': va = a.walkMinutes || 99; vb = b.walkMinutes || 99; break;
+      case 'area': va = a.area || 0; vb = b.area || 0; break;
+      case 'firstSeen': va = a.firstSeen || ''; vb = b.firstSeen || ''; break;
+      default: va = 0; vb = 0;
+    }
+    if (va < vb) return -1 * mul;
+    if (va > vb) return 1 * mul;
+    return 0;
+  });
+}
+
+function renderAll() {
+  const all = getPropertyList();
+  const filtered = filterProperties(all);
+  const sorted = sortProperties(filtered);
+
+  renderSummary(all);
+  renderCards(sorted);
+  document.getElementById('filterCount').textContent = `${sorted.length}件表示 / ${all.length}件中`;
+
+  const emptyEl = document.getElementById('emptyState');
+  const gridEl = document.getElementById('propertyGrid');
+  if (sorted.length === 0) {
+    emptyEl.style.display = 'block';
+    gridEl.style.display = 'none';
+  } else {
+    emptyEl.style.display = 'none';
+    gridEl.style.display = 'grid';
+  }
+}
+
+function renderSummary(all) {
+  document.getElementById('sumTotal').textContent = all.length;
+  document.getElementById('sumNew').textContent = all.filter(p => (p.status || 'new') === 'new').length;
+  document.getElementById('sumCandidate').textContent = all.filter(p => p.status === 'candidate').length;
+
+  if (all.length > 0) {
+    const avg = all.reduce((s, p) => s + totalRent(p), 0) / all.length / 10000;
+    document.getElementById('sumAvgRent').textContent = avg.toFixed(1) + '万';
+  } else {
+    document.getElementById('sumAvgRent').textContent = '-';
+  }
+}
+
+function renderCards(list) {
+  const grid = document.getElementById('propertyGrid');
+  const today = getTodayStr();
+
+  grid.innerHTML = list.map(p => {
+    const status = p.status || 'new';
+    const isDimmed = status === 'rejected' || status === 'gone';
+    const isToday = p.firstSeen === today;
+    const total = totalRent(p);
+    const totalMan = (total / 10000).toFixed(1);
+    const rentMan = ((p.rent || 0) / 10000).toFixed(1);
+    const feeMan = ((p.managementFee || 0) / 10000).toFixed(1);
+    const builtAge = p.builtYear ? (new Date().getFullYear() - p.builtYear) : '?';
+    const firstSeenDisplay = p.firstSeen ? p.firstSeen.slice(5).replace(/-/g, '/') : '-';
+
+    const cardClasses = ['property-card'];
+    if (isDimmed) cardClasses.push('dimmed');
+    if (isToday) cardClasses.push('today-new');
+
+    return `<div class="${cardClasses.join(' ')}" data-id="${p.id}">
+      <div class="property-name">
+        <a href="${escHtml(p.url || '#')}" target="_blank" rel="noopener">${escHtml(p.name || '物件名なし')}</a>
+        <span class="badge ${STATUS_CLASSES[status]}" onclick="cycleStatus('${p.id}')">${STATUS_LABELS[status]}</span>
+      </div>
+      <div class="property-rent">
+        <div class="property-rent-total">${totalMan}<span class="unit">万円</span></div>
+        <div class="property-rent-detail">家賃 ${rentMan}万 + 管理費 ${feeMan}万</div>
+      </div>
+      <div class="property-details">
+        <span>${escHtml(p.layout || '-')}</span><span class="sep">|</span>
+        <span>${p.area ? p.area + 'm&sup2;' : '-'}</span><span class="sep">|</span>
+        <span>築${builtAge}年</span><span class="sep">|</span>
+        <span>${escHtml(p.station || '-')} 徒歩${p.walkMinutes || '?'}分</span>
+      </div>
+      <div class="property-address">${escHtml(p.address || '')}</div>
+      <div class="property-footer">
+        <span class="property-first-seen">初回取得: ${firstSeenDisplay}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ============================================================
+// Status Cycling
+// ============================================================
+async function cycleStatus(id) {
+  const p = properties[id];
+  if (!p) return;
+  const current = p.status || 'new';
+  const idx = STATUS_CYCLE.indexOf(current);
+  const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+
+  try {
+    await updatePropertyStatus(id, next);
+    showToast(`ステータス: ${STATUS_LABELS[next]}`, 'success');
+    renderAll();
+  } catch (e) {
+    showToast('ステータス更新に失敗しました', 'error');
+  }
+}
+
+// ============================================================
+// Toast
+// ============================================================
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast toast-' + type;
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// Init
+// ============================================================
+init();
+</script>
+</body>
+</html>
