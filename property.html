@@ -120,6 +120,51 @@ a:hover { text-decoration: underline; }
   border-color: rgba(88,166,255,0.3);
 }
 
+.property-images {
+  display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch; padding-bottom: 4px;
+}
+.property-images img {
+  width: 80px; height: 60px; object-fit: cover; border-radius: 4px;
+  cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
+  border: 1px solid var(--border-light);
+}
+.property-images img:hover { opacity: 0.8; }
+.property-images .img-more {
+  width: 80px; height: 60px; flex-shrink: 0; display: flex;
+  align-items: center; justify-content: center;
+  background: var(--bg); border: 1px solid var(--border-light);
+  border-radius: 4px; color: var(--text3); font-size: 11px;
+  cursor: pointer;
+}
+
+/* Image Lightbox */
+.lightbox {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.9); display: none;
+  align-items: center; justify-content: center;
+  flex-direction: column; cursor: pointer;
+}
+.lightbox.show { display: flex; }
+.lightbox img {
+  max-width: 90vw; max-height: 80vh; object-fit: contain; border-radius: 8px;
+}
+.lightbox-nav {
+  display: flex; gap: 12px; margin-top: 16px; align-items: center;
+}
+.lightbox-nav button {
+  padding: 8px 20px; background: rgba(255,255,255,0.15); border: none;
+  border-radius: 6px; color: white; font-size: 14px; cursor: pointer;
+}
+.lightbox-nav button:hover { background: rgba(255,255,255,0.25); }
+.lightbox-counter { color: var(--text2); font-size: 13px; }
+.lightbox-close {
+  position: absolute; top: 16px; right: 24px;
+  font-size: 32px; color: white; cursor: pointer; background: none; border: none;
+  line-height: 1;
+}
+
 .property-name {
   font-size: 15px; font-weight: 600; margin-bottom: 10px;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
@@ -354,6 +399,17 @@ a:hover { text-decoration: underline; }
     <!-- Property Cards -->
     <div class="property-grid" id="propertyGrid"></div>
     <div class="empty-state" id="emptyState" style="display:none;">条件に一致する物件がありません</div>
+  </div>
+</div>
+
+<!-- Image Lightbox -->
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+  <img id="lightboxImg" src="" alt="">
+  <div class="lightbox-nav">
+    <button onclick="event.stopPropagation();lightboxPrev()">&#8592; 前</button>
+    <span class="lightbox-counter" id="lightboxCounter"></span>
+    <button onclick="event.stopPropagation();lightboxNext()">次 &#8594;</button>
   </div>
 </div>
 
@@ -753,7 +809,7 @@ function sortProperties(list) {
     let va, vb;
     switch (field) {
       case 'rent': va = totalRent(a); vb = totalRent(b); break;
-      case 'age': va = a.builtYear || 0; vb = b.builtYear || 0;
+      case 'age': va = a.age != null ? a.age : 99; vb = b.age != null ? b.age : 99;
         // 築浅 = higher built year first, so invert for asc
         return (vb - va) * mul;
       case 'walk': va = a.walkMinutes || 99; vb = b.walkMinutes || 99; break;
@@ -812,18 +868,31 @@ function renderCards(list) {
     const totalMan = (total / 10000).toFixed(1);
     const rentMan = ((p.rent || 0) / 10000).toFixed(1);
     const feeMan = ((p.managementFee || 0) / 10000).toFixed(1);
-    const builtAge = p.builtYear ? (new Date().getFullYear() - p.builtYear) : '?';
+    const builtAge = p.age != null ? p.age : '?';
     const firstSeenDisplay = p.firstSeen ? p.firstSeen.slice(5).replace(/-/g, '/') : '-';
 
     const cardClasses = ['property-card'];
     if (isDimmed) cardClasses.push('dimmed');
     if (isToday) cardClasses.push('today-new');
 
+    // Build image thumbnails
+    let imagesHtml = '';
+    const imgs = p.images || [];
+    if (imgs.length > 0) {
+      const showMax = 4;
+      const thumbs = imgs.slice(0, showMax).map((src, idx) =>
+        `<img src="${escHtml(src)}" alt="" loading="lazy" onclick="event.stopPropagation();openLightbox('${p.id}',${idx})">`
+      ).join('');
+      const more = imgs.length > showMax ? `<div class="img-more" onclick="event.stopPropagation();openLightbox('${p.id}',${showMax})">+${imgs.length - showMax}枚</div>` : '';
+      imagesHtml = `<div class="property-images">${thumbs}${more}</div>`;
+    }
+
     return `<div class="${cardClasses.join(' ')}" data-id="${p.id}">
       <div class="property-name">
         <a href="${escHtml(p.url || '#')}" target="_blank" rel="noopener">${escHtml(p.name || '物件名なし')}</a>
         <span class="badge ${STATUS_CLASSES[status]}" onclick="cycleStatus('${p.id}')">${STATUS_LABELS[status]}</span>
       </div>
+      ${imagesHtml}
       <div class="property-rent">
         <div class="property-rent-total">${totalMan}<span class="unit">万円</span></div>
         <div class="property-rent-detail">家賃 ${rentMan}万 + 管理費 ${feeMan}万</div>
@@ -866,6 +935,47 @@ async function cycleStatus(id) {
     showToast('ステータス更新に失敗しました', 'error');
   }
 }
+
+// ============================================================
+// Lightbox
+// ============================================================
+let lightboxImages = [];
+let lightboxIdx = 0;
+
+function openLightbox(propId, idx) {
+  const p = properties[propId];
+  if (!p || !p.images) return;
+  lightboxImages = p.images;
+  lightboxIdx = idx || 0;
+  showLightboxImage();
+  document.getElementById('lightbox').classList.add('show');
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('show');
+}
+
+function showLightboxImage() {
+  document.getElementById('lightboxImg').src = lightboxImages[lightboxIdx];
+  document.getElementById('lightboxCounter').textContent = `${lightboxIdx + 1} / ${lightboxImages.length}`;
+}
+
+function lightboxNext() {
+  lightboxIdx = (lightboxIdx + 1) % lightboxImages.length;
+  showLightboxImage();
+}
+
+function lightboxPrev() {
+  lightboxIdx = (lightboxIdx - 1 + lightboxImages.length) % lightboxImages.length;
+  showLightboxImage();
+}
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('show')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowRight') lightboxNext();
+  if (e.key === 'ArrowLeft') lightboxPrev();
+});
 
 // ============================================================
 // Toast
