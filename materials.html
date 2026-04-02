@@ -312,6 +312,8 @@ const SHEETS_COL_COMPANY = 6;
 const SHEETS_COL_CONTENT = 8;
 const SHEETS_COL_MATERIAL_SEND = 24; // Y column
 
+const FIREBASE_DB_URL = 'https://task-board-fbf1e-default-rtdb.asia-southeast1.firebasedatabase.app';
+
 let pat = null;
 let sheetsCreds = null; // { refresh_token, client_id, client_secret, token_uri }
 let sheetsAccessToken = null;
@@ -547,6 +549,50 @@ function matchSheetToDashboard(sheetRows) {
 }
 
 // ============================================================
+// Firebase TaskBoard Sync
+// ============================================================
+async function syncTaskBoard(sentUpdates) {
+  // sentUpdates: [{company, date, dayN, sent(bool)}] - items that changed to sent=true
+  if (!sentUpdates.length) return 0;
+
+  // Fetch all tasks from Firebase
+  const resp = await fetch(`${FIREBASE_DB_URL}/tasks.json`);
+  if (!resp.ok) throw new Error(`Firebase read error: ${resp.status}`);
+  const allTasks = await resp.json();
+  if (!allTasks) return 0;
+
+  let updated = 0;
+  const patchOps = {};
+
+  for (const [taskId, task] of Object.entries(allTasks)) {
+    if (!task || task.ruleId !== 'material_send') continue;
+    if (task.status === 'done') continue;
+
+    // Match by company + training date
+    for (const u of sentUpdates) {
+      if (task.trainingDate === u.date && companyMatch(task.company || '', u.company)) {
+        patchOps[`tasks/${taskId}/status`] = 'done';
+        patchOps[`tasks/${taskId}/completedAt`] = { '.sv': 'timestamp' };
+        patchOps[`tasks/${taskId}/updatedAt`] = { '.sv': 'timestamp' };
+        updated++;
+        break;
+      }
+    }
+  }
+
+  if (updated > 0) {
+    // Use multi-path update
+    const patchResp = await fetch(`${FIREBASE_DB_URL}/.json`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patchOps),
+    });
+    if (!patchResp.ok) throw new Error(`Firebase write error: ${patchResp.status}`);
+  }
+  return updated;
+}
+
+// ============================================================
 // Sync Diff Modal
 // ============================================================
 function showSyncDiffModal(diffs) {
@@ -648,6 +694,14 @@ async function applySyncDiff() {
       }
     }
 
+    // Sync TaskBoard for items now marked as sent
+    const newlySent = selected.filter(d => d.sheetSent || d.dashSent);
+    if (newlySent.length) {
+      try {
+        await syncTaskBoard(newlySent.map(d => ({ company: d.company, date: d.date, dayN: d.dayN })));
+      } catch (e) { console.error('TaskBoard sync error:', e); }
+    }
+
     renderApp();
     closeSyncModal();
     const total = selected.length;
@@ -731,27 +785,42 @@ async function saveData() {
     changeCount = 0;
     updateSaveBadge();
 
-    // Auto-sync sent status to spreadsheet
+    // Auto-sync sent status to spreadsheet + TaskBoard
     if (sheetsCreds) {
       try {
         fab.textContent = 'スプシ同期中...';
         const sheetRows = await readSheetSentStatus();
         const matched = matchSheetToDashboard(sheetRows);
         const sheetUpdates = [];
+        const sentItems = []; // for TaskBoard sync
         for (const m of matched) {
           if (m.dashSent && !m.sheetSent) {
             sheetUpdates.push({ row: m.sheetRow, value: '済' });
+            sentItems.push({ company: m.company, date: m.date, dayN: m.dayN });
           }
         }
         if (sheetUpdates.length) {
           await writeSheetSentStatus(sheetUpdates);
-          showToast(`保存 + スプシ${sheetUpdates.length}件同期`, 'success');
-        } else {
-          showToast('保存しました', 'success');
         }
+
+        // Also sync TaskBoard: mark matching material_send tasks as done
+        fab.textContent = 'TaskBoard同期中...';
+        // Collect ALL sent=true items (not just newly changed) for TaskBoard
+        const allSentItems = matched.filter(m => m.dashSent).map(m => ({ company: m.company, date: m.date, dayN: m.dayN }));
+        let tbUpdated = 0;
+        try {
+          tbUpdated = await syncTaskBoard(allSentItems);
+        } catch (e) {
+          console.error('TaskBoard sync error:', e);
+        }
+
+        const msgs = [];
+        if (sheetUpdates.length) msgs.push(`スプシ${sheetUpdates.length}件`);
+        if (tbUpdated) msgs.push(`TaskBoard${tbUpdated}件`);
+        showToast(msgs.length ? `保存 + ${msgs.join(' + ')}同期` : '保存しました', 'success');
       } catch (e) {
         console.error('Sheet sync error:', e);
-        showToast('保存OK（スプシ同期失敗: ' + e.message + '）', 'error');
+        showToast('保存OK（同期失敗: ' + e.message + '）', 'error');
       }
     } else {
       showToast('保存しました', 'success');
