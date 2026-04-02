@@ -592,45 +592,134 @@ async function syncTaskBoard(sentUpdates) {
   return updated;
 }
 
+async function readTaskBoardDoneStatus() {
+  // Fetch material_create and material_send tasks from Firebase
+  const resp = await fetch(`${FIREBASE_DB_URL}/tasks.json`);
+  if (!resp.ok) throw new Error(`Firebase read error: ${resp.status}`);
+  const allTasks = await resp.json();
+  if (!allTasks) return [];
+
+  const results = [];
+  for (const [taskId, task] of Object.entries(allTasks)) {
+    if (!task) continue;
+    if (task.ruleId !== 'material_create' && task.ruleId !== 'material_send') continue;
+    if (task.status !== 'done') continue;
+    results.push({
+      ruleId: task.ruleId,
+      company: task.company || '',
+      trainingDate: task.trainingDate || '',
+      trainingType: task.trainingType || '',
+    });
+  }
+  return results;
+}
+
+function matchTaskBoardToDashboard(doneTasks) {
+  // Returns diffs where TaskBoard says done but dashboard says not done
+  // ruleId "material_create" → dashboard created, "material_send" → dashboard sent
+  const diffs = [];
+
+  for (const task of doneTasks) {
+    // Find matching training+day by company + date
+    for (const t of materialsData.trainings) {
+      if (!companyMatch(t.company, task.company)) continue;
+      for (const d of t.days) {
+        if (d.date !== task.trainingDate) continue;
+        const dayKey = String(d.n);
+
+        if (task.ruleId === 'material_create' && !t.created[dayKey]) {
+          diffs.push({
+            source: 'TaskBoard',
+            type: 'created',
+            company: t.company,
+            dayN: d.n,
+            date: d.date,
+            training: t,
+          });
+        }
+        if (task.ruleId === 'material_send') {
+          const sentObj = getSentObj(t);
+          if (!sentObj[dayKey]) {
+            diffs.push({
+              source: 'TaskBoard',
+              type: 'sent',
+              company: t.company,
+              dayN: d.n,
+              date: d.date,
+              training: t,
+            });
+          }
+        }
+      }
+    }
+  }
+  return diffs;
+}
+
 // ============================================================
 // Sync Diff Modal
 // ============================================================
-function showSyncDiffModal(diffs) {
-  // diffs: [{company, dayN, date, sheetSent, dashSent, sheetRow, training}]
-  // Only show items where sheetSent !== dashSent
-  const conflicts = diffs.filter(d => d.sheetSent !== d.dashSent);
-  if (!conflicts.length) {
-    showToast('スプシと同期済みです（差分なし）', 'success');
+function showSyncDiffModal(sheetDiffs, tbDiffs) {
+  // sheetDiffs: [{company, dayN, date, sheetSent, dashSent, sheetRow, training}]
+  // tbDiffs: [{source:'TaskBoard', type:'created'|'sent', company, dayN, date, training}]
+  const sheetConflicts = (sheetDiffs || []).filter(d => d.sheetSent !== d.dashSent);
+  const tbConflicts = tbDiffs || [];
+
+  const allDiffs = [];
+
+  // Normalize sheet diffs
+  for (const d of sheetConflicts) {
+    allDiffs.push({
+      ...d,
+      source: d.sheetSent ? 'スプシ' : 'ダッシュボード',
+      target: d.sheetSent ? 'ダッシュボード' : 'スプシ',
+      field: 'sent',
+      fieldLabel: '送付',
+      sourceStatus: '済',
+      targetStatus: '未',
+    });
+  }
+
+  // Normalize TaskBoard diffs
+  for (const d of tbConflicts) {
+    allDiffs.push({
+      ...d,
+      source: 'TaskBoard',
+      target: 'ダッシュボード',
+      field: d.type, // 'created' or 'sent'
+      fieldLabel: d.type === 'created' ? '作成' : '送付',
+      sourceStatus: '済',
+      targetStatus: '未',
+    });
+  }
+
+  if (!allDiffs.length) {
+    showToast('全データ同期済み（差分なし）', 'success');
     return;
   }
 
-  // Separate: sheet has 済 but dash doesn't (sheet→dash) vs dash has 済 but sheet doesn't (dash→sheet)
-  const sheetToDash = conflicts.filter(d => d.sheetSent && !d.dashSent);
-  const dashToSheet = conflicts.filter(d => d.dashSent && !d.sheetSent);
+  pendingSyncDiffs = allDiffs;
 
-  pendingSyncDiffs = conflicts;
-
-  let infoText = '';
-  if (sheetToDash.length) infoText += `スプシで済 → ダッシュボード未反映: ${sheetToDash.length}件　`;
-  if (dashToSheet.length) infoText += `ダッシュボードで済 → スプシ未反映: ${dashToSheet.length}件`;
-  document.getElementById('syncModalInfo').textContent = infoText;
+  const infoParts = [];
+  const sheetToDash = sheetConflicts.filter(d => d.sheetSent && !d.dashSent);
+  const dashToSheet = sheetConflicts.filter(d => d.dashSent && !d.sheetSent);
+  if (sheetToDash.length) infoParts.push(`スプシ→ダッシュ: ${sheetToDash.length}件`);
+  if (dashToSheet.length) infoParts.push(`ダッシュ→スプシ: ${dashToSheet.length}件`);
+  if (tbConflicts.length) infoParts.push(`TaskBoard→ダッシュ: ${tbConflicts.length}件`);
+  document.getElementById('syncModalInfo').textContent = infoParts.join('　');
 
   const listEl = document.getElementById('syncDiffList');
-  listEl.innerHTML = conflicts.map((d, i) => {
-    const direction = d.sheetSent ? 'スプシ → ダッシュボード' : 'ダッシュボード → スプシ';
-    const fromStatus = d.sheetSent
-      ? '<span class="diff-status diff-status-done">スプシ: 済</span>'
-      : '<span class="diff-status diff-status-done">ダッシュ: 済</span>';
-    const toStatus = d.sheetSent
-      ? '<span class="diff-status diff-status-pending">ダッシュ: 未</span>'
-      : '<span class="diff-status diff-status-pending">スプシ: 未</span>';
+  listEl.innerHTML = allDiffs.map((d, i) => {
     const dateStr = d.date.slice(5).replace(/-/g, '/');
+    const srcBadge = `<span class="diff-status diff-status-done">${esc(d.source)}: 済</span>`;
+    const tgtBadge = `<span class="diff-status diff-status-pending">${esc(d.target)}: 未</span>`;
+    const fieldTag = d.fieldLabel === '作成' ? ' [作成]' : '';
     return `<div class="diff-item">
       <label>
         <input type="checkbox" checked data-diff-idx="${i}">
-        <span>${esc(d.company)} Day${d.dayN} (${dateStr})</span>
+        <span>${esc(d.company)} Day${d.dayN} (${dateStr})${fieldTag}</span>
       </label>
-      ${toStatus} <span class="diff-arrow">→</span> ${fromStatus}
+      ${tgtBadge} <span class="diff-arrow">→</span> ${srcBadge}
     </div>`;
   }).join('');
 
@@ -659,7 +748,17 @@ async function applySyncDiff() {
     let dashChanged = false;
 
     for (const d of selected) {
-      if (d.sheetSent && !d.dashSent) {
+      if (d.source === 'TaskBoard') {
+        // TaskBoard → Dashboard
+        const dayKey = String(d.dayN);
+        if (d.field === 'created') {
+          d.training.created[dayKey] = true;
+        } else {
+          const sentObj = getSentObj(d.training);
+          sentObj[dayKey] = true;
+        }
+        dashChanged = true;
+      } else if (d.sheetSent && !d.dashSent) {
         // Sheet → Dashboard
         const sentObj = getSentObj(d.training);
         sentObj[String(d.dayN)] = true;
@@ -840,24 +939,36 @@ async function reloadData() {
     renderApp();
     updateSaveBadge();
 
-    // Check spreadsheet diff
-    if (sheetsCreds) {
-      try {
-        showToast('スプシと照合中...', 'success');
-        const sheetRows = await readSheetSentStatus();
-        const matched = matchSheetToDashboard(sheetRows);
-        const diffs = matched.filter(m => m.sheetSent !== m.dashSent);
-        if (diffs.length) {
-          showSyncDiffModal(diffs);
-        } else {
-          showToast('再読込完了（スプシと同期済み）', 'success');
+    // Check spreadsheet + TaskBoard diff
+    {
+      let sheetDiffs = [];
+      let tbDiffs = [];
+
+      // Spreadsheet diff
+      if (sheetsCreds) {
+        try {
+          showToast('スプシ・TaskBoard照合中...', 'success');
+          const sheetRows = await readSheetSentStatus();
+          const matched = matchSheetToDashboard(sheetRows);
+          sheetDiffs = matched.filter(m => m.sheetSent !== m.dashSent);
+        } catch (e) {
+          console.error('Sheet read error:', e);
         }
-      } catch (e) {
-        console.error('Sheet read error:', e);
-        showToast('再読込OK（スプシ照合失敗: ' + e.message + '）', 'error');
       }
-    } else {
-      showToast('再読み込みしました', 'success');
+
+      // TaskBoard diff
+      try {
+        const doneTasks = await readTaskBoardDoneStatus();
+        tbDiffs = matchTaskBoardToDashboard(doneTasks);
+      } catch (e) {
+        console.error('TaskBoard read error:', e);
+      }
+
+      if (sheetDiffs.length || tbDiffs.length) {
+        showSyncDiffModal(sheetDiffs, tbDiffs);
+      } else {
+        showToast('再読込完了（全データ同期済み）', 'success');
+      }
     }
   } catch (e) {
     showToast('再読み込み失敗: ' + e.message, 'error');
