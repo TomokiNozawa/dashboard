@@ -753,6 +753,12 @@ html { scroll-behavior: smooth; }
         <div class="summary-label">今日期限</div>
       </div>
     </div>
+    <div class="summary-card" onclick="filterByDue('tomorrow')" id="sumTomorrow">
+      <div>
+        <div class="summary-value yellow" id="sumTomorrowVal">0</div>
+        <div class="summary-label">明日期限</div>
+      </div>
+    </div>
     <div class="summary-card" onclick="filterByDue('week')" id="sumWeek">
       <div>
         <div class="summary-value yellow" id="sumWeekVal">0</div>
@@ -1174,6 +1180,11 @@ function renderBoard() {
       const dueInfo = getDueInfo(t.dueDate);
       if (currentFilters.due === 'overdue' && dueInfo.type !== 'overdue') return false;
       if (currentFilters.due === 'today' && dueInfo.type !== 'today') return false;
+      if (currentFilters.due === 'tomorrow') {
+        const due = t.dueDate ? new Date(t.dueDate + 'T00:00:00') : null;
+        const tmrw = new Date(); tmrw.setHours(0,0,0,0); tmrw.setDate(tmrw.getDate() + 1);
+        if (!due || due.getTime() !== tmrw.getTime()) return false;
+      }
       if (currentFilters.due === 'week' && !['overdue','today','soon'].includes(dueInfo.type)) return false;
       if (currentFilters.due === 'done' && t.status !== 'done') return false;
       if (currentFilters.due === 'all') { /* no filter */ }
@@ -1277,19 +1288,22 @@ function updateSummary() {
   const today = new Date(); today.setHours(0,0,0,0);
   const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
 
-  let overdue = 0, todayCount = 0, weekCount = 0, doneCount = 0;
+  let overdue = 0, todayCount = 0, tomorrowCount = 0, weekCount = 0, doneCount = 0;
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
   tasks.forEach(t => {
     if (t.status === 'done') { doneCount++; return; }
     if (!t.dueDate) return;
     const due = new Date(t.dueDate + 'T00:00:00');
     if (due < today) overdue++;
     else if (due.getTime() === today.getTime()) todayCount++;
+    else if (due.getTime() === tomorrow.getTime()) tomorrowCount++;
     else if (due < weekEnd) weekCount++;
   });
 
   document.getElementById('sumTotalVal').textContent = active.length;
   document.getElementById('sumOverdueVal').textContent = overdue;
   document.getElementById('sumTodayVal').textContent = todayCount;
+  document.getElementById('sumTomorrowVal').textContent = tomorrowCount;
   document.getElementById('sumWeekVal').textContent = weekCount;
   document.getElementById('sumDoneVal').textContent = doneCount;
 }
@@ -1330,7 +1344,7 @@ function filterByDue(type) {
   } else {
     currentFilters.due = type;
     document.querySelectorAll('.summary-card').forEach(c => c.classList.remove('active'));
-    const idMap = { all: 'sumTotal', overdue: 'sumOverdue', today: 'sumToday', week: 'sumWeek', done: 'sumDone' };
+    const idMap = { all: 'sumTotal', overdue: 'sumOverdue', today: 'sumToday', tomorrow: 'sumTomorrow', week: 'sumWeek', done: 'sumDone' };
     document.getElementById(idMap[type])?.classList.add('active');
   }
   renderBoard();
