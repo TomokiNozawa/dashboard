@@ -54,7 +54,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .login-loading { color: var(--text2); font-size: 13px; margin-top: 12px; display: none; }
 
 /* Main App */
-.container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 100px; }
+.container { max-width: 1400px; margin: 0 auto; padding: 24px 20px 100px; overflow-x: hidden; }
 a { color: var(--blue); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
@@ -279,8 +279,72 @@ a:hover { text-decoration: underline; }
   .filter-count { margin-left: 0; width: 100%; text-align: center; }
   .property-rent-total { font-size: 18px; }
 }
-@media (min-width: 1100px) {
+@media (min-width: 1200px) {
   .property-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Compare Mode */
+.compare-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: var(--card); border-top: 1px solid var(--border);
+  padding: 12px 24px; display: none; align-items: center; gap: 16px;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.4);
+}
+.compare-bar.show { display: flex; }
+.compare-chips { display: flex; gap: 6px; flex: 1; overflow-x: auto; }
+.compare-chip {
+  padding: 4px 12px; background: var(--bg); border: 1px solid var(--border-light);
+  border-radius: 16px; font-size: 12px; color: var(--text2); white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.compare-chip .remove { cursor: pointer; color: var(--text3); font-size: 14px; }
+.compare-chip .remove:hover { color: var(--red); }
+.compare-btn-go {
+  padding: 8px 20px; background: linear-gradient(135deg, #6f42c1, var(--purple));
+  border: none; border-radius: 8px; color: white; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+}
+.compare-btn-go:hover { opacity: 0.9; }
+.compare-btn-go:disabled { opacity: 0.5; cursor: not-allowed; }
+.property-card .compare-check {
+  position: absolute; top: 8px; right: 8px; width: 22px; height: 22px;
+  border: 2px solid var(--border); border-radius: 4px; background: var(--bg);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: transparent; transition: all 0.15s;
+}
+.property-card .compare-check:hover { border-color: var(--purple); }
+.property-card .compare-check.selected {
+  background: var(--purple); border-color: var(--purple); color: white;
+}
+
+/* Compare Modal */
+.compare-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(0,0,0,0.8); display: none;
+  justify-content: center; align-items: flex-start;
+  padding: 40px 20px; overflow-y: auto;
+}
+.compare-overlay.show { display: flex; }
+.compare-table-wrap {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; overflow-x: auto; max-width: 95vw;
+}
+.compare-table { border-collapse: collapse; font-size: 13px; min-width: 600px; }
+.compare-table th, .compare-table td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border-light);
+  text-align: center; white-space: nowrap;
+}
+.compare-table th:first-child, .compare-table td:first-child {
+  text-align: left; position: sticky; left: 0; background: var(--card);
+  color: var(--text2); font-weight: 600; min-width: 100px;
+}
+.compare-table th { background: var(--card); color: var(--text2); font-weight: 600; }
+.compare-table td { background: var(--bg); }
+.compare-table td img { width: 120px; height: 80px; object-fit: cover; border-radius: 4px; cursor: pointer; }
+.compare-best { color: var(--green); font-weight: 700; }
+.compare-close {
+  position: fixed; top: 16px; right: 24px; z-index: 450;
+  font-size: 32px; color: white; cursor: pointer; background: none; border: none;
 }
 </style>
 </head>
@@ -399,6 +463,21 @@ a:hover { text-decoration: underline; }
     <!-- Property Cards -->
     <div class="property-grid" id="propertyGrid"></div>
     <div class="empty-state" id="emptyState" style="display:none;">条件に一致する物件がありません</div>
+  </div>
+</div>
+
+<!-- Compare Bar -->
+<div class="compare-bar" id="compareBar">
+  <span style="font-size:13px;color:var(--text2);white-space:nowrap;">比較:</span>
+  <div class="compare-chips" id="compareChips"></div>
+  <button class="compare-btn-go" id="compareBtnGo" onclick="showCompare()">比較表を表示</button>
+</div>
+
+<!-- Compare Modal -->
+<div class="compare-overlay" id="compareOverlay" onclick="if(event.target===this)closeCompare()">
+  <button class="compare-close" onclick="closeCompare()">&times;</button>
+  <div class="compare-table-wrap">
+    <table class="compare-table" id="compareTable"></table>
   </div>
 </div>
 
@@ -887,7 +966,10 @@ function renderCards(list) {
       imagesHtml = `<div class="property-images">${thumbs}${more}</div>`;
     }
 
+    const isCompared = compareSet.has(p.id);
+
     return `<div class="${cardClasses.join(' ')}" data-id="${p.id}">
+      <div class="compare-check ${isCompared ? 'selected' : ''}" onclick="toggleCompare('${p.id}')" title="比較に追加">${isCompared ? '✓' : ''}</div>
       <div class="property-name">
         <a href="${escHtml(p.url || '#')}" target="_blank" rel="noopener">${escHtml(p.name || '物件名なし')}</a>
         <span class="badge ${STATUS_CLASSES[status]}" onclick="cycleStatus('${p.id}')">${STATUS_LABELS[status]}</span>
@@ -934,6 +1016,89 @@ async function cycleStatus(id) {
   } catch (e) {
     showToast('ステータス更新に失敗しました', 'error');
   }
+}
+
+// ============================================================
+// Compare
+// ============================================================
+const compareSet = new Set();
+
+function toggleCompare(id) {
+  if (compareSet.has(id)) {
+    compareSet.delete(id);
+  } else {
+    if (compareSet.size >= 5) {
+      showToast('比較は最大5件までです', 'error');
+      return;
+    }
+    compareSet.add(id);
+  }
+  updateCompareBar();
+  renderAll();
+}
+
+function updateCompareBar() {
+  const bar = document.getElementById('compareBar');
+  const chips = document.getElementById('compareChips');
+  if (compareSet.size === 0) {
+    bar.classList.remove('show');
+    return;
+  }
+  bar.classList.add('show');
+  chips.innerHTML = Array.from(compareSet).map(id => {
+    const p = properties[id];
+    const name = p ? (p.name || '').slice(0, 15) : id;
+    return `<span class="compare-chip">${escHtml(name)}<span class="remove" onclick="event.stopPropagation();toggleCompare('${id}')">&times;</span></span>`;
+  }).join('');
+  document.getElementById('compareBtnGo').disabled = compareSet.size < 2;
+}
+
+function showCompare() {
+  if (compareSet.size < 2) return;
+  const ids = Array.from(compareSet);
+  const props = ids.map(id => properties[id]).filter(Boolean);
+  const table = document.getElementById('compareTable');
+
+  // Find best values for highlighting
+  const rents = props.map(p => p.totalRent || (p.rent || 0) + (p.managementFee || 0));
+  const areas = props.map(p => p.area || 0);
+  const ages = props.map(p => p.age != null ? p.age : 99);
+  const walks = props.map(p => p.walkMinutes || 99);
+  const bestRent = Math.min(...rents);
+  const bestArea = Math.max(...areas);
+  const bestAge = Math.min(...ages);
+  const bestWalk = Math.min(...walks);
+
+  const rows = [
+    { label: '写真', render: p => {
+      const img = (p.images || [])[0];
+      return img ? `<img src="${escHtml(img)}" onclick="event.stopPropagation()">` : '-';
+    }},
+    { label: '物件名', render: p => `<a href="${escHtml(p.url || '#')}" target="_blank" rel="noopener" style="color:var(--blue);font-size:12px;">${escHtml((p.name || '').slice(0, 20))}</a>` },
+    { label: '合計家賃', render: (p, i) => { const v = rents[i]; const cls = v === bestRent ? 'compare-best' : ''; return `<span class="${cls}">${(v / 10000).toFixed(1)}万円</span>`; }},
+    { label: '家賃', render: p => `${((p.rent || 0) / 10000).toFixed(1)}万` },
+    { label: '管理費', render: p => `${((p.managementFee || 0) / 10000).toFixed(1)}万` },
+    { label: '敷金', render: p => escHtml(p.deposit || '-') },
+    { label: '礼金', render: p => escHtml(p.keyMoney || '-') },
+    { label: '間取り', render: p => escHtml(p.layout || '-') },
+    { label: '面積', render: (p, i) => { const cls = areas[i] === bestArea ? 'compare-best' : ''; return `<span class="${cls}">${p.area || '-'}m²</span>`; }},
+    { label: '築年数', render: (p, i) => { const cls = ages[i] === bestAge ? 'compare-best' : ''; return `<span class="${cls}">築${p.age != null ? p.age : '?'}年</span>`; }},
+    { label: '駅', render: p => escHtml(p.station || '-') },
+    { label: '徒歩', render: (p, i) => { const cls = walks[i] === bestWalk ? 'compare-best' : ''; return `<span class="${cls}">${p.walkMinutes || '?'}分</span>`; }},
+    { label: '構造', render: p => escHtml(p.structure || '-') },
+    { label: '階数', render: p => escHtml(p.floor || '-') },
+    { label: '住所', render: p => `<span style="white-space:normal;font-size:11px;">${escHtml(p.address || '-')}</span>` },
+  ];
+
+  const header = `<tr><th></th>${props.map(p => `<th style="min-width:140px;">${escHtml((p.name || '').slice(0, 12))}</th>`).join('')}</tr>`;
+  const body = rows.map(r => `<tr><td>${r.label}</td>${props.map((p, i) => `<td>${r.render(p, i)}</td>`).join('')}</tr>`).join('');
+
+  table.innerHTML = `<thead>${header}</thead><tbody>${body}</tbody>`;
+  document.getElementById('compareOverlay').classList.add('show');
+}
+
+function closeCompare() {
+  document.getElementById('compareOverlay').classList.remove('show');
 }
 
 // ============================================================
