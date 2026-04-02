@@ -139,6 +139,43 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .toast-success { background: #238636; color: white; }
 .toast-error { background: var(--red); color: white; }
 
+/* Sync Modal */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.7); display: flex;
+  justify-content: center; align-items: center;
+}
+.modal {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; max-width: 600px; width: 90%;
+  max-height: 80vh; overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.modal h2 { font-size: 16px; margin-bottom: 16px; }
+.modal-info { font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+.diff-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.diff-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; background: var(--bg);
+  border: 1px solid var(--border-light); border-radius: 6px;
+  font-size: 13px;
+}
+.diff-item label { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; }
+.diff-item input[type="checkbox"] { accent-color: var(--green); width: 16px; height: 16px; }
+.diff-arrow { color: var(--yellow); font-weight: 600; font-size: 12px; white-space: nowrap; }
+.diff-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+.diff-status-done { background: rgba(63,185,80,0.15); color: var(--green); }
+.diff-status-pending { background: rgba(248,81,73,0.15); color: var(--red); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.modal-btn {
+  padding: 8px 20px; border: none; border-radius: 6px;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+}
+.modal-btn:hover { opacity: 0.85; }
+.modal-btn-primary { background: linear-gradient(135deg, #238636, #3fb950); color: white; }
+.modal-btn-secondary { background: var(--border); color: var(--text2); }
+.sync-status { font-size: 11px; color: var(--text3); margin-left: 8px; }
+
 /* Loading */
 @keyframes loadFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes loadSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
@@ -243,6 +280,19 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   保存 <span class="save-badge" id="saveBadge">0</span>
 </button>
 
+<!-- Sync Diff Modal -->
+<div class="modal-overlay" id="syncModal" style="display:none;" onclick="if(event.target===this)closeSyncModal()">
+  <div class="modal">
+    <h2 id="syncModalTitle">スプシとの差分</h2>
+    <p class="modal-info" id="syncModalInfo"></p>
+    <div class="diff-list" id="syncDiffList"></div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-secondary" onclick="closeSyncModal()">キャンセル</button>
+      <button class="modal-btn modal-btn-primary" id="syncApplyBtn" onclick="applySyncDiff()">選択した変更を反映</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -255,11 +305,21 @@ const REPO = 'TomokiNozawa/dashboard-data';
 const FILE_PATH = 'materials-data.json';
 const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4h
 
+const SHEETS_SPREADSHEET_ID = '1ZAyQWtU1N5rByZuSAGvZs8t6kwWL2g0de1__5b6yark';
+const SHEETS_HEADER_ROW = 5; // 0-based
+const SHEETS_COL_DATE = 0;
+const SHEETS_COL_COMPANY = 6;
+const SHEETS_COL_CONTENT = 8;
+const SHEETS_COL_MATERIAL_SEND = 24; // Y column
+
 let pat = null;
+let sheetsCreds = null; // { refresh_token, client_id, client_secret, token_uri }
+let sheetsAccessToken = null;
 let materialsData = null;
 let fileSha = null;
 let changeCount = 0;
 let sortState = { column: 'days', direction: 'asc' };
+let pendingSyncDiffs = []; // for modal
 
 // ============================================================
 // Authentication (shared with shift.html via sessionStorage)
@@ -273,6 +333,7 @@ async function init() {
     if (elapsed < SESSION_TIMEOUT) {
       try {
         pat = await decryptPAT(storedPass);
+        try { sheetsCreds = JSON.parse(await decryptFile(storedPass, 'encrypted-sheets.json')); } catch(e) { console.warn('Sheets creds not available:', e); }
         sessionStorage.setItem('dk_ts', Date.now().toString());
         showApp();
         return;
@@ -309,6 +370,7 @@ async function doLogin() {
 
   try {
     pat = await decryptPAT(password);
+    try { sheetsCreds = JSON.parse(await decryptFile(password, 'encrypted-sheets.json')); } catch(e) { console.warn('Sheets creds not available:', e); }
     sessionStorage.setItem('dk_pass', password);
     sessionStorage.setItem('dk_ts', Date.now().toString());
     showApp();
@@ -332,6 +394,269 @@ async function decryptPAT(password) {
   const token = new TextDecoder().decode(decrypted).replace(/[\x00-\x1f]/g, '').trim();
   if (!token || token.length < 10) throw new Error('Invalid');
   return token;
+}
+
+async function decryptFile(password, filename) {
+  const resp = await fetch(filename);
+  const payload = await resp.json();
+  const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+  const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-CBC', length: 256 }, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, encData);
+  return new TextDecoder().decode(decrypted).replace(/[\x00-\x1f]/g, '').trim();
+}
+
+// ============================================================
+// Google Sheets API
+// ============================================================
+async function getSheetsAccessToken() {
+  if (!sheetsCreds) return null;
+  // Try existing token
+  if (sheetsAccessToken) {
+    try {
+      const testResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SPREADSHEET_ID}?fields=spreadsheetId`, {
+        headers: { 'Authorization': `Bearer ${sheetsAccessToken}` }
+      });
+      if (testResp.ok) return sheetsAccessToken;
+    } catch(e) {}
+  }
+  // Refresh
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: sheetsCreds.refresh_token,
+    client_id: sheetsCreds.client_id,
+    client_secret: sheetsCreds.client_secret,
+  });
+  const resp = await fetch(sheetsCreds.token_uri, { method: 'POST', body });
+  if (!resp.ok) throw new Error('Sheets token refresh failed');
+  const data = await resp.json();
+  sheetsAccessToken = data.access_token;
+  return sheetsAccessToken;
+}
+
+function getSheetName() {
+  const now = new Date();
+  const fy = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${fy}年`;
+}
+
+function parseSheetDate(dateStr, fy) {
+  if (!dateStr || !String(dateStr).includes('/')) return null;
+  const parts = String(dateStr).split('/');
+  if (parts.length !== 2) return null;
+  const m = parseInt(parts[0]), d = parseInt(parts[1]);
+  if (isNaN(m) || isNaN(d)) return null;
+  const y = m >= 4 ? fy : fy + 1;
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function normalizeCompany(name) {
+  let s = String(name).trim().replace(/[\s　]+/g, '').replace(/株式会社|\(株\)|（株）/g, '');
+  s = s.replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  return s.toUpperCase();
+}
+
+function companyMatch(a, b) {
+  const na = normalizeCompany(a), nb = normalizeCompany(b);
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+  const minLen = Math.min(na.length, nb.length);
+  if (minLen >= 3 && na.slice(0, minLen) === nb.slice(0, minLen)) return true;
+  return false;
+}
+
+async function readSheetSentStatus() {
+  const token = await getSheetsAccessToken();
+  if (!token) throw new Error('Sheets認証情報がありません');
+  const sheetName = getSheetName();
+  const range = encodeURIComponent(sheetName);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SPREADSHEET_ID}/values/${range}?majorDimension=ROWS`;
+  const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+  if (!resp.ok) throw new Error(`Sheets API error: ${resp.status}`);
+  const data = await resp.json();
+  const rows = data.values || [];
+  const now = new Date();
+  const fy = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const result = [];
+  for (let i = SHEETS_HEADER_ROW + 1; i < rows.length; i++) {
+    const row = rows[i];
+    const dateStr = (row[SHEETS_COL_DATE] || '').trim();
+    const dateIso = parseSheetDate(dateStr, fy);
+    if (!dateIso) continue;
+    const company = (row[SHEETS_COL_COMPANY] || '').trim();
+    if (!company) continue;
+    const materialSend = (row[SHEETS_COL_MATERIAL_SEND] || '').trim();
+    result.push({ row: i + 1, date: dateIso, company, materialSend: materialSend === '済' });
+  }
+  return result;
+}
+
+async function writeSheetSentStatus(updates) {
+  // updates: [{row: 1-based, value: "済" or ""}]
+  if (!updates.length) return;
+  const token = await getSheetsAccessToken();
+  if (!token) throw new Error('Sheets認証情報がありません');
+  const sheetName = getSheetName();
+  const body = {
+    valueInputOption: 'RAW',
+    data: updates.map(u => ({
+      range: `${sheetName}!Y${u.row}`,
+      values: [[u.value]]
+    }))
+  };
+  const resp = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SPREADSHEET_ID}/values:batchUpdate`,
+    { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+  );
+  if (!resp.ok) throw new Error(`Sheets write error: ${resp.status}`);
+  return await resp.json();
+}
+
+function matchSheetToDashboard(sheetRows) {
+  // Returns matched pairs: [{sheetRow, training, dayObj, sheetSent, dashSent}]
+  const dashLookup = {};
+  materialsData.trainings.forEach(t => {
+    t.days.forEach(d => {
+      const key = d.date;
+      if (!dashLookup[key]) dashLookup[key] = [];
+      dashLookup[key].push({ t, d });
+    });
+  });
+  const matched = [];
+  for (const sr of sheetRows) {
+    const candidates = dashLookup[sr.date] || [];
+    for (const { t, d } of candidates) {
+      if (companyMatch(t.company, sr.company)) {
+        const sentObj = getSentObj(t);
+        matched.push({
+          sheetRow: sr.row,
+          company: t.company,
+          dayN: d.n,
+          date: d.date,
+          sheetSent: sr.materialSend,
+          dashSent: !!sentObj[String(d.n)],
+          training: t,
+        });
+        break;
+      }
+    }
+  }
+  return matched;
+}
+
+// ============================================================
+// Sync Diff Modal
+// ============================================================
+function showSyncDiffModal(diffs) {
+  // diffs: [{company, dayN, date, sheetSent, dashSent, sheetRow, training}]
+  // Only show items where sheetSent !== dashSent
+  const conflicts = diffs.filter(d => d.sheetSent !== d.dashSent);
+  if (!conflicts.length) {
+    showToast('スプシと同期済みです（差分なし）', 'success');
+    return;
+  }
+
+  // Separate: sheet has 済 but dash doesn't (sheet→dash) vs dash has 済 but sheet doesn't (dash→sheet)
+  const sheetToDash = conflicts.filter(d => d.sheetSent && !d.dashSent);
+  const dashToSheet = conflicts.filter(d => d.dashSent && !d.sheetSent);
+
+  pendingSyncDiffs = conflicts;
+
+  let infoText = '';
+  if (sheetToDash.length) infoText += `スプシで済 → ダッシュボード未反映: ${sheetToDash.length}件　`;
+  if (dashToSheet.length) infoText += `ダッシュボードで済 → スプシ未反映: ${dashToSheet.length}件`;
+  document.getElementById('syncModalInfo').textContent = infoText;
+
+  const listEl = document.getElementById('syncDiffList');
+  listEl.innerHTML = conflicts.map((d, i) => {
+    const direction = d.sheetSent ? 'スプシ → ダッシュボード' : 'ダッシュボード → スプシ';
+    const fromStatus = d.sheetSent
+      ? '<span class="diff-status diff-status-done">スプシ: 済</span>'
+      : '<span class="diff-status diff-status-done">ダッシュ: 済</span>';
+    const toStatus = d.sheetSent
+      ? '<span class="diff-status diff-status-pending">ダッシュ: 未</span>'
+      : '<span class="diff-status diff-status-pending">スプシ: 未</span>';
+    const dateStr = d.date.slice(5).replace(/-/g, '/');
+    return `<div class="diff-item">
+      <label>
+        <input type="checkbox" checked data-diff-idx="${i}">
+        <span>${esc(d.company)} Day${d.dayN} (${dateStr})</span>
+      </label>
+      ${toStatus} <span class="diff-arrow">→</span> ${fromStatus}
+    </div>`;
+  }).join('');
+
+  document.getElementById('syncModal').style.display = 'flex';
+}
+
+function closeSyncModal() {
+  document.getElementById('syncModal').style.display = 'none';
+  pendingSyncDiffs = [];
+}
+
+async function applySyncDiff() {
+  const checkboxes = document.querySelectorAll('#syncDiffList input[type="checkbox"]');
+  const selected = [];
+  checkboxes.forEach(cb => {
+    if (cb.checked) selected.push(pendingSyncDiffs[parseInt(cb.dataset.diffIdx)]);
+  });
+  if (!selected.length) { closeSyncModal(); return; }
+
+  const btn = document.getElementById('syncApplyBtn');
+  btn.disabled = true;
+  btn.textContent = '同期中...';
+
+  try {
+    const sheetUpdates = [];
+    let dashChanged = false;
+
+    for (const d of selected) {
+      if (d.sheetSent && !d.dashSent) {
+        // Sheet → Dashboard
+        const sentObj = getSentObj(d.training);
+        sentObj[String(d.dayN)] = true;
+        dashChanged = true;
+      } else if (d.dashSent && !d.sheetSent) {
+        // Dashboard → Sheet
+        sheetUpdates.push({ row: d.sheetRow, value: '済' });
+      }
+    }
+
+    // Write to sheet
+    if (sheetUpdates.length) {
+      await writeSheetSentStatus(sheetUpdates);
+    }
+
+    // Save dashboard if changed
+    if (dashChanged) {
+      // Save to GitHub silently
+      materialsData.lastEditedInBrowser = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\//g, '-');
+      const jsonStr = JSON.stringify(materialsData, null, 2);
+      const utf8Bytes = new TextEncoder().encode(jsonStr);
+      let binaryStr = '';
+      utf8Bytes.forEach(b => binaryStr += String.fromCharCode(b));
+      const content = btoa(binaryStr);
+      const resp = await fetch(`${API_BASE}/repos/${REPO}/contents/${FILE_PATH}`, {
+        method: 'PUT', headers: apiHeaders(),
+        body: JSON.stringify({ message: '教材データ更新（スプシ同期）', content, sha: fileSha })
+      });
+      if (resp.ok) {
+        const result = await resp.json();
+        fileSha = result.content.sha;
+      }
+    }
+
+    renderApp();
+    closeSyncModal();
+    const total = selected.length;
+    showToast(`${total}件の変更を同期しました`, 'success');
+  } catch (e) {
+    showToast('同期に失敗: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = '選択した変更を反映';
 }
 
 // ============================================================
@@ -405,7 +730,32 @@ async function saveData() {
     fileSha = result.content.sha;
     changeCount = 0;
     updateSaveBadge();
-    showToast('保存しました', 'success');
+
+    // Auto-sync sent status to spreadsheet
+    if (sheetsCreds) {
+      try {
+        fab.textContent = 'スプシ同期中...';
+        const sheetRows = await readSheetSentStatus();
+        const matched = matchSheetToDashboard(sheetRows);
+        const sheetUpdates = [];
+        for (const m of matched) {
+          if (m.dashSent && !m.sheetSent) {
+            sheetUpdates.push({ row: m.sheetRow, value: '済' });
+          }
+        }
+        if (sheetUpdates.length) {
+          await writeSheetSentStatus(sheetUpdates);
+          showToast(`保存 + スプシ${sheetUpdates.length}件同期`, 'success');
+        } else {
+          showToast('保存しました', 'success');
+        }
+      } catch (e) {
+        console.error('Sheet sync error:', e);
+        showToast('保存OK（スプシ同期失敗: ' + e.message + '）', 'error');
+      }
+    } else {
+      showToast('保存しました', 'success');
+    }
   } catch (e) {
     showToast('保存に失敗: ' + e.message, 'error');
   }
@@ -420,7 +770,26 @@ async function reloadData() {
     changeCount = 0;
     renderApp();
     updateSaveBadge();
-    showToast('再読み込みしました', 'success');
+
+    // Check spreadsheet diff
+    if (sheetsCreds) {
+      try {
+        showToast('スプシと照合中...', 'success');
+        const sheetRows = await readSheetSentStatus();
+        const matched = matchSheetToDashboard(sheetRows);
+        const diffs = matched.filter(m => m.sheetSent !== m.dashSent);
+        if (diffs.length) {
+          showSyncDiffModal(diffs);
+        } else {
+          showToast('再読込完了（スプシと同期済み）', 'success');
+        }
+      } catch (e) {
+        console.error('Sheet read error:', e);
+        showToast('再読込OK（スプシ照合失敗: ' + e.message + '）', 'error');
+      }
+    } else {
+      showToast('再読み込みしました', 'success');
+    }
   } catch (e) {
     showToast('再読み込み失敗: ' + e.message, 'error');
   }
