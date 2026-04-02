@@ -120,22 +120,35 @@ a:hover { text-decoration: underline; }
   border-color: rgba(88,166,255,0.3);
 }
 
-.property-images {
-  display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
-  -webkit-overflow-scrolling: touch; padding-bottom: 4px;
+.property-media {
+  display: flex; gap: 8px; margin-bottom: 10px;
 }
-.property-images img {
-  width: 80px; height: 60px; object-fit: cover; border-radius: 4px;
+.property-floorplan {
+  flex-shrink: 0; width: 120px; height: 90px;
+  border: 1px solid var(--border-light); border-radius: 6px;
+  overflow: hidden; cursor: pointer; background: #fff;
+}
+.property-floorplan img {
+  width: 100%; height: 100%; object-fit: contain;
+}
+.property-floorplan:hover { opacity: 0.85; }
+.property-thumbs {
+  display: flex; flex-direction: column; gap: 4px; overflow: hidden; flex: 1;
+}
+.property-thumbs-row {
+  display: flex; gap: 4px;
+}
+.property-thumbs img {
+  width: 56px; height: 42px; object-fit: cover; border-radius: 3px;
   cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
   border: 1px solid var(--border-light);
 }
-.property-images img:hover { opacity: 0.8; }
-.property-images .img-more {
-  width: 80px; height: 60px; flex-shrink: 0; display: flex;
+.property-thumbs img:hover { opacity: 0.8; }
+.property-thumbs .img-more {
+  width: 56px; height: 42px; flex-shrink: 0; display: flex;
   align-items: center; justify-content: center;
   background: var(--bg); border: 1px solid var(--border-light);
-  border-radius: 4px; color: var(--text3); font-size: 11px;
+  border-radius: 3px; color: var(--text3); font-size: 10px;
   cursor: pointer;
 }
 
@@ -954,16 +967,41 @@ function renderCards(list) {
     if (isDimmed) cardClasses.push('dimmed');
     if (isToday) cardClasses.push('today-new');
 
-    // Build image thumbnails
+    // Build image thumbnails with floor plan
     let imagesHtml = '';
     const imgs = p.images || [];
     if (imgs.length > 0) {
-      const showMax = 4;
-      const thumbs = imgs.slice(0, showMax).map((src, idx) =>
-        `<img src="${escHtml(src)}" alt="" loading="lazy" onclick="event.stopPropagation();openLightbox('${p.id}',${idx})">`
-      ).join('');
-      const more = imgs.length > showMax ? `<div class="img-more" onclick="event.stopPropagation();openLightbox('${p.id}',${showMax})">+${imgs.length - showMax}枚</div>` : '';
-      imagesHtml = `<div class="property-images">${thumbs}${more}</div>`;
+      // Find floor plan image (_co.jpg suffix = 間取り図 in SUUMO)
+      const fpIdx = imgs.findIndex(src => /_co\.\w+$/.test(src));
+      const fpSrc = fpIdx >= 0 ? imgs[fpIdx] : null;
+      const otherImgs = imgs.filter((_, i) => i !== fpIdx);
+
+      const fpHtml = fpSrc
+        ? `<div class="property-floorplan" onclick="event.stopPropagation();openLightbox('${p.id}',${fpIdx >= 0 ? fpIdx : 0})"><img src="${escHtml(fpSrc)}" alt="間取り" loading="lazy"></div>`
+        : '';
+
+      const showMax = 6;
+      const thumbs = otherImgs.slice(0, showMax).map((src) => {
+        const origIdx = imgs.indexOf(src);
+        return `<img src="${escHtml(src)}" alt="" loading="lazy" onclick="event.stopPropagation();openLightbox('${p.id}',${origIdx})">`;
+      }).join('');
+      const remaining = otherImgs.length - showMax;
+      const more = remaining > 0 ? `<div class="img-more" onclick="event.stopPropagation();openLightbox('${p.id}',0)">+${remaining}</div>` : '';
+
+      const row1 = otherImgs.slice(0, 3).map(src => {
+        const origIdx = imgs.indexOf(src);
+        return `<img src="${escHtml(src)}" alt="" loading="lazy" onclick="event.stopPropagation();openLightbox('${p.id}',${origIdx})">`;
+      }).join('');
+      const row2items = otherImgs.slice(3, 6).map(src => {
+        const origIdx = imgs.indexOf(src);
+        return `<img src="${escHtml(src)}" alt="" loading="lazy" onclick="event.stopPropagation();openLightbox('${p.id}',${origIdx})">`;
+      });
+      if (otherImgs.length > 6) row2items.push(`<div class="img-more" onclick="event.stopPropagation();openLightbox('${p.id}',0)">+${otherImgs.length - 6}</div>`);
+      const row2 = row2items.join('');
+
+      const thumbsHtml = (row1 || row2) ? `<div class="property-thumbs"><div class="property-thumbs-row">${row1}</div>${row2 ? `<div class="property-thumbs-row">${row2}</div>` : ''}</div>` : '';
+
+      imagesHtml = `<div class="property-media">${fpHtml}${thumbsHtml}</div>`;
     }
 
     const isCompared = compareSet.has(p.id);
@@ -983,6 +1021,7 @@ function renderCards(list) {
         <span>${escHtml(p.layout || '-')}</span><span class="sep">|</span>
         <span>${p.area ? p.area + 'm&sup2;' : '-'}</span><span class="sep">|</span>
         <span>築${builtAge}年</span><span class="sep">|</span>
+        <span>${escHtml(p.floor || '-')}</span><span class="sep">|</span>
         <span>${escHtml(p.station || '-')} 徒歩${p.walkMinutes || '?'}分</span>
       </div>
       <div class="property-address">${escHtml(p.address || '')}</div>
