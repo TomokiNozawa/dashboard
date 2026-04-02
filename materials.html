@@ -72,10 +72,10 @@ a:hover { text-decoration: underline; }
 .summary-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
 
 /* Tables */
-.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border-light); }
+.table-wrap { border-radius: var(--radius); border: 1px solid var(--border-light); }
 table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); text-align: center; }
-.data-table th { background: var(--card); color: var(--text2); font-weight: 600; position: sticky; top: 0; z-index: 2; white-space: nowrap; cursor: pointer; user-select: none; }
+.data-table th { background: var(--card); color: var(--text2); font-weight: 600; position: sticky; top: 0; z-index: 2; white-space: nowrap; cursor: pointer; user-select: none; box-shadow: 0 1px 0 var(--border-light); }
 .data-table th:hover { color: var(--text); }
 .data-table td { background: var(--bg); }
 .data-table tbody tr:hover td { background: var(--card); }
@@ -435,12 +435,21 @@ function renderApp() {
   document.getElementById('lastEditInfo').textContent = '最終編集: ' + (materialsData.lastEditedInBrowser || '-');
 }
 
+// Migrate sent: boolean → sent: {"1":bool,"2":bool,...} per day
+function getSentObj(t) {
+  if (typeof t.sent === 'object' && t.sent !== null) return t.sent;
+  const obj = {};
+  t.days.forEach(d => { obj[String(d.n)] = !!t.sent; });
+  t.sent = obj;
+  return obj;
+}
+
 function renderSummary() {
   const t = materialsData.trainings;
   const total = t.length;
   const totalDays = t.reduce((s, x) => s + x.days.length, 0);
   const createdDays = t.reduce((s, x) => s + Object.values(x.created).filter(v => v).length, 0);
-  const sent = t.filter(x => x.sent).length;
+  const sentDays = t.reduce((s, x) => s + Object.values(getSentObj(x)).filter(v => v).length, 0);
 
   document.getElementById('sumTrainings').textContent = total;
   document.getElementById('sumDays').textContent = totalDays;
@@ -450,8 +459,8 @@ function renderSummary() {
   createdEl.style.color = createdDays === totalDays ? 'var(--green)' : createdDays >= totalDays / 2 ? 'var(--yellow)' : 'var(--red)';
 
   const sentEl = document.getElementById('sumSent');
-  sentEl.textContent = `${sent}/${total}`;
-  sentEl.style.color = sent === total ? 'var(--green)' : sent >= total / 2 ? 'var(--yellow)' : 'var(--red)';
+  sentEl.textContent = `${sentDays}/${totalDays}`;
+  sentEl.style.color = sentDays === totalDays ? 'var(--green)' : sentDays >= totalDays / 2 ? 'var(--yellow)' : 'var(--red)';
 }
 
 function renderTable() {
@@ -475,7 +484,7 @@ function renderTable() {
       case 'date': va = a.d.date; vb = b.d.date; break;
       case 'formType': va = a.t.formType; vb = b.t.formType; break;
       case 'created': va = a.t.created[String(a.d.n)] ? 1 : 0; vb = b.t.created[String(b.d.n)] ? 1 : 0; break;
-      case 'sent': va = a.t.sent ? 1 : 0; vb = b.t.sent ? 1 : 0; break;
+      case 'sent': va = getSentObj(a.t)[String(a.d.n)] ? 1 : 0; vb = getSentObj(b.t)[String(b.d.n)] ? 1 : 0; break;
       default: va = a.d.date; vb = b.d.date;
     }
     const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
@@ -484,8 +493,9 @@ function renderTable() {
 
   tbody.innerHTML = rows.map(({ t, idx, d }) => {
     const created = t.created[String(d.n)];
-    const allCreated = Object.values(t.created).every(v => v);
-    const isDone = allCreated && t.sent;
+    const sentObj = getSentObj(t);
+    const daySent = sentObj[String(d.n)];
+    const isDone = created && daySent;
 
     const dateStr = `${d.date.slice(5)}(${d.dow})`;
 
@@ -497,9 +507,9 @@ function renderTable() {
       ? `<span class="badge badge-done" onclick="toggleCreated(${idx},${d.n})">&#10003; 済</span>`
       : `<span class="badge badge-pending" onclick="toggleCreated(${idx},${d.n})">— 未</span>`;
 
-    const sentBadge = t.sent
-      ? `<span class="badge badge-done" onclick="toggleSent(${idx})">&#10003; 済</span>`
-      : `<span class="badge badge-pending" onclick="toggleSent(${idx})">— 未</span>`;
+    const sentBadge = daySent
+      ? `<span class="badge badge-done" onclick="toggleSent(${idx},${d.n})">&#10003; 済</span>`
+      : `<span class="badge badge-pending" onclick="toggleSent(${idx},${d.n})">— 未</span>`;
 
     return `<tr class="${isDone ? 'row-done' : ''}">
       <td class="text-left">${esc(t.company)}</td>
@@ -537,8 +547,10 @@ function toggleCreated(idx, dayN) {
   markChanged();
 }
 
-function toggleSent(idx) {
-  materialsData.trainings[idx].sent = !materialsData.trainings[idx].sent;
+function toggleSent(idx, dayN) {
+  const key = String(dayN);
+  const sentObj = getSentObj(materialsData.trainings[idx]);
+  sentObj[key] = !sentObj[key];
   markChanged();
 }
 
