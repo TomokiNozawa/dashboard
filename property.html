@@ -12,6 +12,7 @@
   --bg: #0d1117; --card: #161b22; --card-hover: #1c2129;
   --border: #30363d; --border-light: #21262d;
   --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+  --accent: #58a6ff;
   --blue: #58a6ff; --green: #3fb950; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; --orange: #f0883e;
   --radius: 8px;
 }
@@ -31,7 +32,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 }
 .login-container h1 {
   font-size: 20px; font-weight: 700; margin-bottom: 8px;
-  background: linear-gradient(135deg, #e6edf3, #58a6ff);
+  background: linear-gradient(135deg, #e6edf3, var(--accent));
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
 .login-container p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
@@ -41,7 +42,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
   border-radius: 8px; color: var(--text); font-size: 14px;
   outline: none; transition: border-color 0.2s;
 }
-.login-input:focus { border-color: var(--blue); }
+.login-input:focus { border-color: var(--accent); }
 .login-btn {
   width: 100%; padding: 12px; margin-top: 16px;
   background: linear-gradient(135deg, #238636, #3fb950);
@@ -55,7 +56,7 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 
 /* Main App */
 .container { max-width: 1400px; margin: 0 auto; padding: 24px 20px 100px; overflow-x: hidden; }
-a { color: var(--blue); text-decoration: none; }
+a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* Header */
@@ -85,7 +86,7 @@ a:hover { text-decoration: underline; }
   background: var(--bg); border: 1px solid var(--border); color: var(--text2);
   cursor: pointer; user-select: none; transition: all 0.15s;
 }
-.filter-chip.active { background: rgba(88,166,255,0.15); border-color: var(--blue); color: var(--blue); }
+.filter-chip.active { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: var(--accent); color: var(--accent); }
 .filter-chip:hover { border-color: var(--text2); }
 .filter-rent {
   display: flex; align-items: center; gap: 6px;
@@ -94,13 +95,13 @@ a:hover { text-decoration: underline; }
   width: 70px; padding: 4px 8px; background: var(--bg); border: 1px solid var(--border);
   border-radius: 4px; color: var(--text); font-size: 12px; outline: none; text-align: center;
 }
-.filter-rent input:focus { border-color: var(--blue); }
+.filter-rent input:focus { border-color: var(--accent); }
 .filter-rent span { font-size: 12px; color: var(--text3); }
 .filter-select {
   padding: 4px 8px; background: var(--bg); border: 1px solid var(--border);
   border-radius: 4px; color: var(--text); font-size: 12px; outline: none; cursor: pointer;
 }
-.filter-select:focus { border-color: var(--blue); }
+.filter-select:focus { border-color: var(--accent); }
 .filter-count {
   font-size: 13px; color: var(--text2); margin-left: auto; align-self: center; white-space: nowrap;
 }
@@ -116,8 +117,8 @@ a:hover { text-decoration: underline; }
 .property-card:hover { border-color: var(--text3); background: var(--card-hover); }
 .property-card.dimmed { opacity: 0.45; }
 .property-card.today-new {
-  box-shadow: 0 0 12px rgba(88,166,255,0.15);
-  border-color: rgba(88,166,255,0.3);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .property-media {
@@ -186,7 +187,7 @@ a:hover { text-decoration: underline; }
   color: var(--text); transition: color 0.15s;
   line-height: 1.4;
 }
-.property-name a:hover { color: var(--blue); text-decoration: none; }
+.property-name a:hover { color: var(--accent); text-decoration: none; }
 
 .property-rent {
   margin-bottom: 12px; padding: 10px 12px;
@@ -230,7 +231,7 @@ a:hover { text-decoration: underline; }
 /* Reload */
 .reload-btn {
   padding: 8px 16px;
-  background: linear-gradient(135deg, #1f6feb, #58a6ff);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 70%, #000), var(--accent));
   border: none; border-radius: 8px;
   color: white; font-size: 13px; font-weight: 600;
   cursor: pointer; transition: all 0.2s;
@@ -271,10 +272,10 @@ a:hover { text-decoration: underline; }
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 70vh; gap: 24px; animation: loadFadeIn 0.5s ease;
 }
-.load-logo { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #e6edf3, #58a6ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.load-logo { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #e6edf3, var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .load-sub { font-size: 14px; color: var(--text3); }
 .load-bar { width: 200px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.load-bar-inner { width: 40%; height: 100%; background: var(--blue); border-radius: 2px; animation: loadSlide 1.2s ease infinite; }
+.load-bar-inner { width: 40%; height: 100%; background: var(--accent); border-radius: 2px; animation: loadSlide 1.2s ease infinite; }
 
 /* Empty state */
 .empty-state {
@@ -359,6 +360,15 @@ a:hover { text-decoration: underline; }
   position: fixed; top: 16px; right: 24px; z-index: 450;
   font-size: 32px; color: white; cursor: pointer; background: none; border: none;
 }
+
+/* Theme Picker */
+.theme-picker { display: flex; align-items: center; gap: 4px; }
+.theme-dot {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent;
+  cursor: pointer; transition: all 0.15s;
+}
+.theme-dot:hover { transform: scale(1.2); }
+.theme-dot.active { border-color: var(--text); box-shadow: 0 0 6px rgba(255,255,255,0.3); }
 </style>
 </head>
 <body>
@@ -391,6 +401,7 @@ a:hover { text-decoration: underline; }
       <a href="index.html" class="back-btn">&larr; ダッシュボード</a>
       <h1>物件探し</h1>
       <div class="header-right">
+        <div class="theme-picker" id="themePicker"></div>
         <span class="sub" id="lastFetchInfo" style="font-size:12px;color:var(--text3);"></span>
         <button class="reload-btn" onclick="reloadData()">再読込</button>
       </div>
@@ -399,7 +410,7 @@ a:hover { text-decoration: underline; }
     <!-- Summary -->
     <div class="summary">
       <div class="summary-card">
-        <div class="summary-val" id="sumTotal" style="color:var(--blue)">-</div>
+        <div class="summary-val" id="sumTotal" style="color:var(--accent)">-</div>
         <div class="summary-label">総物件数</div>
       </div>
       <div class="summary-card">
@@ -520,7 +531,16 @@ a:hover { text-decoration: underline; }
 const API_BASE = 'https://api.github.com';
 const REPO = 'TomokiNozawa/dashboard-data';
 const FILE_PATH = 'property-data.json';
-const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4h
+const SESSION_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const THEMES = [
+  { name: 'Blue', color: '#58a6ff' },
+  { name: 'Purple', color: '#bc8cff' },
+  { name: 'Green', color: '#3fb950' },
+  { name: 'Orange', color: '#f0883e' },
+  { name: 'Pink', color: '#f778ba' },
+  { name: 'Teal', color: '#39d2c0' },
+];
 
 const STATUS_CYCLE = ['new', 'candidate', 'applied', 'rejected'];
 const STATUS_LABELS = { new: '新着', candidate: '候補', applied: '問合せ済', rejected: '見送り', gone: '掲載終了' };
@@ -543,24 +563,35 @@ let filters = {
 // Authentication (shared session with other NozaBoard pages)
 // ============================================================
 async function init() {
-  const storedPass = sessionStorage.getItem('dk_pass');
-  const storedTs = sessionStorage.getItem('dk_ts');
+  loadTheme();
+  // Try localStorage first (persistent), then sessionStorage (legacy fallback)
+  let storedPass = localStorage.getItem('dk_pass');
+  let storedTs = localStorage.getItem('dk_ts');
+  // Migrate from sessionStorage if exists
+  if (!storedPass && sessionStorage.getItem('dk_pass')) {
+    storedPass = sessionStorage.getItem('dk_pass');
+    storedTs = sessionStorage.getItem('dk_ts');
+    localStorage.setItem('dk_pass', storedPass);
+    localStorage.setItem('dk_ts', storedTs);
+    sessionStorage.removeItem('dk_pass');
+    sessionStorage.removeItem('dk_ts');
+  }
 
   if (storedPass && storedTs) {
     const elapsed = Date.now() - parseInt(storedTs, 10);
     if (elapsed < SESSION_TIMEOUT) {
       try {
         pat = await decryptPAT(storedPass);
-        sessionStorage.setItem('dk_ts', Date.now().toString());
+        localStorage.setItem('dk_ts', Date.now().toString());
         showApp();
         return;
       } catch (e) {
-        sessionStorage.removeItem('dk_pass');
-        sessionStorage.removeItem('dk_ts');
+        localStorage.removeItem('dk_pass');
+        localStorage.removeItem('dk_ts');
       }
     } else {
-      sessionStorage.removeItem('dk_pass');
-      sessionStorage.removeItem('dk_ts');
+      localStorage.removeItem('dk_pass');
+      localStorage.removeItem('dk_ts');
     }
   }
   showLogin();
@@ -587,8 +618,8 @@ async function doLogin() {
 
   try {
     pat = await decryptPAT(password);
-    sessionStorage.setItem('dk_pass', password);
-    sessionStorage.setItem('dk_ts', Date.now().toString());
+    localStorage.setItem('dk_pass', password);
+    localStorage.setItem('dk_ts', Date.now().toString());
     showApp();
   } catch (e) {
     errEl.style.display = 'block';
@@ -894,15 +925,23 @@ function filterProperties(list) {
   });
 }
 
+function statusPriority(s) {
+  // 新着・候補を上に、見送り・掲載終了を下に
+  return { new: 0, candidate: 1, applied: 2, rejected: 3, gone: 4 }[s || 'new'] ?? 2;
+}
+
 function sortProperties(list) {
   const [field, dir] = filters.sort.split('-');
   const mul = dir === 'desc' ? -1 : 1;
   return [...list].sort((a, b) => {
+    // ステータス優先: 新着系を上、見送り系を下
+    const sp = statusPriority(a.status) - statusPriority(b.status);
+    if (sp !== 0) return sp;
+
     let va, vb;
     switch (field) {
       case 'rent': va = totalRent(a); vb = totalRent(b); break;
       case 'age': va = a.age != null ? a.age : 99; vb = b.age != null ? b.age : 99;
-        // 築浅 = higher built year first, so invert for asc
         return (vb - va) * mul;
       case 'walk': va = a.walkMinutes || 99; vb = b.walkMinutes || 99; break;
       case 'area': va = a.area || 0; vb = b.area || 0; break;
@@ -1190,6 +1229,31 @@ function showToast(msg, type) {
   el.className = 'toast toast-' + type;
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// Theme
+// ============================================================
+function loadTheme() {
+  const saved = localStorage.getItem('noza_property_theme');
+  if (saved) document.documentElement.style.setProperty('--accent', saved);
+  renderThemePicker();
+}
+
+function setTheme(color) {
+  document.documentElement.style.setProperty('--accent', color);
+  localStorage.setItem('noza_property_theme', color);
+  renderThemePicker();
+}
+
+function renderThemePicker() {
+  const el = document.getElementById('themePicker');
+  if (!el) return;
+  const current = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  el.innerHTML = THEMES.map(t => {
+    const active = current === t.color ? 'active' : '';
+    return `<div class="theme-dot ${active}" style="background:${t.color}" title="${t.name}" onclick="setTheme('${t.color}')"></div>`;
+  }).join('');
 }
 
 // ============================================================
