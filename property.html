@@ -1097,7 +1097,16 @@ async function cycleStatus(id) {
   try {
     await updatePropertyStatus(id, next);
     showToast(`ステータス: ${STATUS_LABELS[next]}`, 'success');
-    renderAll();
+    // カード位置を動かさず、バッジとdimmedだけ更新
+    const card = document.querySelector(`.property-card[data-id="${id}"]`);
+    if (card) {
+      const badge = card.querySelector('.badge');
+      badge.className = `badge ${STATUS_CLASSES[next]}`;
+      badge.textContent = STATUS_LABELS[next];
+      const isDimmed = next === 'rejected' || next === 'gone';
+      card.classList.toggle('dimmed', isDimmed);
+    }
+    renderSummary(getPropertyList());
   } catch (e) {
     showToast('ステータス更新に失敗しました', 'error');
   }
