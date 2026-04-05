@@ -753,6 +753,7 @@ async function saveData() {
       pendingSaves = 0;
       updateSaveBadge();
       showToast('保存しました', 'success');
+      renderAll();
     }
   } catch (e) {
     showToast('保存に失敗: ' + e.message, 'error');
