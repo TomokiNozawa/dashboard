@@ -514,7 +514,7 @@ let shiftData = null;
 let fileSha = null;
 let pat = null;
 let changeCount = 0;
-const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours
+const SESSION_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days
 const API_BASE = 'https://api.github.com';
 const REPO = 'TomokiNozawa/dashboard-data';
 const FILE_PATH = 'shift-data.json';
@@ -526,24 +526,33 @@ let scheduleSortState = { column: 'date', direction: 'asc' };
 // Authentication
 // ============================================================
 async function init() {
-  const storedPass = sessionStorage.getItem('dk_pass');
-  const storedTs = sessionStorage.getItem('dk_ts');
+  let storedPass = localStorage.getItem('dk_pass');
+  let storedTs = localStorage.getItem('dk_ts');
+  // Migrate from sessionStorage
+  if (!storedPass && sessionStorage.getItem('dk_pass')) {
+    storedPass = sessionStorage.getItem('dk_pass');
+    storedTs = sessionStorage.getItem('dk_ts');
+    localStorage.setItem('dk_pass', storedPass);
+    localStorage.setItem('dk_ts', storedTs);
+    sessionStorage.removeItem('dk_pass');
+    sessionStorage.removeItem('dk_ts');
+  }
 
   if (storedPass && storedTs) {
     const elapsed = Date.now() - parseInt(storedTs, 10);
     if (elapsed < SESSION_TIMEOUT) {
       try {
         pat = await decryptPAT(storedPass);
-        sessionStorage.setItem('dk_ts', Date.now().toString());
+        localStorage.setItem('dk_ts', Date.now().toString());
         showApp();
         return;
       } catch (e) {
-        sessionStorage.removeItem('dk_pass');
-        sessionStorage.removeItem('dk_ts');
+        localStorage.removeItem('dk_pass');
+        localStorage.removeItem('dk_ts');
       }
     } else {
-      sessionStorage.removeItem('dk_pass');
-      sessionStorage.removeItem('dk_ts');
+      localStorage.removeItem('dk_pass');
+      localStorage.removeItem('dk_ts');
     }
   }
   showLogin();
@@ -573,8 +582,8 @@ async function doLogin() {
 
   try {
     pat = await decryptPAT(password);
-    sessionStorage.setItem('dk_pass', password);
-    sessionStorage.setItem('dk_ts', Date.now().toString());
+    localStorage.setItem('dk_pass', password);
+    localStorage.setItem('dk_ts', Date.now().toString());
     showApp();
   } catch (e) {
     errEl.style.display = 'block';
