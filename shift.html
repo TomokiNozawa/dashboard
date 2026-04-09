@@ -522,6 +522,7 @@ const FILE_PATH = 'shift-data.json';
 // Sort state for schedule table
 let scheduleSortState = { column: 'date', direction: 'asc' };
 let scheduleFilterFuture = false;
+let scheduleFilterDeficit = false;
 
 function getTodayStr() {
   const d = new Date();
@@ -945,6 +946,8 @@ function renderSchedule() {
   // Update filter state from checkbox
   const cb = document.getElementById('filterFuture');
   if (cb) scheduleFilterFuture = cb.checked;
+  const cb2 = document.getElementById('filterDeficit');
+  if (cb2) scheduleFilterDeficit = cb2.checked;
 
   const rankA = d.schedule.filter(s => s.rank === 'A').length;
   const rankB = d.schedule.filter(s => s.rank === 'B').length;
@@ -959,9 +962,14 @@ function renderSchedule() {
         <span class="legend-item"><span class="badge badge-a">A</span> 超絶募集(大人数/5名以上)</span>
         <span class="legend-item"><span class="badge badge-b">B</span> とても募集(インスト必要)</span>
         <span class="legend-item"><span class="badge badge-none">-</span> ワンオペ(インスト不要)</span>
-        <label style="margin-left:auto;font-size:12px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">
-          <input type="checkbox" id="filterFuture" onchange="renderSchedule()" ${scheduleFilterFuture ? 'checked' : ''}> これからの予定のみ
-        </label>
+        <div style="margin-left:auto;display:flex;gap:12px;">
+          <label style="font-size:12px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="filterFuture" onchange="renderSchedule()" ${scheduleFilterFuture ? 'checked' : ''}> これからの予定のみ
+          </label>
+          <label style="font-size:12px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="filterDeficit" onchange="renderSchedule()" ${scheduleFilterDeficit ? 'checked' : ''}> 過不足ありのみ
+          </label>
+        </div>
       </div>
       <div class="table-wrap">
       <table class="data-table">
@@ -983,7 +991,11 @@ function renderSchedule() {
           </tr>
         </thead>
         <tbody>
-          ${sorted.filter(s => !scheduleFilterFuture || s.date >= today).map((s) => {
+          ${sorted.filter(s => {
+            if (scheduleFilterFuture && s.date < today) return false;
+            if (scheduleFilterDeficit && (s.instNeeded === 0 || (s.assigned ? s.assigned.length : 0) >= s.instNeeded)) return false;
+            return true;
+          }).map((s) => {
             const origIdx = d.schedule.indexOf(s);
             const isPast = s.date < today;
             const assigned = s.assigned ? s.assigned.length : 0;
