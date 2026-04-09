@@ -997,6 +997,7 @@ function renderSchedule() {
             <th class="sortable" onclick="toggleSort('instNeeded')">必要数${sortArrow('instNeeded')}</th>
             <th class="sortable" onclick="toggleSort('assigned')">配置済${sortArrow('assigned')}</th>
             <th>インストラクター</th>
+            <th>確認状況</th>
             <th class="sortable" onclick="toggleSort('diff')">過不足${sortArrow('diff')}</th>
           </tr>
         </thead>
@@ -1034,13 +1035,24 @@ function renderSchedule() {
               <td><input type="number" class="editable-inst-needed" value="${s.instNeeded}" min="0" onblur="updateInstNeeded(${origIdx}, this.value)" onkeydown="if(event.key==='Enter')this.blur()" onclick="event.stopPropagation()"></td>
               <td>${assigned}</td>
               <td class="text-left"><span class="teacher-names">${assignedNames}</span></td>
+              <td style="white-space:nowrap;">${(() => {
+                if (!s.assigned || s.assigned.length === 0) return '';
+                const confirm = s.instConfirm || {};
+                const statuses = s.assigned.map(n => confirm[n] || '未');
+                const allOk = statuses.every(st => st === 'OK');
+                const hasNg = statuses.some(st => st === 'NG');
+                if (allOk) return '<span style="color:var(--green);font-weight:600;">確定</span>';
+                if (hasNg) return '<span style="color:var(--red);font-weight:600;">NG有</span>';
+                const okCount = statuses.filter(st => st === 'OK').length;
+                return '<span style="color:var(--yellow);">' + okCount + '/' + statuses.length + '</span>';
+              })()}</td>
               <td class="${diffClass}">${diffText}</td>
             </tr>`;
           }).join('')}
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="9" class="text-right">合計</td>
+            <td colspan="10" class="text-right">合計</td>
             <td><span class="badge badge-a">A:${rankA}</span> <span class="badge badge-b">B:${rankB}</span></td>
             <td>${totalNeeded}</td>
             <td>${totalAssigned}</td>
@@ -1196,6 +1208,18 @@ function toggleTeacher(schedIdx, name, add) {
   } else {
     s.teachers = s.teachers.filter(t => t !== name);
   }
+  markChanged();
+  afterModalEdit();
+  refreshModal(openScheduleModal, schedIdx);
+}
+
+function cycleInstConfirm(schedIdx, name) {
+  const s = shiftData.schedule[schedIdx];
+  if (!s.instConfirm) s.instConfirm = {};
+  const cycle = ['未', '確認中', 'OK', 'NG'];
+  const current = s.instConfirm[name] || '未';
+  const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+  s.instConfirm[name] = next;
   markChanged();
   afterModalEdit();
   refreshModal(openScheduleModal, schedIdx);
@@ -2038,6 +2062,16 @@ function openScheduleModal(schedIdx) {
         ${assignedTags}
         <span class="modal-add-btn" onclick="event.stopPropagation();showModalAssignDropdown(event, ${schedIdx}, openScheduleModal, ${schedIdx})">+ 追加</span>
       </div>
+    </span></div>
+    <div class="detail-row"><span class="detail-label">確認状況</span><span class="detail-value">
+      ${(s.assigned && s.assigned.length > 0) ? s.assigned.map(name => {
+        const confirm = s.instConfirm || {};
+        const st = confirm[name] || '未';
+        const CONFIRM_CYCLE = ['未', '確認中', 'OK', 'NG'];
+        const colorMap = { '未': 'var(--text3)', '確認中': 'var(--yellow)', 'OK': 'var(--green)', 'NG': 'var(--red)' };
+        const bgMap = { '未': 'var(--bg)', '確認中': 'rgba(210,153,34,0.15)', 'OK': 'rgba(63,185,80,0.15)', 'NG': 'rgba(248,81,73,0.15)' };
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:4px;border:1px solid ' + colorMap[st] + ';background:' + bgMap[st] + ';color:' + colorMap[st] + ';font-size:11px;font-weight:600;cursor:pointer;margin:2px;" onclick="event.stopPropagation();cycleInstConfirm(' + schedIdx + ',\\'' + name + '\\')">' + escapeHtml(name) + ' : ' + st + '</span>';
+      }).join('') : '<span style="color:var(--text3);font-size:12px;">配置なし</span>'}
     </span></div>
     <div class="detail-row"><span class="detail-label">メモ</span><span class="detail-value">
       <input type="text" class="modal-input" value="${escapeHtml(s.note || '')}"
