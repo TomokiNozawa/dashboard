@@ -1188,13 +1188,13 @@ function openScheduleFromTimeline(schedIdx, day) {
   openScheduleModal(schedIdx);
 }
 
-function toggleAkaiTeacher(schedIdx, add) {
+function toggleTeacher(schedIdx, name, add) {
   const s = shiftData.schedule[schedIdx];
   if (!s.teachers) s.teachers = [];
   if (add) {
-    if (!s.teachers.includes('赤井')) s.teachers.push('赤井');
+    if (!s.teachers.includes(name)) s.teachers.push(name);
   } else {
-    s.teachers = s.teachers.filter(t => t !== '赤井');
+    s.teachers = s.teachers.filter(t => t !== name);
   }
   markChanged();
   afterModalEdit();
@@ -2002,11 +2002,14 @@ function modalRemoveAssigned(schedIdx, tagIdx, reopenFn, ...reopenArgs) {
 // -- Schedule row modal (EDITABLE) --
 function openScheduleModal(schedIdx) {
   const s = shiftData.schedule[schedIdx];
-  const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : 'なし';
-  const akaiIsTeacher = s.teachers && s.teachers.includes('赤井');
-  const akaiTeacherBtn = akaiIsTeacher
-    ? `<button style="margin-left:8px;padding:2px 10px;border-radius:4px;border:1px solid var(--red);background:rgba(248,81,73,0.15);color:var(--red);font-size:11px;cursor:pointer;font-weight:600;" onclick="event.stopPropagation();toggleAkaiTeacher(${schedIdx},false)">赤井 講師解除</button>`
-    : `<button style="margin-left:8px;padding:2px 10px;border-radius:4px;border:1px solid var(--purple);background:rgba(188,140,255,0.15);color:var(--purple);font-size:11px;cursor:pointer;font-weight:600;" onclick="event.stopPropagation();toggleAkaiTeacher(${schedIdx},true)">+ 赤井 講師登録</button>`;
+  const TEACHER_LIST = ['中田', '野沢', '樋口', '赤井'];
+  const currentTeachers = s.teachers || [];
+  const teacherTags = TEACHER_LIST.map(name => {
+    const isActive = currentTeachers.includes(name);
+    return isActive
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:4px;border:1px solid var(--green);background:rgba(63,185,80,0.15);color:var(--green);font-size:11px;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();toggleTeacher(${schedIdx},'${name}',false)">${name} &times;</span>`
+      : `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:4px;border:1px solid var(--border);background:var(--card);color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();toggleTeacher(${schedIdx},'${name}',true)">+ ${name}</span>`;
+  }).join(' ');
   const rankLabel = s.rank === 'A' ? 'A（超絶募集）' : s.rank === 'B' ? 'B（とても募集）' : '-（ワンオペ）';
 
   // Build assigned tags
@@ -2022,7 +2025,7 @@ function openScheduleModal(schedIdx) {
     <div class="detail-row"><span class="detail-label">場所</span><span class="detail-value">${escapeHtml(s.location || '-')}</span></div>
     <div class="detail-row"><span class="detail-label">参加人数</span><span class="detail-value">${s.participants}名</span></div>
     <div class="detail-row"><span class="detail-label">主担当</span><span class="detail-value">${escapeHtml(s.mainTeacher || '-')}</span></div>
-    <div class="detail-row"><span class="detail-label">講師一覧</span><span class="detail-value">${escapeHtml(teacherNames)} ${akaiTeacherBtn}</span></div>
+    <div class="detail-row"><span class="detail-label">講師</span><span class="detail-value" style="display:flex;gap:6px;flex-wrap:wrap;">${teacherTags}</span></div>
     <div class="detail-row"><span class="detail-label">分類</span><span class="detail-value">${escapeHtml(rankLabel)}</span></div>
     <div class="detail-row"><span class="detail-label">インスト必要数</span><span class="detail-value">
       <input type="number" class="modal-input-number" value="${s.instNeeded}" min="0"
