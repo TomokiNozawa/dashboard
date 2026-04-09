@@ -521,6 +521,12 @@ const FILE_PATH = 'shift-data.json';
 
 // Sort state for schedule table
 let scheduleSortState = { column: 'date', direction: 'asc' };
+let scheduleFilterFuture = false;
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
 // ============================================================
 // Authentication
@@ -934,6 +940,11 @@ function toggleSort(col) {
 function renderSchedule() {
   const d = shiftData;
   const panel = document.getElementById('panel-schedule');
+  const today = getTodayStr();
+
+  // Update filter state from checkbox
+  const cb = document.getElementById('filterFuture');
+  if (cb) scheduleFilterFuture = cb.checked;
 
   const rankA = d.schedule.filter(s => s.rank === 'A').length;
   const rankB = d.schedule.filter(s => s.rank === 'B').length;
@@ -944,10 +955,13 @@ function renderSchedule() {
 
   panel.innerHTML = `
     <div class="section">
-      <div class="legend">
+      <div class="legend" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
         <span class="legend-item"><span class="badge badge-a">A</span> 超絶募集(大人数/5名以上)</span>
         <span class="legend-item"><span class="badge badge-b">B</span> とても募集(インスト必要)</span>
         <span class="legend-item"><span class="badge badge-none">-</span> ワンオペ(インスト不要)</span>
+        <label style="margin-left:auto;font-size:12px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">
+          <input type="checkbox" id="filterFuture" onchange="renderSchedule()" ${scheduleFilterFuture ? 'checked' : ''}> これからの予定のみ
+        </label>
       </div>
       <div class="table-wrap">
       <table class="data-table">
@@ -969,8 +983,9 @@ function renderSchedule() {
           </tr>
         </thead>
         <tbody>
-          ${sorted.map((s) => {
+          ${sorted.filter(s => !scheduleFilterFuture || s.date >= today).map((s) => {
             const origIdx = d.schedule.indexOf(s);
+            const isPast = s.date < today;
             const assigned = s.assigned ? s.assigned.length : 0;
             const diff = assigned - s.instNeeded;
             let diffClass, diffText;
@@ -983,7 +998,7 @@ function renderSchedule() {
               : '<span class="badge badge-none">-</span>';
             const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : '';
             const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '';
-            return `<tr class="${muted} clickable-row" onclick="openScheduleModal(${origIdx})" style="cursor:pointer;">
+            return `<tr class="${muted} clickable-row" onclick="openScheduleModal(${origIdx})" style="cursor:pointer;${isPast ? 'opacity:0.4;' : ''}">
               <td class="text-left" style="white-space:nowrap;font-weight:500;">${s.date}(${s.dow})</td>
               <td style="white-space:nowrap;">${s.start}-${s.end}</td>
               <td class="text-left">${s.company}</td>
