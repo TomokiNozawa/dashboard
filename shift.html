@@ -964,6 +964,7 @@ function renderSchedule() {
             <th class="sortable" onclick="toggleSort('rank')">分類${sortArrow('rank')}</th>
             <th class="sortable" onclick="toggleSort('instNeeded')">必要数${sortArrow('instNeeded')}</th>
             <th class="sortable" onclick="toggleSort('assigned')">配置済${sortArrow('assigned')}</th>
+            <th>インストラクター</th>
             <th class="sortable" onclick="toggleSort('diff')">過不足${sortArrow('diff')}</th>
           </tr>
         </thead>
@@ -993,14 +994,15 @@ function renderSchedule() {
               <td><span class="teacher-names">${teacherNames}</span></td>
               <td>${rankBadge}</td>
               <td><input type="number" class="editable-inst-needed" value="${s.instNeeded}" min="0" onblur="updateInstNeeded(${origIdx}, this.value)" onkeydown="if(event.key==='Enter')this.blur()" onclick="event.stopPropagation()"></td>
-              <td title="${assignedNames}">${assigned}</td>
+              <td>${assigned}</td>
+              <td class="text-left"><span class="teacher-names">${assignedNames}</span></td>
               <td class="${diffClass}">${diffText}</td>
             </tr>`;
           }).join('')}
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="8" class="text-right">合計</td>
+            <td colspan="9" class="text-right">合計</td>
             <td><span class="badge badge-a">A:${rankA}</span> <span class="badge badge-b">B:${rankB}</span></td>
             <td>${totalNeeded}</td>
             <td>${totalAssigned}</td>
