@@ -523,6 +523,7 @@ const FILE_PATH = 'shift-data.json';
 let scheduleSortState = { column: 'date', direction: 'asc' };
 let scheduleFilterFuture = false;
 let scheduleFilterDeficit = false;
+let scheduleFilterTeacher = '';
 
 function getTodayStr() {
   const d = new Date();
@@ -948,6 +949,8 @@ function renderSchedule() {
   if (cb) scheduleFilterFuture = cb.checked;
   const cb2 = document.getElementById('filterDeficit');
   if (cb2) scheduleFilterDeficit = cb2.checked;
+  const sel = document.getElementById('filterTeacher');
+  if (sel) scheduleFilterTeacher = sel.value;
 
   const rankA = d.schedule.filter(s => s.rank === 'A').length;
   const rankB = d.schedule.filter(s => s.rank === 'B').length;
@@ -969,6 +972,13 @@ function renderSchedule() {
           <label style="font-size:12px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px;">
             <input type="checkbox" id="filterDeficit" onchange="renderSchedule()" ${scheduleFilterDeficit ? 'checked' : ''}> 過不足ありのみ
           </label>
+          <select id="filterTeacher" onchange="renderSchedule()" style="font-size:12px;padding:2px 6px;background:var(--card);color:var(--text2);border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+            <option value="">講師: 全員</option>
+            <option value="中田" ${scheduleFilterTeacher==='中田'?'selected':''}>中田</option>
+            <option value="野沢" ${scheduleFilterTeacher==='野沢'?'selected':''}>野沢</option>
+            <option value="樋口" ${scheduleFilterTeacher==='樋口'?'selected':''}>樋口</option>
+            <option value="赤井" ${scheduleFilterTeacher==='赤井'?'selected':''}>赤井</option>
+          </select>
         </div>
       </div>
       <div class="table-wrap">
@@ -994,6 +1004,7 @@ function renderSchedule() {
           ${sorted.filter(s => {
             if (scheduleFilterFuture && s.date < today) return false;
             if (scheduleFilterDeficit && (s.instNeeded === 0 || (s.assigned ? s.assigned.length : 0) >= s.instNeeded)) return false;
+            if (scheduleFilterTeacher && !(s.teachers && s.teachers.includes(scheduleFilterTeacher)) && s.mainTeacher !== scheduleFilterTeacher) return false;
             return true;
           }).map((s) => {
             const origIdx = d.schedule.indexOf(s);
