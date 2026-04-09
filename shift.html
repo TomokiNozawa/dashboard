@@ -1041,21 +1041,29 @@ function renderSchedule() {
             const rankBadge = s.rank === 'A' ? '<span class="badge badge-a">A</span>'
               : s.rank === 'B' ? '<span class="badge badge-b">B</span>'
               : '<span class="badge badge-none">-</span>';
-            const assignedNames = s.assigned && s.assigned.length > 0 ? s.assigned.join(', ') : '';
+            const confirmMap = s.instConfirm || {};
+            const assignedColored = s.assigned && s.assigned.length > 0
+              ? s.assigned.map(n => {
+                  const st = confirmMap[n] || '未';
+                  const col = st === 'OK' ? 'var(--green)' : st === '確認中' ? 'var(--yellow)' : st === 'NG' ? 'var(--red)' : 'var(--text2)';
+                  return '<span style="color:' + col + ';">' + escapeHtml(n) + '</span>';
+                }).join(', ')
+              : '';
             const teacherNames = s.teachers && s.teachers.length > 0 ? s.teachers.join(', ') : '';
+            const dateShort = s.date.slice(5);
             return `<tr class="${muted} clickable-row" onclick="openScheduleModal(${origIdx})" style="cursor:pointer;${isPast ? 'opacity:0.4;' : ''}">
-              <td class="text-left" style="white-space:nowrap;font-weight:500;">${s.date}(${s.dow})</td>
+              <td class="text-left" style="white-space:nowrap;font-weight:500;">${dateShort}(${s.dow})</td>
               <td style="white-space:nowrap;">${s.start}-${s.end}</td>
               <td class="text-left">${s.company}</td>
               <td>${s.content || ''}</td>
               <td>${s.location || ''}</td>
-              <td>${s.participants}名</td>
+              <td>${s.participants}</td>
               <td>${s.mainTeacher || ''}</td>
               <td><span class="teacher-names">${teacherNames}</span></td>
               <td>${rankBadge}</td>
               <td><input type="number" class="editable-inst-needed" value="${s.instNeeded}" min="0" onblur="updateInstNeeded(${origIdx}, this.value)" onkeydown="if(event.key==='Enter')this.blur()" onclick="event.stopPropagation()"></td>
               <td>${confirmedCount}${confirmedCount !== assigned ? '<span style="color:var(--text3);font-size:10px;">/' + assigned + '</span>' : ''}</td>
-              <td class="text-left"><span class="teacher-names">${assignedNames}</span></td>
+              <td class="text-left" style="max-width:160px;line-height:1.5;">${assignedColored}</td>
               <td style="white-space:nowrap;">${renderConfirmStatus(s)}</td>
               <td class="${diffClass}">${diffText}</td>
             </tr>`;
