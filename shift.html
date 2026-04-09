@@ -967,7 +967,10 @@ function renderSchedule() {
   const rankA = d.schedule.filter(s => s.rank === 'A').length;
   const rankB = d.schedule.filter(s => s.rank === 'B').length;
   const totalNeeded = d.schedule.reduce((s, r) => s + r.instNeeded, 0);
-  const totalAssigned = d.schedule.reduce((s, r) => s + (r.assigned ? r.assigned.length : 0), 0);
+  const totalConfirmed = d.schedule.reduce((s, r) => {
+    const c = r.instConfirm || {};
+    return s + (r.assigned ? r.assigned.filter(n => c[n] === 'OK').length : 0);
+  }, 0);
 
   const sorted = getSortedSchedule();
 
@@ -1016,14 +1019,20 @@ function renderSchedule() {
         <tbody>
           ${sorted.filter(s => {
             if (scheduleFilterFuture && s.date < today) return false;
-            if (scheduleFilterDeficit && (s.instNeeded === 0 || (s.assigned ? s.assigned.length : 0) >= s.instNeeded)) return false;
+            if (scheduleFilterDeficit) {
+              const c = s.instConfirm || {};
+              const confirmed = s.assigned ? s.assigned.filter(n => c[n] === 'OK').length : 0;
+              if (s.instNeeded === 0 || confirmed >= s.instNeeded) return false;
+            }
             if (scheduleFilterTeacher && !(s.teachers && s.teachers.includes(scheduleFilterTeacher)) && s.mainTeacher !== scheduleFilterTeacher) return false;
             return true;
           }).map((s) => {
             const origIdx = d.schedule.indexOf(s);
             const isPast = s.date < today;
+            const confirm = s.instConfirm || {};
+            const confirmedCount = s.assigned ? s.assigned.filter(n => confirm[n] === 'OK').length : 0;
             const assigned = s.assigned ? s.assigned.length : 0;
-            const diff = assigned - s.instNeeded;
+            const diff = confirmedCount - s.instNeeded;
             let diffClass, diffText;
             if (s.instNeeded === 0) { diffClass = 'balanced'; diffText = '-'; }
             else if (diff >= 0) { diffClass = 'surplus'; diffText = '+' + diff; }
@@ -1045,7 +1054,7 @@ function renderSchedule() {
               <td><span class="teacher-names">${teacherNames}</span></td>
               <td>${rankBadge}</td>
               <td><input type="number" class="editable-inst-needed" value="${s.instNeeded}" min="0" onblur="updateInstNeeded(${origIdx}, this.value)" onkeydown="if(event.key==='Enter')this.blur()" onclick="event.stopPropagation()"></td>
-              <td>${assigned}</td>
+              <td>${confirmedCount}${confirmedCount !== assigned ? '<span style="color:var(--text3);font-size:10px;">/' + assigned + '</span>' : ''}</td>
               <td class="text-left"><span class="teacher-names">${assignedNames}</span></td>
               <td style="white-space:nowrap;">${renderConfirmStatus(s)}</td>
               <td class="${diffClass}">${diffText}</td>
@@ -1057,8 +1066,10 @@ function renderSchedule() {
             <td colspan="10" class="text-right">合計</td>
             <td><span class="badge badge-a">A:${rankA}</span> <span class="badge badge-b">B:${rankB}</span></td>
             <td>${totalNeeded}</td>
-            <td>${totalAssigned}</td>
-            <td class="${totalAssigned >= totalNeeded ? 'surplus' : 'deficit'}">${totalNeeded > 0 ? Math.round(totalAssigned/totalNeeded*100) : 0}%</td>
+            <td>${totalConfirmed}</td>
+            <td></td>
+            <td></td>
+            <td class="${totalConfirmed >= totalNeeded ? 'surplus' : 'deficit'}">${totalNeeded > 0 ? Math.round(totalConfirmed/totalNeeded*100) : 0}%</td>
           </tr>
         </tfoot>
       </table>
