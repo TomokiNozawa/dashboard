@@ -1140,9 +1140,9 @@ html { scroll-behavior: smooth; }
         <h3 style="font-size:15px;font-weight:600">やること一覧</h3>
         <span id="todoTotalCount" style="font-size:11px;color:var(--text-muted)"></span>
         <div style="margin-left:auto;display:flex;gap:2px" id="todoGroupBtns">
-          <button class="todo-group-btn active" data-group="date" onclick="setTodoGroup('date')">日付別</button>
-          <button class="todo-group-btn" data-group="company" onclick="setTodoGroup('company')">企業別</button>
-          <button class="todo-group-btn" data-group="step" onclick="setTodoGroup('step')">ステップ別</button>
+          <button class="todo-group-btn active" data-group="date" onclick="setTodoGroup('date')">日付別 <span style="font-size:9px;color:var(--text-muted)">1</span></button>
+          <button class="todo-group-btn" data-group="company" onclick="setTodoGroup('company')">企業別 <span style="font-size:9px;color:var(--text-muted)">2</span></button>
+          <button class="todo-group-btn" data-group="step" onclick="setTodoGroup('step')">ステップ別 <span style="font-size:9px;color:var(--text-muted)">3</span></button>
         </div>
       </div>
       <div id="todoContainer"></div>
@@ -1158,8 +1158,8 @@ html { scroll-behavior: smooth; }
         <button class="cal-nav-btn" onclick="calNav(1)">&rarr;</button>
         <button class="cal-nav-btn" onclick="calNav(0)" style="margin-left:8px;font-size:11px">今日</button>
         <div style="margin-left:auto;display:flex;gap:2px">
-          <button class="todo-group-btn active" data-calmode="month" onclick="setCalMode('month')">月</button>
-          <button class="todo-group-btn" data-calmode="week" onclick="setCalMode('week')">週</button>
+          <button class="todo-group-btn" data-calmode="month" onclick="setCalMode('month')">月 <span style="font-size:9px;color:var(--text-muted)">M</span></button>
+          <button class="todo-group-btn active" data-calmode="week" onclick="setCalMode('week')">週 <span style="font-size:9px;color:var(--text-muted)">W</span></button>
         </div>
       </div>
       <div id="calGrid"></div>
@@ -2358,6 +2358,26 @@ function handleKeydown(e) {
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); openFilterPopup(); return; }
   // T: Toggle theme
   if (e.key === 't' || e.key === 'T') { e.preventDefault(); toggleTheme(); return; }
+
+  // ── Tab-specific shortcuts (no modifiers) ──
+  // Tab 2 (やること一覧): 1/2/3 = グルーピング切替
+  if (currentView === 'timeline' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    if (e.key === '1') { e.preventDefault(); setTodoGroup('date'); return; }
+    if (e.key === '2') { e.preventDefault(); setTodoGroup('company'); return; }
+    if (e.key === '3') { e.preventDefault(); setTodoGroup('step'); return; }
+  }
+  // Tab 3 (カレンダー): M/W = 月/週切替, ←/→ = ナビゲーション
+  if (currentView === 'calendar' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    if (e.key === 'm' || e.key === 'M') { e.preventDefault(); setCalMode('month'); return; }
+    if (e.key === 'w' || e.key === 'W') { e.preventDefault(); setCalMode('week'); return; }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); calNav(-1); return; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); calNav(1); return; }
+  }
+  // Tab 4 (企業別): E = 全展開, C = 全折りたたみ
+  if (currentView === 'company' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    if (e.key === 'e' || e.key === 'E') { e.preventDefault(); document.querySelectorAll('.company-card').forEach(c=>c.classList.add('expanded')); return; }
+    if (e.key === 'c' || e.key === 'C') { e.preventDefault(); document.querySelectorAll('.company-card').forEach(c=>c.classList.remove('expanded')); return; }
+  }
   // Alt&1-5: Switch views (only when no modal/popup open)
   if (e.altKey && e.key >= '1' && e.key <= '5' &&
       !document.getElementById('taskModal').classList.contains('active') &&
@@ -2946,7 +2966,7 @@ function toDateStr(d) {
 // ────────────────────────────────────────────
 // C4: Calendar View
 // ────────────────────────────────────────────
-let calMode = 'month';
+let calMode = 'week';
 let calWeekStart = null; // Date object for week view
 
 function setCalMode(mode) {
@@ -3174,8 +3194,8 @@ function renderCompanyView() {
 
   // Add expand/collapse all buttons
   let html = `<div style="display:flex;gap:8px;margin-bottom:12px">
-    <button class="btn btn-secondary" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.add('expanded'))" style="font-size:11px;padding:4px 10px">全展開</button>
-    <button class="btn btn-secondary" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.remove('expanded'))" style="font-size:11px;padding:4px 10px">全折りたたみ</button>
+    <button class="btn btn-secondary" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.add('expanded'))" style="font-size:11px;padding:4px 10px">全展開 <span style="font-size:9px;color:var(--text-muted)">E</span></button>
+    <button class="btn btn-secondary" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.remove('expanded'))" style="font-size:11px;padding:4px 10px">全折りたたみ <span style="font-size:9px;color:var(--text-muted)">C</span></button>
   </div>`;
 
   sorted.forEach(([name, data], idx) => {
