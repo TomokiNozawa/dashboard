@@ -900,6 +900,9 @@ html { scroll-behavior: smooth; }
       <button class="topbar-btn" onclick="openSearch()" title="検索 (Ctrl&K)">
         <span>&#128269;</span><span class="label-text">検索</span><span class="kbd">Ctrl&K</span>
       </button>
+      <button class="topbar-btn" onclick="syncFromSheet()" id="syncSheetBtn" title="スプシから同期">
+        <span>&#x21bb;</span><span class="label-text">スプシ同期</span>
+      </button>
       <button class="topbar-btn primary" onclick="openNewTask()" title="新規タスク (Ctrl&;)">
         <span>+</span><span class="label-text">新規タスク</span><span class="kbd">Ctrl&;</span>
       </button>
@@ -2829,6 +2832,97 @@ async function writeBackToSheet(task) {
   } else {
     console.error('Sheets write failed:', writeResp.status);
     showToast('スプシ同期に失敗しました', 'error');
+  }
+}
+
+// ────────────────────────────────────────────
+// Sync FROM Sheet (pull status updates)
+// ────────────────────────────────────────────
+async function syncFromSheet() {
+  const btn = document.getElementById('syncSheetBtn');
+  btn.disabled = true;
+  btn.querySelector('.label-text').textContent = '同期中...';
+
+  try {
+    if (!(await initSheetsCreds())) {
+      showToast('Sheets認証情報がありません（NozaBoardにログインしてください）', 'error');
+      return;
+    }
+    const token = await getSheetsToken();
+    if (!token) { showToast('Sheetsトークン取得失敗', 'error'); return; }
+
+    const now = new Date();
+    const fy = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const sheetName = `${fy}年`;
+    const range = encodeURIComponent(sheetName);
+    const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SSID}/values/${range}?majorDimension=ROWS`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!resp.ok) throw new Error(`Sheets read error: ${resp.status}`);
+    const data = await resp.json();
+    const rows = data.values || [];
+
+    // Build lookup: (date, company) → { col: value }
+    const SYNC_COLS = {
+      21: 'premtg_schedule',  // V: 事前mtg
+      22: 'roster_send',      // W: 名簿送付
+      24: 'material_send',    // Y: 教材送付
+      25: 'survey_prep',      // Z: アンケート準備
+      28: 'invoice',          // AC: 請求書
+    };
+    const sheetDone = {}; // key: "stepType_company_date" → true
+    for (let i = SHEETS_HEADER_ROW + 1; i < rows.length; i++) {
+      const row = rows[i];
+      const dateStr = (row[SHEETS_COL_DATE] || '').trim();
+      const dateIso = sheetsParseDate(dateStr, fy);
+      const company = (row[SHEETS_COL_COMPANY] || '').trim();
+      if (!dateIso || !company) continue;
+
+      for (const [colIdx, stepType] of Object.entries(SYNC_COLS)) {
+        const val = (row[colIdx] || '').trim();
+        if (val === '済') {
+          sheetDone[`${stepType}_${company}_${dateIso}`] = true;
+        }
+      }
+    }
+
+    // Check existing tasks and mark done if sheet says 済
+    let updated = 0;
+    const fbUpdates = {};
+    for (const [taskId, task] of Object.entries(allTasks)) {
+      if (task.status === 'done') continue;
+      const st = getStepType(task);
+      if (!Object.values(SYNC_COLS).includes(st)) continue;
+      if (!task.trainingDate || !task.company) continue;
+
+      // Check if any sheet row matches
+      const match = Object.keys(sheetDone).some(key => {
+        const [kSt, ...rest] = key.split('_');
+        const kDate = rest.pop();
+        const kCompany = rest.join('_');
+        return kSt === st && kDate === task.trainingDate && sheetsCompanyMatch(kCompany, task.company);
+      });
+
+      if (match) {
+        fbUpdates[`tasks/${taskId}/status`] = 'done';
+        fbUpdates[`tasks/${taskId}/completedAt`] = firebase.database.ServerValue.TIMESTAMP;
+        fbUpdates[`tasks/${taskId}/updatedAt`] = firebase.database.ServerValue.TIMESTAMP;
+        updated++;
+      }
+    }
+
+    if (updated > 0 && db) {
+      await db.ref().update(fbUpdates);
+      showToast(`スプシ同期完了: ${updated}件を完了に更新`, 'success');
+    } else {
+      showToast('スプシ同期完了: 更新なし', 'info');
+    }
+  } catch (e) {
+    console.error('Sync from sheet error:', e);
+    showToast(`スプシ同期エラー: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('.label-text').textContent = 'スプシ同期';
   }
 }
 </script>

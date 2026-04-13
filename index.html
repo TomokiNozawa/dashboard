@@ -160,69 +160,44 @@ async function decryptAndShow(password) {
   localStorage.setItem('dk_pass', password);
   localStorage.setItem('dk_ts', Date.now().toString());
 
+  // Inject side nav, theme toggle, and keyboard nav into the decrypted HTML
+  const injectScript = `<script>
+(function(){
+  if (document.getElementById('sideNav')) return;
+  var nav = document.createElement('nav');
+  nav.id = 'sideNav'; nav.className = 'side-nav';
+  nav.innerHTML = '<a class="side-nav-item active" href="index.html" title="NozaBoard"><svg viewBox="0 0 100 100" width="22" height="22"><defs><linearGradient id="sng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5aadff"/><stop offset="100%" stop-color="#b88cff"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(#sng)"/><text x="50" y="68" text-anchor="middle" fill="#fff" font-family="Inter,sans-serif" font-weight="700" font-size="52">N</text></svg><span>NozaBoard</span></a><a class="side-nav-item" href="task-board.html" title="タスクボード"><span style="font-size:18px">&#9745;</span><span>タスク</span></a><a class="side-nav-item" href="materials.html" title="教材作成"><span style="font-size:18px">&#128230;</span><span>教材</span></a><a class="side-nav-item" href="shift.html" title="シフト管理"><span style="font-size:18px">&#128101;</span><span>シフト</span></a>';
+  var s = document.createElement('style');
+  s.textContent = '.side-nav{position:fixed;top:0;left:0;width:56px;height:100vh;background:#161b22;border-right:1px solid #30363d;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;z-index:200;overflow:hidden;transition:width .2s ease}.side-nav:hover{width:140px}.side-nav-item{display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;color:#6e7681;text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;transition:all .2s;line-height:1}.side-nav-item span:first-child,.side-nav-item svg{display:flex;align-items:center;justify-content:center;width:22px;height:22px;flex-shrink:0}.side-nav-item:hover{background:#1c2129;color:#e6edf3}.side-nav-item.active{color:#58a6ff;background:rgba(88,166,255,.08);border-right:2px solid #58a6ff}.side-nav-item span:last-child{opacity:0;transition:opacity .15s}.side-nav:hover .side-nav-item span:last-child{opacity:1}.theme-toggle{position:fixed;bottom:12px;left:10px;z-index:210;width:36px;height:36px;border-radius:50%;border:1px solid #30363d;background:#161b22;color:#8b949e;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2)}.theme-toggle:hover{background:#1c2129;color:#e6edf3}.light .side-nav{background:#fff;border-color:#d8dde4}.light .side-nav-item{color:#8b95a5}.light .side-nav-item:hover{background:#f0f2f5;color:#1a1d23}.light .theme-toggle{background:#fff;border-color:#d8dde4;color:#5a6270}@media(max-width:768px){.side-nav{display:none}}';
+  document.head.appendChild(s);
+  document.body.prepend(nav);
+  document.body.style.paddingLeft = '56px';
+  var saved = localStorage.getItem('noza_theme');
+  if (saved === 'light') document.body.classList.add('light');
+  var tb = document.createElement('button');
+  tb.className = 'theme-toggle'; tb.innerHTML = '\\u26d1'; tb.title = 'テーマ切替 (T)';
+  tb.onclick = function(){ document.body.classList.toggle('light'); localStorage.setItem('noza_theme', document.body.classList.contains('light') ? 'light' : 'dark'); };
+  document.body.appendChild(tb);
+  document.addEventListener('keydown', function(e){
+    if (['INPUT','TEXTAREA','SELECT'].indexOf(document.activeElement && document.activeElement.tagName)>=0) return;
+    if (e.key==='t'||e.key==='T'){e.preventDefault();tb.click();return}
+    if (e.key==='g'||e.key==='G'){e.preventDefault();window._nc=true;window._nct=setTimeout(function(){window._nc=false},2000);var d=document.createElement('div');d.style.cssText='position:fixed;bottom:60px;right:20px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 16px;font-size:12px;color:#e6edf3;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3)';d.textContent='G \\u2192 1:NozaBoard 2:\\u30bf\\u30b9\\u30af 3:\\u6559\\u6750 4:\\u30b7\\u30d5\\u30c8';document.body.appendChild(d);setTimeout(function(){d.remove()},2000);return}
+    if (window._nc&&e.key>='1'&&e.key<='4'){e.preventDefault();window._nc=false;clearTimeout(window._nct);window.location.href=['index.html','task-board.html','materials.html','shift.html'][e.key-1]}
+  });
+})();
+<\/script>`;
+
+  // Insert inject script before </body> in decrypted HTML
+  let modifiedHtml = html;
+  if (html.includes('</body>')) {
+    modifiedHtml = html.replace('</body>', injectScript + '</body>');
+  } else {
+    modifiedHtml = html + injectScript;
+  }
+
   document.open();
-  document.write(html);
+  document.write(modifiedHtml);
   document.close();
-
-  // Inject side nav after page load
-  setTimeout(() => {
-    if (document.getElementById('sideNav')) return; // Already has nav
-    const nav = document.createElement('nav');
-    nav.id = 'sideNav';
-    nav.className = 'side-nav';
-    nav.innerHTML = `
-      <a class="side-nav-item active" href="index.html" title="NozaBoard">
-        <svg viewBox="0 0 100 100" width="22" height="22"><defs><linearGradient id="sng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5aadff"/><stop offset="100%" stop-color="#b88cff"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(#sng)"/><text x="50" y="68" text-anchor="middle" fill="#fff" font-family="Inter,sans-serif" font-weight="700" font-size="52">N</text></svg>
-        <span>NozaBoard</span>
-      </a>
-      <a class="side-nav-item" href="task-board.html" title="タスクボード"><span style="font-size:18px">&#9745;</span><span>タスク</span></a>
-      <a class="side-nav-item" href="materials.html" title="教材作成"><span style="font-size:18px">&#128230;</span><span>教材</span></a>
-      <a class="side-nav-item" href="shift.html" title="シフト管理"><span style="font-size:18px">&#128101;</span><span>シフト</span></a>
-    `;
-    const style = document.createElement('style');
-    style.textContent = `
-      .side-nav { position:fixed;top:0;left:0;width:56px;height:100vh;background:#161b22;border-right:1px solid #30363d;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;z-index:200;overflow:hidden;transition:width 0.2s ease; }
-      .side-nav:hover { width:140px; }
-      .side-nav-item { display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;color:#6e7681;text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;transition:all 0.2s;line-height:1; }
-      .side-nav-item span:first-child,.side-nav-item svg { display:flex;align-items:center;justify-content:center;width:22px;height:22px;flex-shrink:0; }
-      .side-nav-item:hover { background:#1c2129;color:#e6edf3; }
-      .side-nav-item.active { color:#58a6ff;background:rgba(88,166,255,0.08);border-right:2px solid #58a6ff; }
-      .side-nav-item span:last-child { opacity:0;transition:opacity 0.15s; }
-      .side-nav:hover .side-nav-item span:last-child { opacity:1; }
-      @media(max-width:768px){.side-nav{display:none;}}
-    `;
-    document.head.appendChild(style);
-    document.body.prepend(nav);
-    document.body.style.paddingLeft = '56px';
-
-    // Theme toggle
-    const saved = localStorage.getItem('noza_theme');
-    if (saved === 'light') document.body.classList.add('light');
-    const tbtn = document.createElement('button');
-    tbtn.className = 'theme-toggle';
-    tbtn.innerHTML = '&#9681;';
-    tbtn.title = 'テーマ切替';
-    tbtn.onclick = () => { document.body.classList.toggle('light'); localStorage.setItem('noza_theme', document.body.classList.contains('light') ? 'light' : 'dark'); };
-    document.body.appendChild(tbtn);
-
-    // G+1-4 dashboard navigation
-    document.addEventListener('keydown', e => {
-      if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
-      if (e.key === 'g' || e.key === 'G') {
-        e.preventDefault(); window._navChord = true;
-        window._navChordTimer = setTimeout(() => { window._navChord = false; }, 2000);
-        const t = document.createElement('div');
-        t.style.cssText='position:fixed;bottom:20px;right:20px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 16px;font-size:12px;color:#e6edf3;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3)';
-        t.textContent='G → 1:NozaBoard 2:タスク 3:教材 4:シフト';
-        document.body.appendChild(t); setTimeout(()=>t.remove(),2000);
-        return;
-      }
-      if (window._navChord && e.key >= '1' && e.key <= '4') {
-        e.preventDefault(); window._navChord = false; clearTimeout(window._navChordTimer);
-        window.location.href = ['index.html','task-board.html','materials.html','shift.html'][e.key-1];
-      }
-    });
-  }, 100);
 }
 
 async function unlock() {
