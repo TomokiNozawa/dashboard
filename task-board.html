@@ -2911,7 +2911,7 @@ async function syncFromSheet() {
 
       for (const [colIdx, stepType] of Object.entries(SYNC_COLS)) {
         const val = (row[colIdx] || '').trim();
-        if (val === '済') {
+        if (val === '済' || val === 'ー' || val === '-') {
           sheetDoneList.push({ stepType, company, date: dateIso });
         }
       }
