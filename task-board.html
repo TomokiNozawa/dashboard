@@ -419,7 +419,7 @@ body {
 .todo-section-body { }
 .todo-section-header.collapsed + .todo-section-body { display: none; }
 .todo-card-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; padding: 6px 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 6px; padding: 6px 0;
 }
 .todo-card {
   display: flex; align-items: center; gap: 8px; padding: 8px 10px;
@@ -798,6 +798,7 @@ body {
 .cal-day-header {
   padding: 8px; text-align: center; font-size: 11px; font-weight: 600;
   color: var(--text-muted); background: var(--bg-secondary);
+  position: sticky; top: 0; z-index: 10;
 }
 .cal-day {
   min-height: 120px; padding: 6px; background: var(--bg-card);
@@ -860,6 +861,9 @@ body {
 .cal-week-grid {
   display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
   background: var(--border-light); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.cal-week-grid > .cal-day-header {
+  position: sticky; top: 0; z-index: 10; background: var(--bg-secondary);
 }
 .cal-week-day {
   min-height: 400px; padding: 8px; background: var(--bg-card); overflow-y: auto;
@@ -1170,9 +1174,13 @@ html { scroll-behavior: smooth; }
   <!-- Company View (C2) -->
   <div class="view-container" id="view-company">
     <div class="company-view">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
         <h3 style="font-size:15px;font-weight:600">企業別タスク一覧</h3>
         <span id="companyCount" style="font-size:11px;color:var(--text-muted)"></span>
+        <div style="margin-left:auto;display:flex;gap:4px">
+          <button class="todo-group-btn" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.add('expanded'))" style="font-size:10px;padding:3px 8px">全展開 <span style="font-size:9px;color:var(--text-muted)">E</span></button>
+          <button class="todo-group-btn" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.remove('expanded'))" style="font-size:10px;padding:3px 8px">全折畳 <span style="font-size:9px;color:var(--text-muted)">C</span></button>
+        </div>
       </div>
       <div class="company-list" id="companyList2"></div>
     </div>
@@ -3294,11 +3302,7 @@ function renderCompanyView() {
 
   document.getElementById('companyCount').textContent = `${sorted.length}社`;
 
-  // Add expand/collapse all buttons
-  let html = `<div style="display:flex;gap:8px;margin-bottom:12px">
-    <button class="btn btn-secondary" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.add('expanded'))" style="font-size:11px;padding:4px 10px">全展開 <span style="font-size:9px;color:var(--text-muted)">E</span></button>
-    <button class="btn btn-secondary" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.remove('expanded'))" style="font-size:11px;padding:4px 10px">全折りたたみ <span style="font-size:9px;color:var(--text-muted)">C</span></button>
-  </div>`;
+  let html = '';
 
   sorted.forEach(([name, data], idx) => {
     const pct = Math.round(data.done / data.total * 100);
