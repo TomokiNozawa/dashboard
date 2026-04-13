@@ -342,6 +342,25 @@ body {
 }
 .btn-preset:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.06); }
 
+/* ── Status Toggle Buttons ── */
+.status-toggle {
+  display: flex; gap: 6px;
+}
+.status-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 8px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+  font-family: var(--font); color: var(--text-secondary); cursor: pointer;
+  transition: all var(--transition); outline: none;
+}
+.status-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.status-btn:focus { border-color: var(--border-focus); }
+.status-btn.active { border-width: 2px; font-weight: 600; }
+.status-btn.active.todo { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.08); }
+.status-btn.active.in_progress { border-color: var(--accent-yellow); color: var(--accent-yellow); background: rgba(232,184,64,0.08); }
+.status-btn.active.done { border-color: var(--accent-green); color: var(--accent-green); background: rgba(66,199,96,0.08); }
+.status-dot-btn { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
 /* ── Field Number Badge ── */
 .field-num {
   display: inline-flex; align-items: center; justify-content: center;
@@ -1130,11 +1149,18 @@ html { scroll-behavior: smooth; }
       </div>
       <div class="form-group">
         <label class="form-label"><span class="field-num">7</span>ステータス</label>
-        <select class="form-select" id="taskStatus">
-          <option value="todo">未着手</option>
-          <option value="in_progress">進行中</option>
-          <option value="done">完了</option>
-        </select>
+        <input type="hidden" id="taskStatus" value="todo">
+        <div class="status-toggle" id="statusToggle">
+          <button type="button" class="status-btn todo active" data-val="todo" onclick="setStatusBtn('todo')">
+            <span class="status-dot-btn" style="background:var(--accent-blue)"></span>未着手
+          </button>
+          <button type="button" class="status-btn in_progress" data-val="in_progress" onclick="setStatusBtn('in_progress')">
+            <span class="status-dot-btn" style="background:var(--accent-yellow)"></span>進行中
+          </button>
+          <button type="button" class="status-btn done" data-val="done" onclick="setStatusBtn('done')">
+            <span class="status-dot-btn" style="background:var(--accent-green)"></span>完了
+          </button>
+        </div>
       </div>
       <div class="form-actions">
         <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none">削除 <span style="font-size:9px;opacity:0.7;margin-left:2px">Del</span></button>
@@ -1841,7 +1867,7 @@ function openNewTask(status) {
   document.getElementById('taskForm').reset();
   document.getElementById('taskId').value = '';
   document.getElementById('taskStepType').value = 'other';
-  document.getElementById('taskStatus').value = status || 'todo';
+  setStatusBtn(status || 'todo');
   document.getElementById('deleteTaskBtn').style.display = 'none';
   document.getElementById('duplicateTaskBtn').style.display = 'none';
   updateStepTypeDisplay();
@@ -1862,7 +1888,7 @@ function openEditTask(id) {
   document.getElementById('taskStepType').value = getStepType(t);
   document.getElementById('taskDueDate').value = t.dueDate || '';
   document.getElementById('taskTrainingDate').value = t.trainingDate || '';
-  document.getElementById('taskStatus').value = t.status || 'todo';
+  setStatusBtn(t.status || 'todo');
   document.getElementById('deleteTaskBtn').style.display = 'block';
   document.getElementById('duplicateTaskBtn').style.display = 'block';
   updateStepTypeDisplay();
@@ -2022,11 +2048,16 @@ function handleKeydown(e) {
   // Filter popup shortcuts
   if (document.getElementById('filterPopup').classList.contains('active')) {
     if (e.key === 'c' || e.key === 'C') { e.preventDefault(); clearFilters(); renderFilterSuumo(); return; }
-    // 1-6: toggle phase
+    // 1-6: toggle phase and focus its row
     if (e.key >= '1' && e.key <= '6' && !e.altKey) {
       e.preventDefault();
       const phase = STEP_PHASES[parseInt(e.key) - 1];
-      if (phase) toggleFilterPhase(phase.key);
+      if (phase) {
+        toggleFilterPhase(phase.key);
+        // Focus the phase cell of that row so Tab goes to its steps
+        const rows = document.querySelectorAll('#filterSuumoContent .filter-phase-cell');
+        if (rows[parseInt(e.key) - 1]) rows[parseInt(e.key) - 1].focus();
+      }
       return;
     }
     // Tab: cycle through focusable items
@@ -2052,9 +2083,10 @@ function handleKeydown(e) {
     // Alt+1-7: focus form fields
     if (e.altKey && e.key >= '1' && e.key <= '7') {
       e.preventDefault();
-      const fieldMap = { '1':'taskTitle', '2':'taskCompany', '3':'taskTrainingType', '4':'stepTypeDisplay', '5':'taskDueDate', '6':'taskTrainingDate', '7':'taskStatus' };
-      const el = document.getElementById(fieldMap[e.key]);
-      if (el) { if (e.key === '4') { openStepPopup(); } else if (e.key === '2') { openCompanyPopup(); } else { el.focus(); } }
+      const fieldMap = { '1':'taskTitle', '2':'taskCompany', '3':'taskTrainingType', '4':'stepTypeDisplay', '5':'taskDueDate', '6':'taskTrainingDate', '7':'statusToggle' };
+      if (e.key === '4') { openStepPopup(); }
+      else if (e.key === '7') { document.querySelector('.status-btn.active')?.focus(); }
+      else { const el = document.getElementById(fieldMap[e.key]); if (el) el.focus(); }
       return;
     }
   }
@@ -2465,6 +2497,11 @@ function performUndo() {
     db.ref('tasks/' + action.taskId).set(action.prevData).then(() =>
       showToast(`「${action.prevData.title}」を復元しました`, 'success'));
   }
+}
+
+function setStatusBtn(val) {
+  document.getElementById('taskStatus').value = val;
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.val === val));
 }
 
 function setDuePreset(val) {
