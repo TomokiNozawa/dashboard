@@ -284,6 +284,13 @@ body {
 }
 .filter-clear:hover { border-color: var(--accent-red); color: var(--accent-red); }
 
+/* ── Filter Indicator ── */
+.filter-indicator {
+  padding: 4px 20px; background: rgba(90,173,255,0.06); border-bottom: 1px solid var(--border);
+  font-size: 11px; color: var(--accent-blue); cursor: pointer; flex-shrink: 0;
+}
+.filter-indicator:hover { background: rgba(90,173,255,0.1); }
+
 /* ── Due Date Preset Buttons ── */
 .btn-preset {
   padding: 2px 8px; font-size: 10px; font-weight: 500; font-family: var(--font);
@@ -940,26 +947,8 @@ html { scroll-behavior: smooth; }
     </div>
   </div>
 
-  <!-- Filter Bar -->
-  <div class="filter-bar" id="filterBar">
-    <span class="filter-label">絞り込み:</span>
-    <select class="filter-select" id="filterCompany" onchange="applyFilters()">
-      <option value="">全企業</option>
-    </select>
-    <select class="filter-select" id="filterPhase" onchange="applyFilters()">
-      <option value="">全フェーズ</option>
-      <option value="pre">📋 事前mtg</option>
-      <option value="prep">📦👤 教材・講師</option>
-      <option value="review">🔄 復習</option>
-      <option value="mid">📊 中間報告</option>
-      <option value="final">📊 最終報告</option>
-      <option value="other">📌 その他</option>
-    </select>
-    <select class="filter-select" id="filterStepType" onchange="applyFilters()">
-      <option value="">全ステップ</option>
-    </select>
-    <button class="filter-clear" onclick="clearFilters()">クリア</button>
-  </div>
+  <!-- Filter active indicator -->
+  <div class="filter-indicator" id="filterIndicator" style="display:none" onclick="openFilterPopup()"></div>
 
   <!-- Tab Bar -->
   <div class="tab-bar" id="tabBar">
@@ -1101,7 +1090,7 @@ html { scroll-behavior: smooth; }
         </select>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none">削除</button>
+        <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none">削除 <span style="font-size:9px;opacity:0.7;margin-left:2px">Del</span></button>
         <button type="button" class="btn btn-secondary" id="duplicateTaskBtn" onclick="duplicateTask()" style="display:none" title="複製 (Alt&D)">複製 <span style="font-size:9px;color:var(--text-muted);margin-left:2px">Alt&D</span></button>
         <span style="flex:1"></span>
         <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">キャンセル <span style="font-size:9px;color:var(--text-muted);margin-left:4px">Esc</span></button>
@@ -1117,6 +1106,29 @@ html { scroll-behavior: smooth; }
     <input class="search-input" id="searchInput" placeholder="タスクを検索..." oninput="doSearch(this.value)">
     <div class="search-results" id="searchResults">
       <div class="search-empty">キーワードを入力してください</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Popup -->
+<div class="step-popup-overlay" id="filterPopup" onclick="closeFilterPopup()">
+  <div class="step-popup" onclick="event.stopPropagation()" style="width:520px">
+    <h4>フィルター <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px">Cでクリア / Escで閉じる</span></h4>
+    <div class="step-group">
+      <div class="step-group-label"><span class="step-group-num">1</span>企業名</div>
+      <div class="step-group-items" id="filterCompanyItems"></div>
+    </div>
+    <div class="step-group">
+      <div class="step-group-label"><span class="step-group-num">2</span>フェーズ</div>
+      <div class="step-group-items" id="filterPhaseItems"></div>
+    </div>
+    <div class="step-group">
+      <div class="step-group-label"><span class="step-group-num">3</span>ステップタイプ</div>
+      <div class="step-group-items" id="filterStepItems"></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-secondary" onclick="clearFilters();closeFilterPopup()" style="font-size:12px;padding:6px 14px">クリア <span style="font-size:9px;color:var(--text-muted)">C</span></button>
+      <button class="btn btn-primary" onclick="closeFilterPopup()" style="font-size:12px;padding:6px 14px;margin-left:auto">閉じる <span style="font-size:9px;color:rgba(255,255,255,0.6)">Esc</span></button>
     </div>
   </div>
 </div>
@@ -1579,31 +1591,71 @@ function updateCompanyFilter() {
   dl.innerHTML = sorted.map(c => `<option value="${escHtml(c)}">`).join('');
 }
 
-function toggleFilter() {
-  document.getElementById('filterBar').classList.toggle('active');
-}
+function toggleFilter() { openFilterPopup(); }
 
-function applyFilters() {
-  currentFilters.company = document.getElementById('filterCompany').value;
-  currentFilters.phase = document.getElementById('filterPhase').value;
-  currentFilters.stepType = document.getElementById('filterStepType').value;
-  // Update stepType dropdown based on selected phase
-  updateStepTypeFilter();
-  renderBoard();
-}
-
-function updateStepTypeFilter() {
-  const sel = document.getElementById('filterStepType');
-  const phase = currentFilters.phase;
-  const current = sel.value;
-  let html = '<option value="">全ステップ</option>';
-  Object.entries(STEP_TYPES).forEach(([key, info]) => {
-    if (phase && info.phase !== phase) return;
-    html += `<option value="${key}">${info.icon} ${info.short}</option>`;
+function openFilterPopup() {
+  // Build company items
+  const companies = new Set();
+  Object.values(allTasks).forEach(t => { if (t.company) companies.add(t.company); });
+  const sorted = [...companies].sort((a, b) => a.localeCompare(b, 'ja'));
+  let cHtml = `<div class="step-item${!currentFilters.company ? ' selected' : ''}" tabindex="0" onclick="setFilter('company','')" onkeydown="if(event.key==='Enter')this.click()">全て</div>`;
+  sorted.forEach(c => {
+    const sel = currentFilters.company === c ? ' selected' : '';
+    cHtml += `<div class="step-item${sel}" tabindex="0" onclick="setFilter('company','${escHtml(c)}')" onkeydown="if(event.key==='Enter')this.click()">${escHtml(c)}</div>`;
   });
-  sel.innerHTML = html;
-  sel.value = current;
+  document.getElementById('filterCompanyItems').innerHTML = cHtml;
+
+  // Build phase items
+  let pHtml = `<div class="step-item${!currentFilters.phase ? ' selected' : ''}" tabindex="0" onclick="setFilter('phase','')" onkeydown="if(event.key==='Enter')this.click()">全て</div>`;
+  Object.entries(PHASE_META).forEach(([k, meta]) => {
+    const sel = currentFilters.phase === k ? ' selected' : '';
+    pHtml += `<div class="step-item${sel}" tabindex="0" onclick="setFilter('phase','${k}')" onkeydown="if(event.key==='Enter')this.click()">${meta.label}</div>`;
+  });
+  document.getElementById('filterPhaseItems').innerHTML = pHtml;
+
+  // Build step type items
+  buildStepFilterItems();
+
+  document.getElementById('filterPopup').classList.add('active');
 }
+
+function buildStepFilterItems() {
+  let sHtml = `<div class="step-item${!currentFilters.stepType ? ' selected' : ''}" tabindex="0" onclick="setFilter('stepType','')" onkeydown="if(event.key==='Enter')this.click()">全て</div>`;
+  Object.entries(STEP_TYPES).forEach(([key, info]) => {
+    if (currentFilters.phase && info.phase !== currentFilters.phase) return;
+    const sel = currentFilters.stepType === key ? ' selected' : '';
+    sHtml += `<div class="step-item${sel}" tabindex="0" onclick="setFilter('stepType','${key}')" onkeydown="if(event.key==='Enter')this.click()">${info.icon} ${info.short}</div>`;
+  });
+  document.getElementById('filterStepItems').innerHTML = sHtml;
+}
+
+function closeFilterPopup() { document.getElementById('filterPopup').classList.remove('active'); }
+
+function setFilter(type, value) {
+  currentFilters[type] = value;
+  if (type === 'phase') { currentFilters.stepType = ''; buildStepFilterItems(); }
+  // Update selected state visually
+  openFilterPopup();
+  renderBoard();
+  updateFilterIndicator();
+}
+
+function updateFilterIndicator() {
+  const el = document.getElementById('filterIndicator');
+  const parts = [];
+  if (currentFilters.company) parts.push(`企業: ${currentFilters.company}`);
+  if (currentFilters.phase) parts.push(`フェーズ: ${PHASE_META[currentFilters.phase]?.label || currentFilters.phase}`);
+  if (currentFilters.stepType) parts.push(`ステップ: ${STEP_TYPES[currentFilters.stepType]?.short || currentFilters.stepType}`);
+  if (currentFilters.due) parts.push(`期限: ${currentFilters.due}`);
+  if (parts.length) {
+    el.textContent = `🔍 ${parts.join(' / ')}　（クリックで変更）`;
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function applyFilters() { renderBoard(); updateFilterIndicator(); }
 
 function filterByDue(type) {
   // Toggle
@@ -1621,11 +1673,8 @@ function filterByDue(type) {
 
 function clearFilters() {
   currentFilters = { company: '', phase: '', stepType: '', due: '' };
-  document.getElementById('filterCompany').value = '';
-  document.getElementById('filterPhase').value = '';
-  document.getElementById('filterStepType').value = '';
-  updateStepTypeFilter();
   document.querySelectorAll('.summary-card').forEach(c => c.classList.remove('active'));
+  updateFilterIndicator();
   renderBoard();
 }
 
@@ -1870,10 +1919,33 @@ function handleKeydown(e) {
 
   // Escape: close modals/popups
   if (e.key === 'Escape') {
+    if (document.getElementById('filterPopup').classList.contains('active')) { closeFilterPopup(); return; }
     if (document.getElementById('stepPopup').classList.contains('active')) { closeStepPopup(); return; }
     if (document.getElementById('companyPopup').classList.contains('active')) { closeCompanyPopup(); return; }
     if (document.getElementById('searchOverlay').classList.contains('active')) { closeSearch(); return; }
     if (document.getElementById('taskModal').classList.contains('active')) { closeTaskModal(); return; }
+  }
+
+  // Filter popup shortcuts
+  if (document.getElementById('filterPopup').classList.contains('active')) {
+    if (e.key === 'c' || e.key === 'C') { e.preventDefault(); clearFilters(); closeFilterPopup(); return; }
+    if (e.key >= '1' && e.key <= '3') {
+      e.preventDefault();
+      const groups = document.querySelectorAll('#filterPopup .step-group');
+      if (groups[e.key - 1]) {
+        const items = groups[e.key - 1].querySelectorAll('.step-item');
+        if (items.length) items[0].focus();
+      }
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const items = [...document.querySelectorAll('#filterPopup .step-item')];
+      const cur = items.indexOf(document.activeElement);
+      const next = e.shiftKey ? (cur <= 0 ? items.length - 1 : cur - 1) : (cur >= items.length - 1 ? 0 : cur + 1);
+      items[next].focus();
+      return;
+    }
   }
 
   // Modal shortcuts
@@ -1902,14 +1974,6 @@ function handleKeydown(e) {
     return;
   }
 
-  // Alt+Shift+1-4: Dashboard navigation (works always)
-  if (e.altKey && e.shiftKey && e.key >= '1' && e.key <= '4') {
-    e.preventDefault();
-    const navUrls = ['index.html', 'task-board.html', 'materials.html', 'shift.html'];
-    window.location.href = navUrls[parseInt(e.key) - 1];
-    return;
-  }
-
   if (isInput) return;
 
   // Ctrl&Z: Undo
@@ -1918,8 +1982,23 @@ function handleKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }
   // Ctrl&;: New task
   if ((e.ctrlKey || e.metaKey) && e.key === ';') { e.preventDefault(); openNewTask(); return; }
+  // G+1-4: Dashboard navigation (2-step chord)
+  if (e.key === 'g' || e.key === 'G') {
+    if (window._navChordTimer) clearTimeout(window._navChordTimer);
+    window._navChordActive = true;
+    window._navChordTimer = setTimeout(() => { window._navChordActive = false; }, 1500);
+    return;
+  }
+  if (window._navChordActive && e.key >= '1' && e.key <= '4') {
+    e.preventDefault();
+    window._navChordActive = false;
+    const navUrls = ['index.html', 'task-board.html', 'materials.html', 'shift.html'];
+    window.location.href = navUrls[parseInt(e.key) - 1];
+    return;
+  }
+  if (window._navChordActive) { window._navChordActive = false; }
   // F: Filter
-  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFilter(); return; }
+  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); openFilterPopup(); return; }
   // T: Toggle theme
   if (e.key === 't' || e.key === 'T') { e.preventDefault(); toggleTheme(); return; }
   // Alt&1-5: Switch views (only when no modal/popup open)

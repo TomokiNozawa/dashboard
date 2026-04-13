@@ -2558,8 +2558,12 @@ document.addEventListener('DOMContentLoaded', init);
   btn.onclick = () => { document.body.classList.toggle('light'); localStorage.setItem('noza_theme', document.body.classList.contains('light') ? 'light' : 'dark'); };
   document.body.appendChild(btn);
   document.addEventListener('keydown', e => {
-    if (e.altKey && e.shiftKey && e.key >= '1' && e.key <= '4') { e.preventDefault(); window.location.href = ['index.html','task-board.html','materials.html','shift.html'][e.key-1]; return; }
-    if (e.key === 't' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) { e.preventDefault(); btn.click(); }
+    if (!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+      if (e.key === 'g' || e.key === 'G') { window._navChord = true; setTimeout(() => { window._navChord = false; }, 1500); return; }
+      if (window._navChord && e.key >= '1' && e.key <= '4') { e.preventDefault(); window._navChord = false; window.location.href = ['index.html','task-board.html','materials.html','shift.html'][e.key-1]; return; }
+      if (window._navChord) window._navChord = false;
+      if (e.key === 't') { e.preventDefault(); btn.click(); }
+    }
   });
 })();
 </script>
