@@ -204,6 +204,24 @@ async function decryptAndShow(password) {
     tbtn.title = 'テーマ切替';
     tbtn.onclick = () => { document.body.classList.toggle('light'); localStorage.setItem('noza_theme', document.body.classList.contains('light') ? 'light' : 'dark'); };
     document.body.appendChild(tbtn);
+
+    // G+1-4 dashboard navigation
+    document.addEventListener('keydown', e => {
+      if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+      if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault(); window._navChord = true;
+        window._navChordTimer = setTimeout(() => { window._navChord = false; }, 2000);
+        const t = document.createElement('div');
+        t.style.cssText='position:fixed;bottom:20px;right:20px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 16px;font-size:12px;color:#e6edf3;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3)';
+        t.textContent='G → 1:NozaBoard 2:タスク 3:教材 4:シフト';
+        document.body.appendChild(t); setTimeout(()=>t.remove(),2000);
+        return;
+      }
+      if (window._navChord && e.key >= '1' && e.key <= '4') {
+        e.preventDefault(); window._navChord = false; clearTimeout(window._navChordTimer);
+        window.location.href = ['index.html','task-board.html','materials.html','shift.html'][e.key-1];
+      }
+    });
   }, 100);
 }
 

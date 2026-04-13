@@ -1618,9 +1618,19 @@ function closeFilterPopup() { document.getElementById('filterPopup').classList.r
 function toggleFilterItem(setName, value) {
   const s = currentFilters[setName];
   if (s.has(value)) s.delete(value); else s.add(value);
+  // Remember which item was focused to restore after re-render
+  const focusedEl = document.activeElement;
+  const focusedText = focusedEl?.textContent;
   openFilterPopup(); // Refresh UI
   renderBoard();
   updateFilterIndicator();
+  // Restore focus to the same item
+  if (focusedText) {
+    const items = document.querySelectorAll('#filterPopup .step-item');
+    for (const item of items) {
+      if (item.textContent === focusedText) { item.focus(); break; }
+    }
+  }
 }
 
 function updateFilterIndicator() {
