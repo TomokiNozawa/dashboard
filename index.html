@@ -163,6 +163,38 @@ async function decryptAndShow(password) {
   document.open();
   document.write(html);
   document.close();
+
+  // Inject side nav after page load
+  setTimeout(() => {
+    if (document.getElementById('sideNav')) return; // Already has nav
+    const nav = document.createElement('nav');
+    nav.id = 'sideNav';
+    nav.className = 'side-nav';
+    nav.innerHTML = `
+      <a class="side-nav-item active" href="index.html" title="NozaBoard">
+        <svg viewBox="0 0 100 100" width="22" height="22"><defs><linearGradient id="sng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5aadff"/><stop offset="100%" stop-color="#b88cff"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(#sng)"/><text x="50" y="68" text-anchor="middle" fill="#fff" font-family="Inter,sans-serif" font-weight="700" font-size="52">N</text></svg>
+        <span>NozaBoard</span>
+      </a>
+      <a class="side-nav-item" href="task-board.html" title="タスクボード"><span style="font-size:18px">&#9744;</span><span>タスク</span></a>
+      <a class="side-nav-item" href="materials.html" title="教材作成"><span style="font-size:18px">&#128230;</span><span>教材</span></a>
+      <a class="side-nav-item" href="shift.html" title="シフト管理"><span style="font-size:18px">&#128101;</span><span>シフト</span></a>
+    `;
+    const style = document.createElement('style');
+    style.textContent = `
+      .side-nav { position:fixed;top:0;left:0;width:56px;height:100vh;background:#161b22;border-right:1px solid #30363d;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;z-index:200;overflow:hidden;transition:width 0.2s ease; }
+      .side-nav:hover { width:140px; }
+      .side-nav-item { display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;color:#6e7681;text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;transition:all 0.2s;line-height:1; }
+      .side-nav-item span:first-child,.side-nav-item svg { display:flex;align-items:center;justify-content:center;width:22px;height:22px;flex-shrink:0; }
+      .side-nav-item:hover { background:#1c2129;color:#e6edf3; }
+      .side-nav-item.active { color:#58a6ff;background:rgba(88,166,255,0.08);border-right:2px solid #58a6ff; }
+      .side-nav-item span:last-child { opacity:0;transition:opacity 0.15s; }
+      .side-nav:hover .side-nav-item span:last-child { opacity:1; }
+      @media(max-width:768px){.side-nav{display:none;}}
+    `;
+    document.head.appendChild(style);
+    document.body.prepend(nav);
+    document.body.style.paddingLeft = '56px';
+  }, 100);
 }
 
 async function unlock() {
