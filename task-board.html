@@ -418,37 +418,34 @@ body {
 .todo-section-header.collapsed .toggle-arrow { transform: rotate(-90deg); }
 .todo-section-body { }
 .todo-section-header.collapsed + .todo-section-body { display: none; }
-.todo-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.todo-table th {
-  text-align: left; font-size: 10px; font-weight: 600; color: var(--text-muted);
-  padding: 4px 8px; border-bottom: 1px solid var(--border-light); white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
+.todo-card-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; padding: 6px 0;
 }
-.todo-table td {
-  padding: 5px 8px; border-bottom: 1px solid var(--border-light);
-  font-size: 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.todo-card {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; transition: all 0.1s; font-size: 12px; min-height: 40px;
 }
-.todo-table tr:hover td { background: var(--bg-card-hover); }
-.todo-table .col-check { width: 30px; }
-.todo-table .col-company { width: 14%; font-weight: 600; }
-.todo-table .col-step { width: 9%; }
-.todo-table .col-title { width: 30%; }
-.todo-table .col-detail { width: 18%; color: var(--text-secondary); }
-.todo-table .col-training-date { width: 9%; color: var(--text-muted); font-size: 11px; }
-.todo-table .col-due { width: 14%; text-align: right; }
-.todo-checkbox {
-  width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 3px;
+.todo-card:hover { background: var(--bg-card-hover); border-color: #3a4860; }
+.todo-card.kb-focused { outline: 2px solid var(--accent-blue); outline-offset: -2px; }
+.todo-card-check {
+  width: 15px; height: 15px; border: 2px solid var(--border); border-radius: 3px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all var(--transition); font-size: 10px; color: transparent;
+  flex-shrink: 0; font-size: 9px; color: transparent; transition: all 0.1s;
 }
-.todo-checkbox:hover { border-color: var(--accent-green); color: var(--accent-green); }
+.todo-card-check:hover { border-color: var(--accent-green); color: var(--accent-green); }
+.todo-card-company { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; flex-shrink: 0; }
+.todo-card-body { flex: 1; min-width: 0; overflow: hidden; }
+.todo-card-title { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.todo-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
 .todo-due {
-  font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; white-space: nowrap;
+  font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 8px; white-space: nowrap;
 }
 .todo-due.overdue { background: rgba(248,81,73,0.12); color: var(--accent-red); }
 .todo-due.today { background: rgba(240,136,62,0.12); color: var(--accent-orange); }
 .todo-due.soon { background: rgba(232,184,64,0.12); color: var(--accent-yellow); }
 .todo-due.normal { background: rgba(139,149,165,0.06); color: var(--text-muted); }
+.todo-card-date { font-size: 9px; color: var(--text-muted); white-space: nowrap; }
 
 /* ── Kanban Board ── */
 .board-container {
@@ -745,7 +742,7 @@ body {
 
 /* ── Company View (C2) ── */
 .company-view { padding: 16px 20px; overflow: auto; height: 100%; }
-.company-list { display: flex; flex-direction: column; gap: 8px; }
+.company-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 8px; align-items: start; }
 .company-card {
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--radius); overflow: hidden; transition: all var(--transition);
@@ -809,6 +806,9 @@ body {
 .cal-day:hover { background: var(--bg-card-hover); }
 .cal-day.other-month { opacity: 0.3; }
 .cal-day.today { background: rgba(90,173,255,0.08); }
+.cal-day.kb-selected, .cal-week-day.kb-selected { outline: 2px solid var(--accent-blue); outline-offset: -2px; z-index: 5; }
+.cal-week-task.kb-focused, .cal-task-dot.kb-focused { outline: 2px solid var(--accent-blue); background: rgba(90,173,255,0.15) !important; }
+.company-card.kb-focused { outline: 2px solid var(--accent-blue); outline-offset: -2px; }
 .cal-day.today .cal-day-num { color: var(--accent-blue); font-weight: 700; }
 .cal-day-num { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
 .cal-day-tasks { display: flex; flex-direction: column; gap: 2px; }
@@ -957,10 +957,11 @@ body {
   .cal-task-dot { font-size: 8px; }
   .stats-grid { grid-template-columns: 1fr; }
   .stats-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .todo-table .col-title { display: none; }
-  .todo-table .col-detail { display: none; }
-  .todo-table .col-training-date { display: none; }
+  .todo-card-grid { grid-template-columns: 1fr; }
+  .todo-card-body { display: none; }
+  .company-list { grid-template-columns: 1fr; }
   .company-phase-badges { display: none; }
+  .company-pipeline { display: none; }
 }
 
 @media (max-width: 480px) {
@@ -1611,6 +1612,7 @@ function renderCurrentView() {
 
 function switchView(view) {
   currentView = view;
+  resetTabFocus();
   document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view)?.classList.add('active');
@@ -2359,24 +2361,53 @@ function handleKeydown(e) {
   // T: Toggle theme
   if (e.key === 't' || e.key === 'T') { e.preventDefault(); toggleTheme(); return; }
 
-  // ── Tab-specific shortcuts (no modifiers) ──
-  // Tab 2 (やること一覧): 1/2/3 = グルーピング切替
+  // ── Tab 2 (やること一覧): keyboard nav ──
   if (currentView === 'timeline' && !e.altKey && !e.ctrlKey && !e.metaKey) {
     if (e.key === '1') { e.preventDefault(); setTodoGroup('date'); return; }
     if (e.key === '2') { e.preventDefault(); setTodoGroup('company'); return; }
     if (e.key === '3') { e.preventDefault(); setTodoGroup('step'); return; }
+    const cards = document.querySelectorAll('.todo-card');
+    if (!cards.length) return;
+    const cols = getGridCols(document.querySelector('.todo-card-grid'));
+    if (e.key === 'ArrowRight' || e.key === 'j') { e.preventDefault(); todoFocusIdx = Math.min(todoFocusIdx + 1, cards.length - 1); setKbFocus('.todo-card', todoFocusIdx); return; }
+    if (e.key === 'ArrowLeft' || e.key === 'k') { e.preventDefault(); todoFocusIdx = Math.max(todoFocusIdx - 1, 0); setKbFocus('.todo-card', todoFocusIdx); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); todoFocusIdx = Math.min(todoFocusIdx + cols, cards.length - 1); setKbFocus('.todo-card', todoFocusIdx); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); todoFocusIdx = Math.max(todoFocusIdx - cols, 0); setKbFocus('.todo-card', todoFocusIdx); return; }
+    if (e.key === 'Enter' && todoFocusIdx >= 0) { e.preventDefault(); const id = cards[todoFocusIdx]?.dataset.taskId; if (id) openEditTask(id); return; }
+    if ((e.key === 'x' || e.key === 'X') && todoFocusIdx >= 0) { e.preventDefault(); const id = cards[todoFocusIdx]?.dataset.taskId; if (id) moveTask(id, 'done'); return; }
   }
-  // Tab 3 (カレンダー): M/W = 月/週切替, ←/→ = ナビゲーション
+  // ── Tab 3 (カレンダー): keyboard nav ──
   if (currentView === 'calendar' && !e.altKey && !e.ctrlKey && !e.metaKey) {
     if (e.key === 'm' || e.key === 'M') { e.preventDefault(); setCalMode('month'); return; }
     if (e.key === 'w' || e.key === 'W') { e.preventDefault(); setCalMode('week'); return; }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); calNav(-1); return; }
-    if (e.key === 'ArrowRight') { e.preventDefault(); calNav(1); return; }
+    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); calNav(-1); return; }
+    if (e.key === 'n' || e.key === 'N') { e.preventDefault(); calNav(1); return; }
+    if (!calDayTaskMode) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); calMoveDay(-1); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); calMoveDay(1); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); calMoveDay(-7); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); calMoveDay(7); return; }
+      if (e.key === 'Enter' && calSelectedDate) { e.preventDefault(); calEnterTasks(); return; }
+    } else {
+      if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); calTaskNav(1); return; }
+      if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); calTaskNav(-1); return; }
+      if (e.key === 'Enter') { e.preventDefault(); calOpenFocusedTask(); return; }
+      if (e.key === 'x' || e.key === 'X') { e.preventDefault(); calDoneFocusedTask(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); calDayTaskMode = false; calSelectedTaskIdx = -1; calHighlightDay(); return; }
+    }
   }
-  // Tab 4 (企業別): E = 全展開, C = 全折りたたみ
+  // ── Tab 4 (企業別): keyboard nav ──
   if (currentView === 'company' && !e.altKey && !e.ctrlKey && !e.metaKey) {
     if (e.key === 'e' || e.key === 'E') { e.preventDefault(); document.querySelectorAll('.company-card').forEach(c=>c.classList.add('expanded')); return; }
     if (e.key === 'c' || e.key === 'C') { e.preventDefault(); document.querySelectorAll('.company-card').forEach(c=>c.classList.remove('expanded')); return; }
+    const ccards = document.querySelectorAll('.company-card');
+    if (!ccards.length) return;
+    const ccols = getGridCols(document.querySelector('.company-list'));
+    if (e.key === 'ArrowRight') { e.preventDefault(); companyFocusIdx = Math.min(companyFocusIdx + 1, ccards.length - 1); setKbFocus('.company-card', companyFocusIdx); return; }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); companyFocusIdx = Math.max(companyFocusIdx - 1, 0); setKbFocus('.company-card', companyFocusIdx); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); companyFocusIdx = Math.min(companyFocusIdx + ccols, ccards.length - 1); setKbFocus('.company-card', companyFocusIdx); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); companyFocusIdx = Math.max(companyFocusIdx - ccols, 0); setKbFocus('.company-card', companyFocusIdx); return; }
+    if (e.key === 'Enter' && companyFocusIdx >= 0) { e.preventDefault(); ccards[companyFocusIdx]?.classList.toggle('expanded'); return; }
   }
   // Alt&1-5: Switch views (only when no modal/popup open)
   if (e.altKey && e.key >= '1' && e.key <= '5' &&
@@ -2836,6 +2867,28 @@ function setDuePreset(val) {
 // C1: ToDo View (was Timeline)
 // ────────────────────────────────────────────
 let todoGroupMode = 'date';
+let todoFocusIdx = -1;
+let calSelectedDate = null;
+let calDayTaskMode = false;
+let calSelectedTaskIdx = -1;
+let companyFocusIdx = -1;
+
+function getGridCols(el) {
+  if (!el) return 1;
+  return getComputedStyle(el).gridTemplateColumns.split(' ').length;
+}
+
+function setKbFocus(selector, idx, cls='kb-focused') {
+  const els = document.querySelectorAll(selector);
+  els.forEach(e => e.classList.remove(cls));
+  if (idx >= 0 && idx < els.length) { els[idx].classList.add(cls); els[idx].scrollIntoView({block:'nearest'}); }
+  return els.length;
+}
+
+function resetTabFocus() {
+  todoFocusIdx = -1; calSelectedDate = null; calDayTaskMode = false;
+  calSelectedTaskIdx = -1; companyFocusIdx = -1;
+}
 
 function setTodoGroup(mode) {
   todoGroupMode = mode;
@@ -2852,39 +2905,34 @@ function renderTimeline() {
 
   if (!totalActive) { container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">未完了のタスクはありません</div>'; return; }
 
-  // Common row renderer
-  function todoRow(t, showCompany, showDue) {
+  // Card renderer
+  function todoCard(t) {
     const info = getStepInfo(t);
     const dueInfo = getDueInfo(t.dueDate);
     const training = t.trainingType || '';
-    const title = (t.title || '').replace(t.company || '§§§', '').replace(/^[：:\s]+/, '');
     let tDateLabel = '';
     if (t.trainingDate) {
       const td = new Date(t.trainingDate + 'T00:00:00');
       tDateLabel = `${String(td.getMonth()+1).padStart(2,'0')}/${String(td.getDate()).padStart(2,'0')}(${'日月火水木金土'[td.getDay()]})`;
     }
-    return `<tr onclick="openEditTask('${t._id}')">
-      <td class="col-check"><div class="todo-checkbox" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了にする">✓</div></td>
-      ${showCompany ? `<td class="col-company" title="${escHtml(t.company || '')}">${escHtml(t.company || '')}</td>` : ''}
-      <td class="col-step"><span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 5px">${info.icon}${escHtml(info.short)}</span></td>
-      <td class="col-title" title="${escHtml(title)}">${escHtml(title)}</td>
-      <td class="col-detail" title="${escHtml(training)}">${escHtml(training)}</td>
-      <td class="col-training-date">${tDateLabel}</td>
-      ${showDue ? `<td class="col-due">${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}</td>` : ''}
-    </tr>`;
+    return `<div class="todo-card" data-task-id="${t._id}" onclick="openEditTask('${t._id}')">
+      <div class="todo-card-check" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了 (X)">✓</div>
+      <span class="todo-card-company" title="${escHtml(t.company||'')}">${escHtml(t.company||'')}</span>
+      <span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 5px">${info.icon}${escHtml(info.short)}</span>
+      <div class="todo-card-body"><div class="todo-card-title" title="${escHtml(training)}">${escHtml(training)}</div></div>
+      <div class="todo-card-right">
+        ${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}
+        ${tDateLabel ? `<span class="todo-card-date">${tDateLabel}</span>` : ''}
+      </div>
+    </div>`;
   }
 
-  function section(label, cssClass, taskList, collapsed, showCompany, showDue) {
+  function section(label, cssClass, taskList, collapsed) {
     if (!taskList.length) return '';
     const cc = collapsed ? ' collapsed' : '';
-    const compHead = showCompany ? '<th class="col-company">企業</th>' : '';
-    const dueHead = showDue ? '<th class="col-due">期限</th>' : '';
     return `<div class="todo-section">
       <div class="todo-section-header ${cssClass}${cc}" onclick="this.classList.toggle('collapsed')">${label}<span class="count">${taskList.length}件</span><span class="toggle-arrow">▾</span></div>
-      <div class="todo-section-body"><table class="todo-table">
-        <thead><tr><th class="col-check"></th>${compHead}<th class="col-step">ステップ</th><th class="col-title">タイトル</th><th class="col-detail">研修内容</th><th class="col-training-date">研修日</th>${dueHead}</tr></thead>
-        <tbody>${taskList.map(t => todoRow(t, showCompany, showDue)).join('')}</tbody>
-      </table></div>
+      <div class="todo-section-body"><div class="todo-card-grid">${taskList.map(t => todoCard(t)).join('')}</div></div>
     </div>`;
   }
 
@@ -2908,19 +2956,19 @@ function renderTimeline() {
     buckets.overdue.sort(sc); buckets.today.sort(sc); buckets.tomorrow.sort(sc);
     buckets.later.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || '')); buckets.nodue.sort(sc);
 
-    html += section('今日やること', 'urgent', [...buckets.overdue, ...buckets.today], false, true, true);
+    html += section('今日やること', 'urgent', [...buckets.overdue, ...buckets.today], false);
     if (buckets.tomorrow.length) {
       const dow = '日月火水木金土'[tmrw.getDay()];
-      html += section(`明日 ${String(tmrw.getMonth()+1).padStart(2,'0')}/${String(tmrw.getDate()).padStart(2,'0')}(${dow})`, 'tomorrow', buckets.tomorrow, false, true, true);
+      html += section(`明日 ${String(tmrw.getMonth()+1).padStart(2,'0')}/${String(tmrw.getDate()).padStart(2,'0')}(${dow})`, 'tomorrow', buckets.tomorrow, false);
     }
     Object.keys(buckets.thisWeek).sort().forEach(ds => {
       const d = new Date(ds + 'T00:00:00');
       const label = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${'日月火水木金土'[d.getDay()]})`;
       buckets.thisWeek[ds].sort(sc);
-      html += section(label, 'future', buckets.thisWeek[ds], false, true, true);
+      html += section(label, 'future', buckets.thisWeek[ds], false);
     });
-    html += section('来週以降', 'future', buckets.later, true, true, true);
-    html += section('期限未設定', 'nodue', buckets.nodue, true, true, true);
+    html += section('来週以降', 'future', buckets.later, true);
+    html += section('期限未設定', 'nodue', buckets.nodue, true);
 
   } else if (todoGroupMode === 'company') {
     // ── 企業別 ──
@@ -2935,7 +2983,7 @@ function renderTimeline() {
     sorted.forEach(([company, compTasks]) => {
       compTasks.sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
       const hasOverdue = compTasks.some(t => t.dueDate && new Date(t.dueDate + 'T00:00:00') < today);
-      html += section(`${company}`, hasOverdue ? 'urgent' : 'future', compTasks, false, false, true);
+      html += section(`${company}`, hasOverdue ? 'urgent' : 'future', compTasks, false);
     });
 
   } else if (todoGroupMode === 'step') {
@@ -2952,7 +3000,7 @@ function renderTimeline() {
     sorted.forEach(([st, stepTasks]) => {
       const info = STEP_TYPES[st] || { icon: '📌', label: st, phase: 'other' };
       stepTasks.sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
-      html += section(`${info.icon} ${info.label}`, 'future', stepTasks, false, true, true);
+      html += section(`${info.icon} ${info.label}`, 'future', stepTasks, false);
     });
   }
 
@@ -3038,7 +3086,7 @@ function renderCalendar() {
     const trainComps = trainingsByDate[ds];
     const hasConflict = trainComps && trainComps.size > 1;
 
-    html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}" onclick="showCalDayPopup(event,'${ds}')">`;
+    html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}" data-date="${ds}" onclick="showCalDayPopup(event,'${ds}')">`;
     if (hasConflict) html += '<div class="cal-day-conflict" title="同日複数社研修"></div>';
     html += `<div class="cal-day-num">${isOther ? '' : dayNum}</div>`;
 
@@ -3057,7 +3105,7 @@ function renderCalendar() {
           const info = getStepInfo(t);
           const isOverdue = getDueInfo(t.dueDate).type === 'overdue';
           const comp = (t.company || '').substring(0, 6);
-          html += `<div class="cal-task-dot phase-${info.phase}${isOverdue ? ' overdue' : ''}" onclick="event.stopPropagation();openEditTask('${t._id}')">${info.icon}${escHtml(comp)}</div>`;
+          html += `<div class="cal-task-dot phase-${info.phase}${isOverdue ? ' overdue' : ''}" data-task-id="${t._id}" onclick="event.stopPropagation();openEditTask('${t._id}')">${info.icon}${escHtml(comp)}</div>`;
         });
         if (dayTasks.length > 4) html += `<div class="cal-day-more" onclick="event.stopPropagation();showCalDayPopup(event,'${ds}')">+${dayTasks.length - 4}件</div>`;
         html += '</div>';
@@ -3068,6 +3116,7 @@ function renderCalendar() {
 
   html += '</div>';
   document.getElementById('calGrid').innerHTML = html;
+  if (calSelectedDate) calHighlightDay();
 }
 
 function showCalDayPopup(event, ds) {
@@ -3115,6 +3164,58 @@ function closeCalDayPopup() {
   if (el) el.remove();
 }
 
+function calMoveDay(delta) {
+  if (!calSelectedDate) { calSelectedDate = toDateStr(new Date()); }
+  const d = new Date(calSelectedDate + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  calSelectedDate = toDateStr(d);
+  calHighlightDay();
+}
+
+function calHighlightDay() {
+  // Remove old selections
+  document.querySelectorAll('.cal-day.kb-selected, .cal-week-day.kb-selected').forEach(e => e.classList.remove('kb-selected'));
+  document.querySelectorAll('.cal-week-task.kb-focused, .cal-task-dot.kb-focused').forEach(e => e.classList.remove('kb-focused'));
+  if (!calSelectedDate) return;
+  const el = document.querySelector(`[data-date="${calSelectedDate}"]`);
+  if (el) { el.classList.add('kb-selected'); el.scrollIntoView({block:'nearest'}); }
+}
+
+function calEnterTasks() {
+  calDayTaskMode = true;
+  calSelectedTaskIdx = 0;
+  const sel = calMode === 'week' ? '.cal-week-day.kb-selected .cal-week-task' : '.cal-day.kb-selected .cal-task-dot';
+  const tasks = document.querySelectorAll(sel);
+  if (!tasks.length) { calDayTaskMode = false; return; }
+  setKbFocus(sel, 0);
+}
+
+function calTaskNav(delta) {
+  const sel = calMode === 'week' ? '.cal-week-day.kb-selected .cal-week-task' : '.cal-day.kb-selected .cal-task-dot';
+  const tasks = document.querySelectorAll(sel);
+  if (!tasks.length) return;
+  calSelectedTaskIdx = Math.max(0, Math.min(calSelectedTaskIdx + delta, tasks.length - 1));
+  setKbFocus(sel, calSelectedTaskIdx);
+}
+
+function calOpenFocusedTask() {
+  const sel = calMode === 'week' ? '.cal-week-day.kb-selected .cal-week-task' : '.cal-day.kb-selected .cal-task-dot';
+  const tasks = document.querySelectorAll(sel);
+  if (calSelectedTaskIdx >= 0 && tasks[calSelectedTaskIdx]) {
+    const id = tasks[calSelectedTaskIdx].dataset.taskId;
+    if (id) openEditTask(id);
+  }
+}
+
+function calDoneFocusedTask() {
+  const sel = calMode === 'week' ? '.cal-week-day.kb-selected .cal-week-task' : '.cal-day.kb-selected .cal-task-dot';
+  const tasks = document.querySelectorAll(sel);
+  if (calSelectedTaskIdx >= 0 && tasks[calSelectedTaskIdx]) {
+    const id = tasks[calSelectedTaskIdx].dataset.taskId;
+    if (id) moveTask(id, 'done');
+  }
+}
+
 function renderWeekView() {
   if (!calWeekStart) { const now = new Date(); now.setHours(0,0,0,0); calWeekStart = new Date(now); calWeekStart.setDate(now.getDate() - now.getDay()); }
   const wStart = new Date(calWeekStart);
@@ -3147,7 +3248,7 @@ function renderWeekView() {
     const isToday = d.getTime() === today.getTime();
     const dayTasks = tasksByDate[ds] || [];
     const trainComps = trainingsByDate[ds];
-    html += `<div class="cal-week-day${isToday ? ' today' : ''}">`;
+    html += `<div class="cal-week-day${isToday ? ' today' : ''}" data-date="${ds}">`;
     // Training markers
     if (trainComps) {
       [...trainComps].forEach(c => {
@@ -3157,7 +3258,7 @@ function renderWeekView() {
     // Tasks
     dayTasks.forEach(t => {
       const si = getStepInfo(t);
-      html += `<div class="cal-week-task phase-${si.phase}" onclick="openEditTask('${t._id}')">
+      html += `<div class="cal-week-task phase-${si.phase}" data-task-id="${t._id}" onclick="openEditTask('${t._id}')">
         <span style="font-size:9px">${si.icon}</span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.company||'')} ${escHtml(si.short)}</span>
       </div>`;
@@ -3167,6 +3268,7 @@ function renderWeekView() {
   }
   html += '</div>';
   document.getElementById('calGrid').innerHTML = html;
+  if (calSelectedDate) calHighlightDay();
 }
 
 // ────────────────────────────────────────────
