@@ -411,21 +411,22 @@ body {
 .todo-section-header.collapsed .toggle-arrow { transform: rotate(-90deg); }
 .todo-section-body { }
 .todo-section-header.collapsed + .todo-section-body { display: none; }
-.todo-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.todo-table { width: 100%; border-collapse: collapse; }
 .todo-table th {
   text-align: left; font-size: 10px; font-weight: 600; color: var(--text-muted);
   padding: 4px 8px; border-bottom: 1px solid var(--border-light); white-space: nowrap;
 }
 .todo-table td {
   padding: 5px 8px; border-bottom: 1px solid var(--border-light);
-  font-size: 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12px; cursor: pointer; white-space: nowrap;
 }
 .todo-table tr:hover td { background: var(--bg-card-hover); }
 .todo-table .col-check { width: 28px; }
-.todo-table .col-company { width: 130px; font-weight: 600; }
-.todo-table .col-step { width: 90px; }
-.todo-table .col-detail { color: var(--text-secondary); }
-.todo-table .col-due { width: 130px; text-align: right; }
+.todo-table .col-company { font-weight: 600; white-space: nowrap; }
+.todo-table .col-step { white-space: nowrap; }
+.todo-table .col-detail { color: var(--text-secondary); width: 100%; }
+.todo-table .col-training-date { white-space: nowrap; color: var(--text-muted); font-size: 11px; }
+.todo-table .col-due { white-space: nowrap; text-align: right; }
 .todo-checkbox {
   width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 3px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -669,7 +670,7 @@ body {
 .view-container.active { display: flex; flex-direction: column; }
 
 /* ── Timeline View (C1) ── */
-.timeline-view { padding: 16px 20px; overflow: auto; height: 100%; max-width: 900px; margin: 0 auto; }
+.timeline-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .timeline-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .timeline-header h3 { font-size: 15px; font-weight: 600; }
 .timeline-nav { display: flex; gap: 4px; margin-left: auto; }
@@ -734,7 +735,7 @@ body {
 }
 
 /* ── Company View (C2) ── */
-.company-view { padding: 16px 20px; overflow: auto; height: 100%; max-width: 900px; margin: 0 auto; }
+.company-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .company-list { display: flex; flex-direction: column; gap: 8px; }
 .company-card {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -774,7 +775,7 @@ body {
 .company-shift-link:hover { background: rgba(240,136,62,0.1); }
 
 /* ── Calendar View (C4) ── */
-.calendar-view { padding: 16px 20px; overflow: auto; height: 100%; max-width: 1100px; margin: 0 auto; }
+.calendar-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
 .cal-header h3 { font-size: 15px; font-weight: 600; min-width: 140px; }
 .cal-nav-btn {
@@ -841,7 +842,7 @@ body {
 }
 
 /* ── Stats View (C5) ── */
-.stats-view { padding: 16px 20px; overflow: auto; height: 100%; max-width: 1100px; margin: 0 auto; }
+.stats-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .stats-panel {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -925,9 +926,8 @@ body {
   .cal-task-dot { font-size: 8px; }
   .stats-grid { grid-template-columns: 1fr; }
   .stats-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .todo-table .col-company { width: 100px; }
-  .todo-table .col-step { width: 70px; }
   .todo-table .col-detail { display: none; }
+  .todo-table .col-training-date { display: none; }
   .company-phase-badges { display: none; }
 }
 
@@ -2814,11 +2814,19 @@ function renderTimeline() {
       const info = getStepInfo(t);
       const dueInfo = getDueInfo(t.dueDate);
       const training = t.trainingType || '';
+      // Training date display
+      let tDateLabel = '';
+      if (t.trainingDate) {
+        const td = new Date(t.trainingDate + 'T00:00:00');
+        const dow = '日月火水木金土'[td.getDay()];
+        tDateLabel = `${String(td.getMonth()+1).padStart(2,'0')}/${String(td.getDate()).padStart(2,'0')}(${dow})`;
+      }
       rows += `<tr onclick="openEditTask('${t._id}')">
         <td class="col-check"><div class="todo-checkbox" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了にする">✓</div></td>
         <td class="col-company">${escHtml(t.company || '')}</td>
         <td class="col-step"><span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 5px">${info.icon}${escHtml(info.short)}</span></td>
         <td class="col-detail">${escHtml(training)}</td>
+        <td class="col-training-date">${tDateLabel}</td>
         <td class="col-due">${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}</td>
       </tr>`;
     });
@@ -2831,7 +2839,7 @@ function renderTimeline() {
     return `<div class="todo-section">
       <div class="todo-section-header ${cssClass}${colClass}" onclick="this.classList.toggle('collapsed')">${label}<span class="count">${taskList.length}件</span><span class="toggle-arrow">▾</span></div>
       <div class="todo-section-body"><table class="todo-table">
-        <thead><tr><th class="col-check"></th><th class="col-company">企業</th><th class="col-step">ステップ</th><th class="col-detail">研修内容</th><th class="col-due">期限</th></tr></thead>
+        <thead><tr><th class="col-check"></th><th class="col-company">企業</th><th class="col-step">ステップ</th><th class="col-detail">研修内容</th><th class="col-training-date">研修日</th><th class="col-due">期限</th></tr></thead>
         <tbody>${renderTodoRows(taskList)}</tbody>
       </table></div>
     </div>`;
