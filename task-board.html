@@ -1113,17 +1113,13 @@ html { scroll-behavior: smooth; }
 <!-- Filter Popup -->
 <div class="step-popup-overlay" id="filterPopup" onclick="closeFilterPopup()">
   <div class="step-popup" onclick="event.stopPropagation()" style="width:520px">
-    <h4>フィルター <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px">Cでクリア / Escで閉じる</span></h4>
+    <h4>フィルター <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px">複数選択可(OR) / Cでクリア / Escで閉じる</span></h4>
     <div class="step-group">
-      <div class="step-group-label"><span class="step-group-num">1</span>企業名</div>
-      <div class="step-group-items" id="filterCompanyItems"></div>
-    </div>
-    <div class="step-group">
-      <div class="step-group-label"><span class="step-group-num">2</span>フェーズ</div>
+      <div class="step-group-label"><span class="step-group-num">1</span>フェーズ</div>
       <div class="step-group-items" id="filterPhaseItems"></div>
     </div>
     <div class="step-group">
-      <div class="step-group-label"><span class="step-group-num">3</span>ステップタイプ</div>
+      <div class="step-group-label"><span class="step-group-num">2</span>ステップタイプ</div>
       <div class="step-group-items" id="filterStepItems"></div>
     </div>
     <div style="margin-top:12px;display:flex;gap:8px">
@@ -1218,7 +1214,7 @@ let sheetsAccessToken = null;
 
 let db = null;
 let allTasks = {};
-let currentFilters = { company: '', phase: '', due: '' };
+let currentFilters = { phases: new Set(), stepTypes: new Set(), due: '' };
 let searchSelectedIdx = -1;
 let currentView = 'kanban';
 let timelineOffset = 0;
@@ -1432,9 +1428,13 @@ function renderBoard() {
 
   // Apply filters
   const filtered = tasksArr.filter(t => {
-    if (currentFilters.company && t.company !== currentFilters.company) return false;
-    if (currentFilters.phase) { const si = getStepInfo(t); if (si.phase !== currentFilters.phase) return false; }
-    if (currentFilters.stepType && getStepType(t) !== currentFilters.stepType) return false;
+    // OR filter: if any phases or stepTypes selected, task must match at least one
+    if (currentFilters.phases.size || currentFilters.stepTypes.size) {
+      const si = getStepInfo(t); const st = getStepType(t);
+      const matchPhase = currentFilters.phases.size === 0 || currentFilters.phases.has(si.phase);
+      const matchStep = currentFilters.stepTypes.size === 0 || currentFilters.stepTypes.has(st);
+      if (!matchPhase && !matchStep) return false;
+    }
     if (currentFilters.due) {
       const dueInfo = getDueInfo(t.dueDate);
       if (currentFilters.due === 'overdue' && dueInfo.type !== 'overdue') return false;
@@ -1594,48 +1594,31 @@ function updateCompanyFilter() {
 function toggleFilter() { openFilterPopup(); }
 
 function openFilterPopup() {
-  // Build company items
-  const companies = new Set();
-  Object.values(allTasks).forEach(t => { if (t.company) companies.add(t.company); });
-  const sorted = [...companies].sort((a, b) => a.localeCompare(b, 'ja'));
-  let cHtml = `<div class="step-item${!currentFilters.company ? ' selected' : ''}" tabindex="0" onclick="setFilter('company','')" onkeydown="if(event.key==='Enter')this.click()">全て</div>`;
-  sorted.forEach(c => {
-    const sel = currentFilters.company === c ? ' selected' : '';
-    cHtml += `<div class="step-item${sel}" tabindex="0" onclick="setFilter('company','${escHtml(c)}')" onkeydown="if(event.key==='Enter')this.click()">${escHtml(c)}</div>`;
-  });
-  document.getElementById('filterCompanyItems').innerHTML = cHtml;
-
-  // Build phase items
-  let pHtml = `<div class="step-item${!currentFilters.phase ? ' selected' : ''}" tabindex="0" onclick="setFilter('phase','')" onkeydown="if(event.key==='Enter')this.click()">全て</div>`;
+  // Build phase items (multi-select)
+  let pHtml = '';
   Object.entries(PHASE_META).forEach(([k, meta]) => {
-    const sel = currentFilters.phase === k ? ' selected' : '';
-    pHtml += `<div class="step-item${sel}" tabindex="0" onclick="setFilter('phase','${k}')" onkeydown="if(event.key==='Enter')this.click()">${meta.label}</div>`;
+    const sel = currentFilters.phases.has(k) ? ' selected' : '';
+    pHtml += `<div class="step-item${sel}" tabindex="0" onclick="toggleFilterItem('phases','${k}')" onkeydown="if(event.key==='Enter')this.click()">${meta.label}</div>`;
   });
   document.getElementById('filterPhaseItems').innerHTML = pHtml;
 
-  // Build step type items
-  buildStepFilterItems();
+  // Build step type items (multi-select)
+  let sHtml = '';
+  Object.entries(STEP_TYPES).forEach(([key, info]) => {
+    const sel = currentFilters.stepTypes.has(key) ? ' selected' : '';
+    sHtml += `<div class="step-item${sel}" tabindex="0" onclick="toggleFilterItem('stepTypes','${key}')" onkeydown="if(event.key==='Enter')this.click()">${info.icon} ${info.short}</div>`;
+  });
+  document.getElementById('filterStepItems').innerHTML = sHtml;
 
   document.getElementById('filterPopup').classList.add('active');
 }
 
-function buildStepFilterItems() {
-  let sHtml = `<div class="step-item${!currentFilters.stepType ? ' selected' : ''}" tabindex="0" onclick="setFilter('stepType','')" onkeydown="if(event.key==='Enter')this.click()">全て</div>`;
-  Object.entries(STEP_TYPES).forEach(([key, info]) => {
-    if (currentFilters.phase && info.phase !== currentFilters.phase) return;
-    const sel = currentFilters.stepType === key ? ' selected' : '';
-    sHtml += `<div class="step-item${sel}" tabindex="0" onclick="setFilter('stepType','${key}')" onkeydown="if(event.key==='Enter')this.click()">${info.icon} ${info.short}</div>`;
-  });
-  document.getElementById('filterStepItems').innerHTML = sHtml;
-}
-
 function closeFilterPopup() { document.getElementById('filterPopup').classList.remove('active'); }
 
-function setFilter(type, value) {
-  currentFilters[type] = value;
-  if (type === 'phase') { currentFilters.stepType = ''; buildStepFilterItems(); }
-  // Update selected state visually
-  openFilterPopup();
+function toggleFilterItem(setName, value) {
+  const s = currentFilters[setName];
+  if (s.has(value)) s.delete(value); else s.add(value);
+  openFilterPopup(); // Refresh UI
   renderBoard();
   updateFilterIndicator();
 }
@@ -1643,12 +1626,17 @@ function setFilter(type, value) {
 function updateFilterIndicator() {
   const el = document.getElementById('filterIndicator');
   const parts = [];
-  if (currentFilters.company) parts.push(`企業: ${currentFilters.company}`);
-  if (currentFilters.phase) parts.push(`フェーズ: ${PHASE_META[currentFilters.phase]?.label || currentFilters.phase}`);
-  if (currentFilters.stepType) parts.push(`ステップ: ${STEP_TYPES[currentFilters.stepType]?.short || currentFilters.stepType}`);
+  if (currentFilters.phases.size) {
+    const labels = [...currentFilters.phases].map(k => PHASE_META[k]?.label || k);
+    parts.push(labels.join(', '));
+  }
+  if (currentFilters.stepTypes.size) {
+    const labels = [...currentFilters.stepTypes].map(k => STEP_TYPES[k]?.short || k);
+    parts.push(labels.join(', '));
+  }
   if (currentFilters.due) parts.push(`期限: ${currentFilters.due}`);
   if (parts.length) {
-    el.textContent = `🔍 ${parts.join(' / ')}　（クリックで変更）`;
+    el.textContent = `🔍 ${parts.join(' / ')}　（クリックで変更 / Fで再表示）`;
     el.style.display = '';
   } else {
     el.style.display = 'none';
@@ -1672,7 +1660,7 @@ function filterByDue(type) {
 }
 
 function clearFilters() {
-  currentFilters = { company: '', phase: '', stepType: '', due: '' };
+  currentFilters = { phases: new Set(), stepTypes: new Set(), due: '' };
   document.querySelectorAll('.summary-card').forEach(c => c.classList.remove('active'));
   updateFilterIndicator();
   renderBoard();
@@ -1929,7 +1917,7 @@ function handleKeydown(e) {
   // Filter popup shortcuts
   if (document.getElementById('filterPopup').classList.contains('active')) {
     if (e.key === 'c' || e.key === 'C') { e.preventDefault(); clearFilters(); closeFilterPopup(); return; }
-    if (e.key >= '1' && e.key <= '3') {
+    if (e.key >= '1' && e.key <= '2') {
       e.preventDefault();
       const groups = document.querySelectorAll('#filterPopup .step-group');
       if (groups[e.key - 1]) {
@@ -1982,21 +1970,23 @@ function handleKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }
   // Ctrl&;: New task
   if ((e.ctrlKey || e.metaKey) && e.key === ';') { e.preventDefault(); openNewTask(); return; }
-  // G+1-4: Dashboard navigation (2-step chord)
+  // G → 1-4: Dashboard navigation (2-step chord)
   if (e.key === 'g' || e.key === 'G') {
+    e.preventDefault();
     if (window._navChordTimer) clearTimeout(window._navChordTimer);
     window._navChordActive = true;
-    window._navChordTimer = setTimeout(() => { window._navChordActive = false; }, 1500);
+    window._navChordTimer = setTimeout(() => { window._navChordActive = false; }, 2000);
+    showToast('G → 1:NozaBoard 2:タスク 3:教材 4:シフト', 'info');
     return;
   }
   if (window._navChordActive && e.key >= '1' && e.key <= '4') {
     e.preventDefault();
     window._navChordActive = false;
+    if (window._navChordTimer) clearTimeout(window._navChordTimer);
     const navUrls = ['index.html', 'task-board.html', 'materials.html', 'shift.html'];
     window.location.href = navUrls[parseInt(e.key) - 1];
     return;
   }
-  if (window._navChordActive) { window._navChordActive = false; }
   // F: Filter
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); openFilterPopup(); return; }
   // T: Toggle theme
