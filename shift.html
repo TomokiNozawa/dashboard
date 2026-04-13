@@ -80,8 +80,6 @@ a:hover { text-decoration: underline; }
 
 /* Header */
 .page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
-.back-btn { padding: 6px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); font-size: 13px; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block; }
-.back-btn:hover { background: var(--card-hover); color: var(--text); text-decoration: none; }
 .page-header h1 { font-size: 22px; font-weight: 700; }
 .page-header .header-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .page-header .header-right .action-bar { margin-top: 4px; }
@@ -861,7 +859,6 @@ function renderApp() {
 
   app.innerHTML = `
     <div class="page-header">
-      <a class="back-btn" href="index.html">&larr; ダッシュボードに戻る</a>
       <h1>4月 シフト管理</h1>
       <div class="header-right">
         <div class="sub" style="display:grid;grid-template-columns:auto auto;gap:0 8px;font-variant-numeric:tabular-nums;font-family:'Inter',monospace;">
