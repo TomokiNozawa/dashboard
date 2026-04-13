@@ -1113,6 +1113,23 @@ html { scroll-behavior: smooth; }
   </div>
 </div>
 
+<!-- Sync Diff Modal -->
+<div class="step-popup-overlay" id="syncDiffModal" onclick="closeSyncDiffModal()">
+  <div class="step-popup" onclick="event.stopPropagation()" style="width:560px">
+    <h4>スプシ同期確認 <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px">スプシで「済」のタスク</span></h4>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">チェックしたタスクを「完了」に更新します</div>
+    <div id="syncDiffList" style="max-height:400px;overflow-y:auto"></div>
+    <div style="margin-top:16px;display:flex;gap:8px;align-items:center">
+      <label style="font-size:11px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:4px">
+        <input type="checkbox" id="syncDiffSelectAll" onchange="toggleSyncDiffAll(this.checked)" checked> 全選択
+      </label>
+      <span style="flex:1"></span>
+      <button class="btn btn-secondary" onclick="closeSyncDiffModal()" style="font-size:12px;padding:6px 14px">キャンセル</button>
+      <button class="btn btn-primary" onclick="applySyncDiff()" style="font-size:12px;padding:6px 14px">適用</button>
+    </div>
+  </div>
+</div>
+
 <!-- Filter Popup -->
 <div class="step-popup-overlay" id="filterPopup" onclick="closeFilterPopup()">
   <div class="step-popup" onclick="event.stopPropagation()" style="width:520px">
@@ -2886,16 +2903,14 @@ async function syncFromSheet() {
       }
     }
 
-    // Check existing tasks and mark done if sheet says 済
-    let updated = 0;
-    const fbUpdates = {};
+    // Find diffs: sheet says 済 but TaskBoard not done
+    const diffs = [];
     for (const [taskId, task] of Object.entries(allTasks)) {
       if (task.status === 'done') continue;
       const st = getStepType(task);
       if (!Object.values(SYNC_COLS).includes(st)) continue;
       if (!task.trainingDate || !task.company) continue;
 
-      // Check if any sheet row matches
       const match = Object.keys(sheetDone).some(key => {
         const [kSt, ...rest] = key.split('_');
         const kDate = rest.pop();
@@ -2904,19 +2919,18 @@ async function syncFromSheet() {
       });
 
       if (match) {
-        fbUpdates[`tasks/${taskId}/status`] = 'done';
-        fbUpdates[`tasks/${taskId}/completedAt`] = firebase.database.ServerValue.TIMESTAMP;
-        fbUpdates[`tasks/${taskId}/updatedAt`] = firebase.database.ServerValue.TIMESTAMP;
-        updated++;
+        const info = getStepInfo(task);
+        diffs.push({ taskId, title: task.title, company: task.company, stepLabel: `${info.icon} ${info.short}`, trainingDate: task.trainingDate });
       }
     }
 
-    if (updated > 0 && db) {
-      await db.ref().update(fbUpdates);
-      showToast(`スプシ同期完了: ${updated}件を完了に更新`, 'success');
-    } else {
-      showToast('スプシ同期完了: 更新なし', 'info');
+    if (!diffs.length) {
+      showToast('スプシ同期: 差分なし（全て最新です）', 'info');
+      return;
     }
+
+    // Show confirmation modal
+    showSyncDiffModal(diffs);
   } catch (e) {
     console.error('Sync from sheet error:', e);
     showToast(`スプシ同期エラー: ${e.message}`, 'error');
@@ -2924,6 +2938,62 @@ async function syncFromSheet() {
     btn.disabled = false;
     btn.querySelector('.label-text').textContent = 'スプシ同期';
   }
+}
+
+// ────────────────────────────────────────────
+// Sync Diff Modal
+// ────────────────────────────────────────────
+let pendingSyncDiffs = [];
+
+function showSyncDiffModal(diffs) {
+  pendingSyncDiffs = diffs;
+  let html = '';
+  diffs.forEach((d, i) => {
+    const due = getDueInfo(d.trainingDate);
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border-light)">
+      <input type="checkbox" class="sync-diff-check" data-idx="${i}" checked style="width:16px;height:16px;flex-shrink:0">
+      <span style="font-size:12px;font-weight:600;min-width:80px">${escHtml(d.company)}</span>
+      <span style="font-size:11px;color:var(--text-secondary)">${d.stepLabel}</span>
+      <span style="font-size:11px;color:var(--text-muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.title)}</span>
+      <span style="font-size:10px;color:var(--text-muted)">${due.label || d.trainingDate}</span>
+    </div>`;
+  });
+  document.getElementById('syncDiffList').innerHTML = html;
+  document.getElementById('syncDiffSelectAll').checked = true;
+  document.getElementById('syncDiffModal').classList.add('active');
+  showToast(`${diffs.length}件の差分が見つかりました`, 'info');
+}
+
+function closeSyncDiffModal() {
+  document.getElementById('syncDiffModal').classList.remove('active');
+  pendingSyncDiffs = [];
+}
+
+function toggleSyncDiffAll(checked) {
+  document.querySelectorAll('.sync-diff-check').forEach(cb => cb.checked = checked);
+}
+
+async function applySyncDiff() {
+  const checks = document.querySelectorAll('.sync-diff-check');
+  const selected = [];
+  checks.forEach(cb => { if (cb.checked) selected.push(pendingSyncDiffs[parseInt(cb.dataset.idx)]); });
+
+  if (!selected.length) { showToast('適用するタスクを選択してください', 'info'); return; }
+
+  const fbUpdates = {};
+  selected.forEach(d => {
+    fbUpdates[`tasks/${d.taskId}/status`] = 'done';
+    fbUpdates[`tasks/${d.taskId}/completedAt`] = firebase.database.ServerValue.TIMESTAMP;
+    fbUpdates[`tasks/${d.taskId}/updatedAt`] = firebase.database.ServerValue.TIMESTAMP;
+  });
+
+  try {
+    await db.ref().update(fbUpdates);
+    showToast(`${selected.length}件を完了に更新しました`, 'success');
+  } catch (e) {
+    showToast(`更新エラー: ${e.message}`, 'error');
+  }
+  closeSyncDiffModal();
 }
 </script>
 </body>
