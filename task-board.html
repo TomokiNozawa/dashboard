@@ -301,6 +301,17 @@ body {
 }
 .company-suggest-item .match { color: var(--accent-blue); font-weight: 600; }
 
+/* ── Skill Run Param ── */
+.skill-param { margin-bottom: 12px; }
+.skill-param label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.skill-param input {
+  width: 100%; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; font-family: var(--font);
+  outline: none;
+}
+.skill-param input:focus { border-color: var(--border-focus); }
+.skill-param .hint { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
 /* ── SUUMO Filter Rows ── */
 .filter-row {
   display: flex; border-bottom: 1px solid var(--border-light);
@@ -1190,6 +1201,7 @@ html { scroll-behavior: smooth; }
       <div class="form-actions">
         <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none">削除 <span style="font-size:9px;opacity:0.7;margin-left:2px">Del</span></button>
         <button type="button" class="btn btn-secondary" id="duplicateTaskBtn" onclick="duplicateTask()" style="display:none" title="複製 (Alt&D)">複製 <span style="font-size:9px;color:var(--text-muted);margin-left:2px">Alt&D</span></button>
+        <button type="button" class="btn" id="skillRunBtn" onclick="openSkillRunModal()" style="display:none;background:rgba(184,140,255,0.1);color:var(--accent-purple);border-color:rgba(184,140,255,0.3)" title="スキル実行 (Alt&R)">▶ スキル実行</button>
         <span style="flex:1"></span>
         <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">キャンセル <span style="font-size:9px;color:var(--text-muted);margin-left:4px">Esc</span></button>
         <button type="submit" class="btn btn-primary">保存 <span style="font-size:9px;color:rgba(255,255,255,0.6);margin-left:4px">Alt&S</span></button>
@@ -1204,6 +1216,21 @@ html { scroll-behavior: smooth; }
     <input class="search-input" id="searchInput" placeholder="タスクを検索..." oninput="doSearch(this.value)">
     <div class="search-results" id="searchResults">
       <div class="search-empty">キーワードを入力してください</div>
+    </div>
+  </div>
+</div>
+
+<!-- Skill Run Modal -->
+<div class="step-popup-overlay" id="skillRunModal" onclick="closeSkillRunModal()">
+  <div class="step-popup" onclick="event.stopPropagation()" style="width:520px">
+    <h4 id="skillRunTitle">スキル実行</h4>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px" id="skillRunDesc"></div>
+    <div id="skillRunParams"></div>
+    <div style="margin-top:8px;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border-light);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)" id="skillRunPreview"></div>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <span style="flex:1"></span>
+      <button class="btn btn-secondary" onclick="closeSkillRunModal()" style="font-size:12px;padding:6px 14px">キャンセル <span style="font-size:9px;color:var(--text-muted)">Esc</span></button>
+      <button class="btn" onclick="executeSkill()" style="font-size:12px;padding:6px 14px;background:var(--accent-purple);color:#fff;border-color:var(--accent-purple)">実行 <span style="font-size:9px;color:rgba(255,255,255,0.6)">Enter</span></button>
     </div>
   </div>
 </div>
@@ -1910,6 +1937,7 @@ function openNewTask(status) {
   setDateValue('taskTrainingDate', 'taskTrainingDatePicker', '');
   document.getElementById('deleteTaskBtn').style.display = 'none';
   document.getElementById('duplicateTaskBtn').style.display = 'none';
+  document.getElementById('skillRunBtn').style.display = 'none';
   updateStepTypeDisplay();
   showModal('taskModal');
   setTimeout(() => document.getElementById('taskTitle').focus(), 100);
@@ -1931,6 +1959,9 @@ function openEditTask(id) {
   setStatusBtn(t.status || 'todo');
   document.getElementById('deleteTaskBtn').style.display = 'block';
   document.getElementById('duplicateTaskBtn').style.display = 'block';
+  // Show skill run button if this stepType has a skill mapping
+  const hasSkill = SKILL_MAP[getStepType(t)] && t.status !== 'done';
+  document.getElementById('skillRunBtn').style.display = hasSkill ? '' : 'none';
   updateStepTypeDisplay();
   showModal('taskModal');
 }
@@ -2066,12 +2097,19 @@ function handleKeydown(e) {
 
   // Escape: close modals/popups
   if (e.key === 'Escape') {
+    if (document.getElementById('skillRunModal').classList.contains('active')) { closeSkillRunModal(); return; }
     if (document.getElementById('syncDiffModal').classList.contains('active')) { closeSyncDiffModal(); return; }
     if (document.getElementById('filterPopup').classList.contains('active')) { closeFilterPopup(); return; }
     if (document.getElementById('stepPopup').classList.contains('active')) { closeStepPopup(); return; }
     if (document.getElementById('companyPopup').classList.contains('active')) { closeCompanyPopup(); return; }
     if (document.getElementById('searchOverlay').classList.contains('active')) { closeSearch(); return; }
     if (document.getElementById('taskModal').classList.contains('active')) { closeTaskModal(); return; }
+  }
+
+  // Skill run modal shortcuts
+  if (document.getElementById('skillRunModal').classList.contains('active')) {
+    if (e.key === 'Enter' && document.activeElement?.tagName !== 'BUTTON') { e.preventDefault(); executeSkill(); return; }
+    return;
   }
 
   // Sync diff modal shortcuts
@@ -2180,6 +2218,7 @@ function handleKeydown(e) {
       !document.getElementById('companyPopup').classList.contains('active')) {
     if (e.altKey && e.key === 's') { e.preventDefault(); document.getElementById('taskForm').requestSubmit(); return; }
     if (e.altKey && e.key === 'd') { e.preventDefault(); duplicateTask(); return; }
+    if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); openSkillRunModal(); return; }
     if (e.key === 'Delete') { e.preventDefault(); deleteTask(); return; }
     // Alt+1-7: focus form fields
     if (e.altKey && e.key >= '1' && e.key <= '7') {
@@ -3072,6 +3111,155 @@ function renderStats() {
       <div class="stats-bar-chart">${compBars}</div>
     </div>
   `;
+}
+
+// ────────────────────────────────────────────
+// Skill Execution
+// ────────────────────────────────────────────
+const SKILL_MAP = {
+  premtg_prepare: {
+    skill: '事前mtg作成',
+    title: '事前mtg資料準備',
+    desc: '/事前mtg作成 スキルを実行します。テンプレートコピー→スプシデータ転記→PPTX生成を自動で行います。',
+    params: [
+      { key: 'company', label: '企業名', hint: 'スプシに登録されている企業名', prefill: t => t.company || '' },
+      { key: 'mtgDate', label: '事前mtg日付', hint: 'M/DD形式（例: 4/15）。研修日ではなくmtgの日付', prefill: t => {
+        const d = t.dueDate ? new Date(t.dueDate + 'T00:00:00') : null;
+        return d ? `${d.getMonth()+1}/${d.getDate()}` : '';
+      }},
+    ],
+    buildCommand: p => `/事前mtg作成 ${p.company} ${p.mtgDate}`,
+  },
+  material_create: {
+    skill: '教材作成',
+    title: '教材作成',
+    desc: '/教材作成 スキルを実行します。テンプレフォルダコピー→リネーム→復習ドリル更新を自動で行います。',
+    params: [
+      { key: 'company', label: '企業名', prefill: t => t.company || '' },
+      { key: 'training', label: '研修名', hint: '例: 新卒ExcelCamp', prefill: t => t.trainingType || '' },
+    ],
+    buildCommand: p => `/教材作成 ${p.company} ${p.training}`,
+  },
+  review_remind: {
+    skill: '復習リマインド',
+    title: '復習リマインド送付',
+    desc: '/復習リマインド スキルを実行します。toB管理表から対象案件をピックアップしGmail下書きを作成します。',
+    params: [],
+    buildCommand: () => '/復習リマインド',
+  },
+  final_create: {
+    skill: 'report',
+    title: '最終報告資料作成',
+    desc: '報告資料作成スキルを実行します。',
+    params: [
+      { key: 'company', label: '企業名', prefill: t => t.company || '' },
+      { key: 'training', label: '研修タイプ', hint: '例: ExcelCamp', prefill: t => t.trainingType || '' },
+    ],
+    buildCommand: p => `報告資料作成: ${p.company} ${p.training}`,
+  },
+};
+
+let currentSkillTask = null;
+
+function openSkillRunModal() {
+  const taskId = document.getElementById('taskId').value;
+  const task = allTasks[taskId];
+  if (!task) return;
+  const st = getStepType(task);
+  const mapping = SKILL_MAP[st];
+  if (!mapping) { showToast('このステップタイプにはスキルが紐づいていません', 'info'); return; }
+
+  currentSkillTask = { taskId, task, mapping };
+  document.getElementById('skillRunTitle').textContent = `▶ ${mapping.title}`;
+  document.getElementById('skillRunDesc').textContent = mapping.desc;
+
+  // Build param form
+  let html = '';
+  mapping.params.forEach((p, i) => {
+    const val = p.prefill(task);
+    html += `<div class="skill-param">
+      <label>${p.label}</label>
+      <input class="skill-param-input" data-key="${p.key}" value="${escHtml(val)}" oninput="updateSkillPreview()" ${i === 0 ? 'autofocus' : ''}>
+      ${p.hint ? `<div class="hint">${p.hint}</div>` : ''}
+    </div>`;
+  });
+  document.getElementById('skillRunParams').innerHTML = html;
+  updateSkillPreview();
+  document.getElementById('skillRunModal').classList.add('active');
+  // Focus first param
+  setTimeout(() => document.querySelector('.skill-param-input')?.focus(), 100);
+}
+
+function closeSkillRunModal() {
+  document.getElementById('skillRunModal').classList.remove('active');
+  currentSkillTask = null;
+}
+
+function updateSkillPreview() {
+  if (!currentSkillTask) return;
+  const params = {};
+  document.querySelectorAll('.skill-param-input').forEach(el => { params[el.dataset.key] = el.value.trim(); });
+  const cmd = currentSkillTask.mapping.buildCommand(params);
+  document.getElementById('skillRunPreview').textContent = `実行コマンド: ${cmd}`;
+}
+
+async function executeSkill() {
+  if (!currentSkillTask || !db) return;
+  const params = {};
+  document.querySelectorAll('.skill-param-input').forEach(el => { params[el.dataset.key] = el.value.trim(); });
+
+  // Validate required params
+  for (const p of currentSkillTask.mapping.params) {
+    if (!params[p.key]) { showToast(`${p.label}を入力してください`, 'error'); return; }
+  }
+
+  const cmd = currentSkillTask.mapping.buildCommand(params);
+  const queueData = {
+    skill: currentSkillTask.mapping.skill,
+    command: cmd,
+    stepType: getStepType(currentSkillTask.task),
+    taskId: currentSkillTask.taskId,
+    company: params.company || currentSkillTask.task.company || '',
+    status: 'pending',
+    requestedAt: firebase.database.ServerValue.TIMESTAMP,
+    startedAt: null,
+    completedAt: null,
+    result: '',
+  };
+
+  try {
+    const ref = await db.ref('skill-queue').push(queueData);
+    showToast(`🚀 実行リクエスト送信: ${cmd}`, 'success');
+
+    // Update task status to in_progress
+    if (currentSkillTask.task.status === 'todo') {
+      await db.ref('tasks/' + currentSkillTask.taskId).update({
+        status: 'in_progress',
+        updatedAt: firebase.database.ServerValue.TIMESTAMP,
+      });
+    }
+
+    closeSkillRunModal();
+    closeTaskModal();
+
+    // Listen for completion
+    db.ref('skill-queue/' + ref.key + '/status').on('value', snap => {
+      const s = snap.val();
+      if (s === 'done') {
+        db.ref('skill-queue/' + ref.key + '/result').once('value', rSnap => {
+          showToast(`✅ ${currentSkillTask?.mapping?.title || 'スキル'} 完了: ${rSnap.val() || ''}`, 'success');
+        });
+        snap.ref.off();
+      } else if (s === 'error') {
+        db.ref('skill-queue/' + ref.key + '/result').once('value', rSnap => {
+          showToast(`❌ エラー: ${rSnap.val() || ''}`, 'error');
+        });
+        snap.ref.off();
+      }
+    });
+  } catch (e) {
+    showToast(`送信エラー: ${e.message}`, 'error');
+  }
 }
 
 // ────────────────────────────────────────────
