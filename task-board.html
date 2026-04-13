@@ -342,6 +342,18 @@ body {
 }
 .btn-preset:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.06); }
 
+/* ── Training Type Toggle (multi-select) ── */
+.training-toggle { display: flex; gap: 6px; flex-wrap: wrap; }
+.tt-btn {
+  padding: 6px 14px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 12px; font-weight: 500;
+  font-family: var(--font); color: var(--text-secondary); cursor: pointer;
+  transition: all var(--transition); outline: none;
+}
+.tt-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.tt-btn:focus { border-color: var(--border-focus); }
+.tt-btn.active { border-color: var(--accent-purple); color: var(--accent-purple); background: rgba(184,140,255,0.08); font-weight: 600; }
+
 /* ── Status Toggle Buttons ── */
 .status-toggle {
   display: flex; gap: 6px;
@@ -1120,7 +1132,14 @@ html { scroll-behavior: smooth; }
       <div class="form-row">
         <div class="form-group">
           <label class="form-label"><span class="field-num">3</span>研修タイプ</label>
-          <input class="form-input" id="taskTrainingType" placeholder="ExcelCamp等">
+          <input type="hidden" id="taskTrainingType" value="">
+          <div class="training-toggle" id="trainingToggle">
+            <button type="button" class="tt-btn" data-val="Excel" onclick="toggleTrainingType('Excel')">Excel</button>
+            <button type="button" class="tt-btn" data-val="PPT" onclick="toggleTrainingType('PPT')">PPT</button>
+            <button type="button" class="tt-btn" data-val="Bot" onclick="toggleTrainingType('Bot')">Bot</button>
+            <button type="button" class="tt-btn" data-val="PC" onclick="toggleTrainingType('PC')">PC</button>
+            <button type="button" class="tt-btn" data-val="その他" onclick="toggleTrainingType('その他')">その他</button>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label"><span class="field-num">4</span>ステップタイプ</label>
@@ -1136,9 +1155,9 @@ html { scroll-behavior: smooth; }
           <label class="form-label"><span class="field-num">5</span>期限日</label>
           <input class="form-input" id="taskDueDate" type="date">
           <div style="display:flex;gap:4px;margin-top:4px">
-            <button type="button" class="btn-preset" onclick="setDuePreset(0)">今日</button>
+            <button type="button" class="btn-preset" onclick="setDuePreset('today')">今日</button>
+            <button type="button" class="btn-preset" onclick="setDuePreset(1)">+1日</button>
             <button type="button" class="btn-preset" onclick="setDuePreset(3)">+3日</button>
-            <button type="button" class="btn-preset" onclick="setDuePreset(7)">+1週</button>
             <button type="button" class="btn-preset" onclick="setDuePreset('training')">研修日</button>
           </div>
         </div>
@@ -1868,6 +1887,8 @@ function openNewTask(status) {
   document.getElementById('taskId').value = '';
   document.getElementById('taskStepType').value = 'other';
   setStatusBtn(status || 'todo');
+  setTrainingTypeFromValue('');
+  document.getElementById('taskDueDate').value = toDateStr(new Date()); // 今日を自動入力
   document.getElementById('deleteTaskBtn').style.display = 'none';
   document.getElementById('duplicateTaskBtn').style.display = 'none';
   updateStepTypeDisplay();
@@ -1884,7 +1905,7 @@ function openEditTask(id) {
   const descEl = document.getElementById('taskDescription');
   if (descEl) descEl.value = t.description || '';
   document.getElementById('taskCompany').value = t.company || '';
-  document.getElementById('taskTrainingType').value = t.trainingType || '';
+  setTrainingTypeFromValue(t.trainingType || '');
   document.getElementById('taskStepType').value = getStepType(t);
   document.getElementById('taskDueDate').value = t.dueDate || '';
   document.getElementById('taskTrainingDate').value = t.trainingDate || '';
@@ -2084,7 +2105,8 @@ function handleKeydown(e) {
     if (e.altKey && e.key >= '1' && e.key <= '7') {
       e.preventDefault();
       const fieldMap = { '1':'taskTitle', '2':'taskCompany', '3':'taskTrainingType', '4':'stepTypeDisplay', '5':'taskDueDate', '6':'taskTrainingDate', '7':'statusToggle' };
-      if (e.key === '4') { openStepPopup(); }
+      if (e.key === '3') { document.querySelector('.tt-btn')?.focus(); }
+      else if (e.key === '4') { openStepPopup(); }
       else if (e.key === '7') { document.querySelector('.status-btn.active')?.focus(); }
       else { const el = document.getElementById(fieldMap[e.key]); if (el) el.focus(); }
       return;
@@ -2499,6 +2521,32 @@ function performUndo() {
   }
 }
 
+function toggleTrainingType(val) {
+  const btn = document.querySelector(`.tt-btn[data-val="${val}"]`);
+  btn.classList.toggle('active');
+  // Update hidden field with all selected values joined
+  const selected = [...document.querySelectorAll('.tt-btn.active')].map(b => b.dataset.val);
+  document.getElementById('taskTrainingType').value = selected.join(',');
+}
+
+function setTrainingTypeFromValue(val) {
+  document.querySelectorAll('.tt-btn').forEach(b => b.classList.remove('active'));
+  if (!val) return;
+  // Match known types from the value string
+  const types = ['Excel', 'PPT', 'Bot', 'PC'];
+  types.forEach(t => {
+    if (val.toLowerCase().includes(t.toLowerCase())) {
+      const btn = document.querySelector(`.tt-btn[data-val="${t}"]`);
+      if (btn) btn.classList.add('active');
+    }
+  });
+  // If none matched, mark as その他
+  if (![...document.querySelectorAll('.tt-btn.active')].length && val) {
+    document.querySelector('.tt-btn[data-val="その他"]')?.classList.add('active');
+  }
+  document.getElementById('taskTrainingType').value = val;
+}
+
 function setStatusBtn(val) {
   document.getElementById('taskStatus').value = val;
   document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.val === val));
@@ -2511,9 +2559,14 @@ function setDuePreset(val) {
     if (td) el.value = td;
     return;
   }
-  const d = new Date();
-  d.setDate(d.getDate() + val);
-  el.value = toDateStr(d);
+  if (val === 'today') {
+    el.value = toDateStr(new Date());
+    return;
+  }
+  // +N日: 現在入力されている日付から加算（累加方式）
+  const base = el.value ? new Date(el.value + 'T00:00:00') : new Date();
+  base.setDate(base.getDate() + val);
+  el.value = toDateStr(base);
 }
 
 // ────────────────────────────────────────────
