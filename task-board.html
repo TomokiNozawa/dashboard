@@ -1154,7 +1154,7 @@ html { scroll-behavior: smooth; }
         <div class="form-group">
           <label class="form-label"><span class="field-num">5</span>期限日</label>
           <div style="position:relative;cursor:pointer" onclick="document.getElementById('taskDueDatePicker').showPicker()">
-            <input class="form-input" id="taskDueDate" readonly style="cursor:pointer" placeholder="クリックで選択">
+            <input class="form-input" id="taskDueDate" readonly style="cursor:pointer" placeholder="クリックで選択" onkeydown="handleDateKey(event,'taskDueDate','taskDueDatePicker')">
             <input type="date" id="taskDueDatePicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" onchange="syncDateDisplay('taskDueDate','taskDueDatePicker')">
           </div>
           <div style="display:flex;gap:4px;margin-top:4px">
@@ -1167,7 +1167,7 @@ html { scroll-behavior: smooth; }
         <div class="form-group">
           <label class="form-label"><span class="field-num">6</span>研修日</label>
           <div style="position:relative;cursor:pointer" onclick="document.getElementById('taskTrainingDatePicker').showPicker()">
-            <input class="form-input" id="taskTrainingDate" readonly style="cursor:pointer" placeholder="クリックで選択">
+            <input class="form-input" id="taskTrainingDate" readonly style="cursor:pointer" placeholder="クリックで選択" onkeydown="handleDateKey(event,'taskTrainingDate','taskTrainingDatePicker')">
             <input type="date" id="taskTrainingDatePicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" onchange="syncDateDisplay('taskTrainingDate','taskTrainingDatePicker')">
           </div>
         </div>
@@ -2657,6 +2657,20 @@ function setDateValue(displayId, pickerId, isoVal) {
   const display = document.getElementById(displayId);
   display.value = formatDateWithDow(isoVal);
   display.dataset.iso = isoVal || '';
+}
+
+function handleDateKey(e, displayId, pickerId) {
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    const delta = e.key === 'ArrowUp' ? 1 : -1;
+    const cur = getDateIso(displayId);
+    const base = cur ? new Date(cur + 'T00:00:00') : new Date();
+    base.setDate(base.getDate() + delta);
+    setDateValue(displayId, pickerId, toDateStr(base));
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    document.getElementById(pickerId).showPicker();
+  }
 }
 
 function setDuePreset(val) {
