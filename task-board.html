@@ -307,10 +307,10 @@ body {
 }
 .filter-row:last-child { border-bottom: none; }
 .filter-phase-cell {
-  width: 140px; flex-shrink: 0; padding: 10px 12px;
+  width: 160px; flex-shrink: 0; padding: 10px 12px;
   border-right: 1px solid var(--border-light); display: flex; align-items: flex-start; gap: 6px;
-  font-size: 12px; font-weight: 600; cursor: pointer;
-  transition: background 0.1s;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: background 0.1s; white-space: nowrap;
 }
 .filter-phase-cell:hover { background: var(--bg-card-hover); }
 .filter-phase-cell input[type="checkbox"] { width: 16px; height: 16px; margin-top: 1px; flex-shrink: 0; cursor: pointer; }
@@ -1675,9 +1675,10 @@ function renderFilterSuumo() {
     const someSelected = selectedInPhase.length > 0 && !allSelected;
 
     html += `<div class="filter-row">`;
-    // Left: phase checkbox
-    html += `<div class="filter-phase-cell" onclick="toggleFilterPhase('${p.key}')">
-      <input type="checkbox" ${allSelected ? 'checked' : ''} ${someSelected ? 'data-indeterminate="true"' : ''} onclick="event.stopPropagation();toggleFilterPhase('${p.key}')" tabindex="0">
+    // Left: phase checkbox with number key guide
+    html += `<div class="filter-phase-cell" onclick="toggleFilterPhase('${p.key}')" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFilterPhase('${p.key}')}">
+      <input type="checkbox" ${allSelected ? 'checked' : ''} ${someSelected ? 'data-indeterminate="true"' : ''} onclick="event.stopPropagation();toggleFilterPhase('${p.key}')" tabindex="-1">
+      <span class="step-group-num" style="flex-shrink:0">${p.num}</span>
       <span>${p.label}</span>
     </div>`;
     // Right: step checkboxes
@@ -1686,8 +1687,8 @@ function renderFilterSuumo() {
       const info = STEP_TYPES[key];
       const checked = currentFilters.selectedSteps.has(key);
       const cnt = counts[key] || 0;
-      html += `<label class="filter-step-label${checked ? ' checked' : ''}">
-        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleFilterStep('${key}')" tabindex="0">
+      html += `<label class="filter-step-label${checked ? ' checked' : ''}" tabindex="0" onkeydown="if(event.key===' '){event.preventDefault();toggleFilterStep('${key}')}">
+        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleFilterStep('${key}')" tabindex="-1">
         ${info.short}${cnt ? ` (${cnt})` : ''}
       </label>`;
     });
@@ -2022,10 +2023,20 @@ function handleKeydown(e) {
   if (document.getElementById('filterPopup').classList.contains('active')) {
     if (e.key === 'c' || e.key === 'C') { e.preventDefault(); clearFilters(); renderFilterSuumo(); return; }
     // 1-6: toggle phase
-    if (e.key >= '1' && e.key <= '6') {
+    if (e.key >= '1' && e.key <= '6' && !e.altKey) {
       e.preventDefault();
       const phase = STEP_PHASES[parseInt(e.key) - 1];
       if (phase) toggleFilterPhase(phase.key);
+      return;
+    }
+    // Tab: cycle through focusable items
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const items = [...document.querySelectorAll('#filterPopup [tabindex="0"]')];
+      if (!items.length) return;
+      const cur = items.indexOf(document.activeElement);
+      const next = e.shiftKey ? (cur <= 0 ? items.length - 1 : cur - 1) : (cur >= items.length - 1 ? 0 : cur + 1);
+      items[next].focus();
       return;
     }
     return; // Block other shortcuts while filter is open
@@ -2202,7 +2213,11 @@ function openStepPopup() {
   document.getElementById('stepPopupContent').focus();
 }
 
-function closeStepPopup() { document.getElementById('stepPopup').classList.remove('active'); }
+function closeStepPopup() {
+  document.getElementById('stepPopup').classList.remove('active');
+  // Return focus to step type display in the modal
+  setTimeout(() => document.getElementById('stepTypeDisplay')?.focus(), 50);
+}
 
 function focusPhaseGroup(idx) {
   const groups = document.querySelectorAll('#stepPopupContent .step-group');
@@ -2377,7 +2392,10 @@ function openCompanyPopup() {
   setTimeout(() => document.getElementById('companySearchInput').focus(), 100);
 }
 
-function closeCompanyPopup() { document.getElementById('companyPopup').classList.remove('active'); }
+function closeCompanyPopup() {
+  document.getElementById('companyPopup').classList.remove('active');
+  setTimeout(() => document.getElementById('taskCompany')?.focus(), 50);
+}
 
 function selectCompany(name) {
   document.getElementById('taskCompany').value = name;
@@ -2506,6 +2524,7 @@ function renderTimeline() {
       <div class="todo-checkbox" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了にする">✓</div>
       <span class="todo-company">${escHtml(t.company || '')}</span>
       <span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 6px"><span class="step-icon">${info.icon}</span>${escHtml(info.short)}</span>
+      ${t.autoGenerated ? '<span class="task-auto-badge">&#9881; auto</span>' : ''}
       <span class="todo-detail">${escHtml(training)}</span>
       ${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}
     </div>`;
