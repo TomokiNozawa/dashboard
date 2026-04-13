@@ -284,6 +284,23 @@ body {
 }
 .filter-clear:hover { border-color: var(--accent-red); color: var(--accent-red); }
 
+/* ── Company Suggest (inline) ── */
+.company-suggest {
+  display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+  background: var(--bg-modal); border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  max-height: 200px; overflow-y: auto; box-shadow: var(--shadow);
+}
+.company-suggest.active { display: block; }
+.company-suggest-item {
+  padding: 8px 14px; font-size: 13px; cursor: pointer;
+  transition: background 0.1s; color: var(--text-primary);
+}
+.company-suggest-item:hover, .company-suggest-item.focused {
+  background: var(--bg-card-hover);
+}
+.company-suggest-item .match { color: var(--accent-blue); font-weight: 600; }
+
 /* ── Filter Indicator ── */
 .filter-indicator {
   padding: 4px 20px; background: rgba(90,173,255,0.06); border-bottom: 1px solid var(--border);
@@ -1050,9 +1067,10 @@ html { scroll-behavior: smooth; }
         <label class="form-label"><span class="field-num">1</span>タイトル *</label>
         <input class="form-input" id="taskTitle" required placeholder="タスク名を入力">
       </div>
-      <div class="form-group">
+      <div class="form-group" style="position:relative">
         <label class="form-label"><span class="field-num">2</span>企業名</label>
-        <input class="form-input" id="taskCompany" placeholder="クリックで選択 / 直接入力" onclick="openCompanyPopup()" autocomplete="off">
+        <input class="form-input" id="taskCompany" placeholder="入力でサジェスト / クリックで一覧" oninput="showCompanySuggest()" onkeydown="handleCompanySuggestKey(event)" autocomplete="off">
+        <div class="company-suggest" id="companySuggest"></div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -2229,7 +2247,80 @@ function onStepTypeChange() {
 }
 
 // ────────────────────────────────────────────
-// Company Popup
+// Company Inline Suggest
+// ────────────────────────────────────────────
+let suggestFocusIdx = -1;
+
+function showCompanySuggest() {
+  const input = document.getElementById('taskCompany');
+  const q = input.value.trim().toLowerCase();
+  const box = document.getElementById('companySuggest');
+  if (!q) { box.classList.remove('active'); return; }
+
+  const companies = new Set();
+  Object.values(allTasks).forEach(t => { if (t.company) companies.add(t.company); });
+  const matches = [...companies].filter(c => c.toLowerCase().includes(q)).sort((a, b) => a.localeCompare(b, 'ja'));
+
+  if (!matches.length) { box.classList.remove('active'); return; }
+
+  suggestFocusIdx = -1;
+  box.innerHTML = matches.map((c, i) => {
+    const idx = c.toLowerCase().indexOf(q);
+    const highlighted = idx >= 0
+      ? escHtml(c.slice(0, idx)) + `<span class="match">${escHtml(c.slice(idx, idx + q.length))}</span>` + escHtml(c.slice(idx + q.length))
+      : escHtml(c);
+    return `<div class="company-suggest-item" data-idx="${i}" data-value="${escHtml(c)}" onclick="pickSuggest('${escHtml(c)}')">${highlighted}</div>`;
+  }).join('');
+  box.classList.add('active');
+}
+
+function pickSuggest(name) {
+  document.getElementById('taskCompany').value = name;
+  document.getElementById('companySuggest').classList.remove('active');
+  onStepTypeChange();
+}
+
+function handleCompanySuggestKey(e) {
+  const box = document.getElementById('companySuggest');
+  if (!box.classList.contains('active')) {
+    // Open full popup on Enter/click when no text
+    if (e.key === 'Enter' && !document.getElementById('taskCompany').value.trim()) {
+      e.preventDefault(); openCompanyPopup();
+    }
+    return;
+  }
+  const items = box.querySelectorAll('.company-suggest-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    suggestFocusIdx = Math.min(suggestFocusIdx + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('focused', i === suggestFocusIdx));
+    items[suggestFocusIdx]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    suggestFocusIdx = Math.max(suggestFocusIdx - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('focused', i === suggestFocusIdx));
+    items[suggestFocusIdx]?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (suggestFocusIdx >= 0 && items[suggestFocusIdx]) {
+      pickSuggest(items[suggestFocusIdx].dataset.value);
+    } else if (items.length === 1) {
+      pickSuggest(items[0].dataset.value);
+    }
+  } else if (e.key === 'Escape') {
+    box.classList.remove('active');
+  }
+}
+
+// Close suggest when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('#taskCompany') && !e.target.closest('#companySuggest')) {
+    document.getElementById('companySuggest')?.classList.remove('active');
+  }
+});
+
+// ────────────────────────────────────────────
+// Company Popup (full list)
 // ────────────────────────────────────────────
 function openCompanyPopup() {
   const companies = new Set();
