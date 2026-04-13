@@ -53,8 +53,28 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans
 .login-error { color: var(--red); font-size: 13px; margin-top: 12px; display: none; }
 .login-loading { color: var(--text2); font-size: 13px; margin-top: 12px; display: none; }
 
+/* ── Side Nav ── */
+.side-nav {
+  position: fixed; top: 0; left: 0; width: 56px; height: 100vh;
+  background: var(--card); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 0; z-index: 200; overflow: hidden;
+  transition: width 0.2s ease;
+}
+.side-nav:hover { width: 140px; }
+.side-nav-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 16px; color: var(--text3); text-decoration: none;
+  font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden;
+  border-radius: 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.side-nav-item:hover { background: var(--card-hover); color: var(--text); }
+.side-nav-item.active { color: var(--blue); background: rgba(88,166,255,0.08); border-right: 2px solid var(--blue); }
+.side-nav-item span:last-child { opacity: 0; transition: opacity 0.15s; }
+.side-nav:hover .side-nav-item span:last-child { opacity: 1; }
+
 /* Main App */
-.container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 100px; }
+.container { max-width: 1200px; margin: 0 auto; padding: 24px 20px 100px; padding-left: 76px; }
 a { color: var(--blue); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
@@ -197,10 +217,31 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table { font-size: 11px; }
   .data-table th, .data-table td { padding: 8px 6px; }
   .badge { font-size: 10px; padding: 2px 6px; }
+  .side-nav { display: none; }
+  .container { padding-left: 12px; }
 }
 </style>
 </head>
 <body>
+
+<nav class="side-nav" id="sideNav">
+  <a class="side-nav-item" href="index.html" title="NozaBoard">
+    <svg viewBox="0 0 100 100" width="22" height="22"><defs><linearGradient id="sng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5aadff"/><stop offset="100%" stop-color="#b88cff"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(#sng)"/><text x="50" y="68" text-anchor="middle" fill="#fff" font-family="Inter,sans-serif" font-weight="700" font-size="52">N</text></svg>
+    <span>NozaBoard</span>
+  </a>
+  <a class="side-nav-item" href="task-board.html" title="タスクボード">
+    <span style="font-size:18px">&#9744;</span>
+    <span>タスク</span>
+  </a>
+  <a class="side-nav-item active" href="materials.html" title="教材作成">
+    <span style="font-size:18px">&#128230;</span>
+    <span>教材</span>
+  </a>
+  <a class="side-nav-item" href="shift.html" title="シフト管理">
+    <span style="font-size:18px">&#128101;</span>
+    <span>シフト</span>
+  </a>
+</nav>
 
 <!-- Login -->
 <div class="login-overlay" id="loginOverlay" style="display:none;">
