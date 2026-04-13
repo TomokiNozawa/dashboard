@@ -955,6 +955,9 @@ html { scroll-behavior: smooth; }
       <option value="final">📊 最終報告</option>
       <option value="other">📌 その他</option>
     </select>
+    <select class="filter-select" id="filterStepType" onchange="applyFilters()">
+      <option value="">全ステップ</option>
+    </select>
     <button class="filter-clear" onclick="clearFilters()">クリア</button>
   </div>
 
@@ -1099,7 +1102,7 @@ html { scroll-behavior: smooth; }
       </div>
       <div class="form-actions">
         <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none">削除</button>
-        <button type="button" class="btn btn-secondary" id="duplicateTaskBtn" onclick="duplicateTask()" style="display:none" title="複製 (Alt&D)">複製</button>
+        <button type="button" class="btn btn-secondary" id="duplicateTaskBtn" onclick="duplicateTask()" style="display:none" title="複製 (Alt&D)">複製 <span style="font-size:9px;color:var(--text-muted);margin-left:2px">Alt&D</span></button>
         <span style="flex:1"></span>
         <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">キャンセル <span style="font-size:9px;color:var(--text-muted);margin-left:4px">Esc</span></button>
         <button type="submit" class="btn btn-primary">保存 <span style="font-size:9px;color:rgba(255,255,255,0.6);margin-left:4px">Alt&S</span></button>
@@ -1419,6 +1422,7 @@ function renderBoard() {
   const filtered = tasksArr.filter(t => {
     if (currentFilters.company && t.company !== currentFilters.company) return false;
     if (currentFilters.phase) { const si = getStepInfo(t); if (si.phase !== currentFilters.phase) return false; }
+    if (currentFilters.stepType && getStepType(t) !== currentFilters.stepType) return false;
     if (currentFilters.due) {
       const dueInfo = getDueInfo(t.dueDate);
       if (currentFilters.due === 'overdue' && dueInfo.type !== 'overdue') return false;
@@ -1582,7 +1586,23 @@ function toggleFilter() {
 function applyFilters() {
   currentFilters.company = document.getElementById('filterCompany').value;
   currentFilters.phase = document.getElementById('filterPhase').value;
+  currentFilters.stepType = document.getElementById('filterStepType').value;
+  // Update stepType dropdown based on selected phase
+  updateStepTypeFilter();
   renderBoard();
+}
+
+function updateStepTypeFilter() {
+  const sel = document.getElementById('filterStepType');
+  const phase = currentFilters.phase;
+  const current = sel.value;
+  let html = '<option value="">全ステップ</option>';
+  Object.entries(STEP_TYPES).forEach(([key, info]) => {
+    if (phase && info.phase !== phase) return;
+    html += `<option value="${key}">${info.icon} ${info.short}</option>`;
+  });
+  sel.innerHTML = html;
+  sel.value = current;
 }
 
 function filterByDue(type) {
@@ -1600,9 +1620,11 @@ function filterByDue(type) {
 }
 
 function clearFilters() {
-  currentFilters = { company: '', phase: '', due: '' };
+  currentFilters = { company: '', phase: '', stepType: '', due: '' };
   document.getElementById('filterCompany').value = '';
   document.getElementById('filterPhase').value = '';
+  document.getElementById('filterStepType').value = '';
+  updateStepTypeFilter();
   document.querySelectorAll('.summary-card').forEach(c => c.classList.remove('active'));
   renderBoard();
 }
@@ -1767,6 +1789,8 @@ function saveTask(e) {
 
 function moveTask(id, newStatus) {
   if (!db) return;
+  const prev = allTasks[id];
+  if (prev) pushUndo('status_change', id, { status: prev.status, title: prev.title });
   const updates = { status: newStatus, updatedAt: firebase.database.ServerValue.TIMESTAMP };
   if (newStatus === 'done') updates.completedAt = firebase.database.ServerValue.TIMESTAMP;
   db.ref('tasks/' + id).update(updates).then(() => {
@@ -1781,9 +1805,11 @@ function moveTask(id, newStatus) {
 function deleteTask() {
   const id = document.getElementById('taskId').value;
   if (!id || !db) return;
-  if (!confirm('このタスクを削除しますか？')) return;
+  if (!confirm('このタスクを削除しますか？\n（Ctrl+Zで復元可能）')) return;
+  const prev = allTasks[id];
+  if (prev) pushUndo('delete', id, { ...prev });
   db.ref('tasks/' + id).remove().then(() => {
-    showToast('タスクを削除しました', 'info');
+    showToast('タスクを削除しました（Ctrl+Zで復元）', 'info');
     closeTaskModal();
   });
 }
@@ -1856,6 +1882,7 @@ function handleKeydown(e) {
       !document.getElementById('companyPopup').classList.contains('active')) {
     if (e.altKey && e.key === 's') { e.preventDefault(); document.getElementById('taskForm').requestSubmit(); return; }
     if (e.altKey && e.key === 'd') { e.preventDefault(); duplicateTask(); return; }
+    if (e.key === 'Delete') { e.preventDefault(); deleteTask(); return; }
     // Alt+1-7: focus form fields
     if (e.altKey && e.key >= '1' && e.key <= '7') {
       e.preventDefault();
@@ -1875,8 +1902,18 @@ function handleKeydown(e) {
     return;
   }
 
+  // Alt+Shift+1-4: Dashboard navigation (works always)
+  if (e.altKey && e.shiftKey && e.key >= '1' && e.key <= '4') {
+    e.preventDefault();
+    const navUrls = ['index.html', 'task-board.html', 'materials.html', 'shift.html'];
+    window.location.href = navUrls[parseInt(e.key) - 1];
+    return;
+  }
+
   if (isInput) return;
 
+  // Ctrl&Z: Undo
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); performUndo(); return; }
   // Ctrl&K: Search
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); return; }
   // Ctrl&;: New task
@@ -2137,10 +2174,40 @@ function duplicateTask() {
     createdAt: firebase.database.ServerValue.TIMESTAMP,
     updatedAt: firebase.database.ServerValue.TIMESTAMP,
   };
-  db.ref('tasks').push(newData).then(() => {
-    showToast('タスクを複製しました', 'success');
-    closeTaskModal();
+  db.ref('tasks').push(newData).then(ref => {
+    showToast('タスクを複製しました。編集してから保存してください。', 'success');
+    // Wait for Firebase listener to populate allTasks, then open edit
+    const waitAndOpen = () => {
+      if (allTasks[ref.key]) { openEditTask(ref.key); }
+      else { setTimeout(waitAndOpen, 100); }
+    };
+    setTimeout(waitAndOpen, 200);
   });
+}
+
+// ────────────────────────────────────────────
+// Undo Stack
+// ────────────────────────────────────────────
+const undoStack = []; // {type, taskId, prevData}
+const MAX_UNDO = 20;
+
+function pushUndo(type, taskId, prevData) {
+  undoStack.push({ type, taskId, prevData, ts: Date.now() });
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+}
+
+function performUndo() {
+  if (!undoStack.length || !db) { showToast('元に戻す操作はありません', 'info'); return; }
+  const action = undoStack.pop();
+  if (action.type === 'status_change') {
+    db.ref('tasks/' + action.taskId).update({
+      status: action.prevData.status,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP,
+    }).then(() => showToast(`「${action.prevData.title}」を元に戻しました`, 'success'));
+  } else if (action.type === 'delete') {
+    db.ref('tasks/' + action.taskId).set(action.prevData).then(() =>
+      showToast(`「${action.prevData.title}」を復元しました`, 'success'));
+  }
 }
 
 function setDuePreset(val) {

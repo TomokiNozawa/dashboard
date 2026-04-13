@@ -2557,7 +2557,10 @@ document.addEventListener('DOMContentLoaded', init);
   btn.title = 'テーマ切替 (T)';
   btn.onclick = () => { document.body.classList.toggle('light'); localStorage.setItem('noza_theme', document.body.classList.contains('light') ? 'light' : 'dark'); };
   document.body.appendChild(btn);
-  document.addEventListener('keydown', e => { if (e.key === 't' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) { e.preventDefault(); btn.click(); } });
+  document.addEventListener('keydown', e => {
+    if (e.altKey && e.shiftKey && e.key >= '1' && e.key <= '4') { e.preventDefault(); window.location.href = ['index.html','task-board.html','materials.html','shift.html'][e.key-1]; return; }
+    if (e.key === 't' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) { e.preventDefault(); btn.click(); }
+  });
 })();
 </script>
 </body>
