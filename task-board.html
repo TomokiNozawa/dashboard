@@ -2879,7 +2879,7 @@ async function syncFromSheet() {
     const data = await resp.json();
     const rows = data.values || [];
 
-    // Build lookup: (date, company) → { col: value }
+    // Build lookup: array of {stepType, company, date}
     const SYNC_COLS = {
       21: 'premtg_schedule',  // V: 事前mtg
       22: 'roster_send',      // W: 名簿送付
@@ -2887,7 +2887,7 @@ async function syncFromSheet() {
       25: 'survey_prep',      // Z: アンケート準備
       28: 'invoice',          // AC: 請求書
     };
-    const sheetDone = {}; // key: "stepType_company_date" → true
+    const sheetDoneList = []; // [{stepType, company, date}]
     for (let i = SHEETS_HEADER_ROW + 1; i < rows.length; i++) {
       const row = rows[i];
       const dateStr = (row[SHEETS_COL_DATE] || '').trim();
@@ -2898,25 +2898,25 @@ async function syncFromSheet() {
       for (const [colIdx, stepType] of Object.entries(SYNC_COLS)) {
         const val = (row[colIdx] || '').trim();
         if (val === '済') {
-          sheetDone[`${stepType}_${company}_${dateIso}`] = true;
+          sheetDoneList.push({ stepType, company, date: dateIso });
         }
       }
     }
 
     // Find diffs: sheet says 済 but TaskBoard not done
+    const syncableStepTypes = new Set(Object.values(SYNC_COLS));
     const diffs = [];
     for (const [taskId, task] of Object.entries(allTasks)) {
       if (task.status === 'done') continue;
       const st = getStepType(task);
-      if (!Object.values(SYNC_COLS).includes(st)) continue;
+      if (!syncableStepTypes.has(st)) continue;
       if (!task.trainingDate || !task.company) continue;
 
-      const match = Object.keys(sheetDone).some(key => {
-        const [kSt, ...rest] = key.split('_');
-        const kDate = rest.pop();
-        const kCompany = rest.join('_');
-        return kSt === st && kDate === task.trainingDate && sheetsCompanyMatch(kCompany, task.company);
-      });
+      const match = sheetDoneList.some(sd =>
+        sd.stepType === st &&
+        sd.date === task.trainingDate &&
+        sheetsCompanyMatch(sd.company, task.company)
+      );
 
       if (match) {
         const info = getStepInfo(task);
