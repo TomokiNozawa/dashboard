@@ -128,7 +128,11 @@ body {
   display: flex; align-items: center; gap: 8px; width: 100%;
   padding: 10px 16px; color: var(--text-muted); text-decoration: none;
   font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden;
-  border-radius: 0; transition: all var(--transition);
+  border-radius: 0; transition: all var(--transition); line-height: 1;
+}
+.side-nav-item span:first-child, .side-nav-item svg {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; flex-shrink: 0;
 }
 .side-nav-item:hover { background: var(--bg-card-hover); color: var(--text-primary); }
 .side-nav-item.active { color: var(--accent-blue); background: rgba(90,173,255,0.08); border-right: 2px solid var(--accent-blue); }
@@ -163,8 +167,9 @@ body {
   padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border);
   border-radius: var(--radius-sm); font-size: 12px; font-weight: 500;
   cursor: pointer; transition: all var(--transition); color: var(--text-secondary);
+  outline: none;
 }
-.step-item:hover { border-color: var(--accent-blue); color: var(--text-primary); background: var(--bg-card-hover); }
+.step-item:hover, .step-item:focus { border-color: var(--accent-blue); color: var(--text-primary); background: var(--bg-card-hover); }
 .step-item.selected { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.1); }
 
 /* ── Company Popup ── */
@@ -1117,7 +1122,7 @@ html { scroll-behavior: smooth; }
 <div class="step-popup-overlay" id="stepPopup" onclick="closeStepPopup()">
   <div class="step-popup" onclick="event.stopPropagation()">
     <h4>ステップタイプを選択</h4>
-    <div id="stepPopupContent"></div>
+    <div id="stepPopupContent" tabindex="-1" style="outline:none"></div>
   </div>
 </div>
 
@@ -1970,33 +1975,65 @@ function openStepPopup() {
     p.items.forEach(key => {
       const info = STEP_TYPES[key];
       const sel = key === current ? ' selected' : '';
-      html += `<div class="step-item${sel}" onclick="selectStepType('${key}')">${info.short}</div>`;
+      html += `<div class="step-item${sel}" tabindex="0" data-key="${key}" onclick="selectStepType('${key}')" onkeydown="if(event.key==='Enter'){selectStepType('${key}')}">${info.short}</div>`;
     });
     html += '</div></div>';
   });
   document.getElementById('stepPopupContent').innerHTML = html;
   document.getElementById('stepPopup').classList.add('active');
+  // Focus the popup itself so keyboard works immediately
+  document.getElementById('stepPopupContent').focus();
 }
 
 function closeStepPopup() { document.getElementById('stepPopup').classList.remove('active'); }
 
-// Number key shortcuts for phase groups in step popup
+function focusPhaseGroup(idx) {
+  const groups = document.querySelectorAll('#stepPopupContent .step-group');
+  if (!groups[idx]) return;
+  groups.forEach(g => { g.style.background = ''; g.style.borderRadius = ''; });
+  groups[idx].style.background = 'rgba(90,173,255,0.06)';
+  groups[idx].style.borderRadius = '8px';
+  groups[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const items = groups[idx].querySelectorAll('.step-item');
+  if (items.length === 1) { items[0].click(); }
+  else if (items.length > 0) { items[0].focus(); }
+}
+
+// Keyboard navigation for step popup
 document.addEventListener('keydown', e => {
-  if (!document.getElementById('stepPopup').classList.contains('active')) return;
+  const popup = document.getElementById('stepPopup');
+  if (!popup.classList.contains('active')) return;
+
+  // Number keys: jump to phase group
   if (e.key >= '1' && e.key <= '6') {
+    e.preventDefault(); e.stopPropagation();
+    focusPhaseGroup(parseInt(e.key) - 1);
+    return;
+  }
+  // Tab/Shift+Tab: cycle through items in popup
+  if (e.key === 'Tab') {
     e.preventDefault();
-    const idx = parseInt(e.key) - 1;
-    const groups = document.querySelectorAll('#stepPopupContent .step-group');
-    if (groups[idx]) {
-      // Highlight the group
-      groups.forEach(g => g.style.background = '');
-      groups[idx].style.background = 'rgba(90,173,255,0.06)';
-      groups[idx].style.borderRadius = '8px';
-      groups[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      // Auto-select first item if only one in group
-      const items = groups[idx].querySelectorAll('.step-item');
-      if (items.length === 1) items[0].click();
-    }
+    const items = [...popup.querySelectorAll('.step-item')];
+    if (!items.length) return;
+    const cur = items.indexOf(document.activeElement);
+    const next = e.shiftKey
+      ? (cur <= 0 ? items.length - 1 : cur - 1)
+      : (cur >= items.length - 1 ? 0 : cur + 1);
+    items[next].focus();
+    return;
+  }
+  // Arrow keys: navigate within group
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    const group = document.activeElement?.closest('.step-group-items');
+    if (!group) return;
+    const items = [...group.querySelectorAll('.step-item')];
+    const cur = items.indexOf(document.activeElement);
+    if (cur < 0) return;
+    const next = e.key === 'ArrowRight'
+      ? (cur + 1) % items.length
+      : (cur - 1 + items.length) % items.length;
+    items[next].focus();
   }
 });
 
