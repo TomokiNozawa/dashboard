@@ -2150,10 +2150,9 @@ function handleKeydown(e) {
         const stepIdx = stepsInRow.indexOf(el);
         if (e.key === 'ArrowRight') {
           if (stepIdx < stepsInRow.length - 1) { stepsInRow[stepIdx + 1].focus(); }
-          else { // Wrap to next row's first step
+          else { // Wrap to next row's phase cell
             const nextRow = rows[(rowIdx + 1) % rows.length];
-            const nextSteps = nextRow.querySelectorAll('.filter-step-label');
-            if (nextSteps.length) nextSteps[0].focus();
+            nextRow.querySelector('.filter-phase-cell')?.focus();
           }
         } else if (e.key === 'ArrowLeft') {
           if (stepIdx > 0) { stepsInRow[stepIdx - 1].focus(); }
