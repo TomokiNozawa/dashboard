@@ -151,7 +151,12 @@ body {
 .step-group { margin-bottom: 12px; }
 .step-group-label {
   font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;
-  padding-left: 4px;
+  padding-left: 4px; display: flex; align-items: center; gap: 6px;
+}
+.step-group-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 4px; font-size: 10px; font-weight: 700;
+  background: var(--border-light); color: var(--text-muted); font-family: var(--font-mono);
 }
 .step-group-items { display: flex; flex-wrap: wrap; gap: 6px; }
 .step-item {
@@ -1948,23 +1953,24 @@ function getAllTasksArr() {
 // ────────────────────────────────────────────
 // Step Type Popup
 // ────────────────────────────────────────────
+const STEP_PHASES = [
+  { key: 'pre', label: '📋 事前mtg', num: 1, items: ['premtg_schedule','premtg_prepare','premtg_send','roster_send'] },
+  { key: 'prep', label: '📦👤 教材・講師', num: 2, items: ['material_create','material_send','survey_prep','instructor'] },
+  { key: 'review', label: '🔄 復習', num: 3, items: ['review_remind'] },
+  { key: 'mid', label: '📊 中間報告', num: 4, items: ['mid_schedule','mid_create','mid_send'] },
+  { key: 'final', label: '📊 最終報告', num: 5, items: ['final_schedule','final_create','final_send','invoice'] },
+  { key: 'other', label: '📌 その他', num: 6, items: ['other'] },
+];
+
 function openStepPopup() {
   const current = document.getElementById('taskStepType').value;
-  const phases = [
-    { key: 'pre', label: '📋 事前mtg', items: ['premtg_schedule','premtg_prepare','premtg_send','roster_send'] },
-    { key: 'prep', label: '📦👤 教材・講師', items: ['material_create','material_send','survey_prep','instructor'] },
-    { key: 'review', label: '🔄 復習', items: ['review_remind'] },
-    { key: 'mid', label: '📊 中間報告', items: ['mid_schedule','mid_create','mid_send'] },
-    { key: 'final', label: '📊 最終報告', items: ['final_schedule','final_create','final_send','invoice'] },
-    { key: 'other', label: '📌 その他', items: ['other'] },
-  ];
   let html = '';
-  phases.forEach(p => {
-    html += `<div class="step-group"><div class="step-group-label">${p.label}</div><div class="step-group-items">`;
+  STEP_PHASES.forEach(p => {
+    html += `<div class="step-group" data-phase="${p.key}"><div class="step-group-label"><span class="step-group-num">${p.num}</span>${p.label}</div><div class="step-group-items">`;
     p.items.forEach(key => {
       const info = STEP_TYPES[key];
       const sel = key === current ? ' selected' : '';
-      html += `<div class="step-item${sel}" onclick="selectStepType('${key}')">${info.icon} ${info.label}</div>`;
+      html += `<div class="step-item${sel}" onclick="selectStepType('${key}')">${info.short}</div>`;
     });
     html += '</div></div>';
   });
@@ -1973,6 +1979,26 @@ function openStepPopup() {
 }
 
 function closeStepPopup() { document.getElementById('stepPopup').classList.remove('active'); }
+
+// Number key shortcuts for phase groups in step popup
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('stepPopup').classList.contains('active')) return;
+  if (e.key >= '1' && e.key <= '6') {
+    e.preventDefault();
+    const idx = parseInt(e.key) - 1;
+    const groups = document.querySelectorAll('#stepPopupContent .step-group');
+    if (groups[idx]) {
+      // Highlight the group
+      groups.forEach(g => g.style.background = '');
+      groups[idx].style.background = 'rgba(90,173,255,0.06)';
+      groups[idx].style.borderRadius = '8px';
+      groups[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // Auto-select first item if only one in group
+      const items = groups[idx].querySelectorAll('.step-item');
+      if (items.length === 1) items[0].click();
+    }
+  }
+});
 
 function selectStepType(key) {
   document.getElementById('taskStepType').value = key;
