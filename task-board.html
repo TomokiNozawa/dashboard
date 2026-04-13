@@ -1153,7 +1153,10 @@ html { scroll-behavior: smooth; }
       <div class="form-row">
         <div class="form-group">
           <label class="form-label"><span class="field-num">5</span>期限日</label>
-          <input class="form-input" id="taskDueDate" type="date">
+          <div style="position:relative">
+            <input class="form-input" id="taskDueDate" type="date" onchange="updateDueDateDisplay()" style="padding-right:60px">
+            <span id="dueDateDow" style="position:absolute;right:36px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:var(--accent-blue);pointer-events:none"></span>
+          </div>
           <div style="display:flex;gap:4px;margin-top:4px">
             <button type="button" class="btn-preset" onclick="setDuePreset('today')">今日</button>
             <button type="button" class="btn-preset" onclick="setDuePreset(1)">+1日</button>
@@ -1163,7 +1166,10 @@ html { scroll-behavior: smooth; }
         </div>
         <div class="form-group">
           <label class="form-label"><span class="field-num">6</span>研修日</label>
-          <input class="form-input" id="taskTrainingDate" type="date">
+          <div style="position:relative">
+            <input class="form-input" id="taskTrainingDate" type="date" onchange="updateTrainingDateDisplay()" style="padding-right:60px">
+            <span id="trainingDateDow" style="position:absolute;right:36px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:var(--accent-orange);pointer-events:none"></span>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -1746,7 +1752,7 @@ function renderFilterSuumo() {
   updateFilterIndicator();
 }
 
-function toggleFilterPhase(phaseKey) {
+function toggleFilterPhase(phaseKey, focusBack) {
   const phase = STEP_PHASES.find(p => p.key === phaseKey);
   if (!phase) return;
   const allSelected = phase.items.every(s => currentFilters.selectedSteps.has(s));
@@ -1755,8 +1761,15 @@ function toggleFilterPhase(phaseKey) {
   } else {
     phase.items.forEach(s => currentFilters.selectedSteps.add(s));
   }
+  const focusedText = document.activeElement?.textContent?.trim();
   renderFilterSuumo();
   renderBoard();
+  // Restore focus
+  if (focusBack) {
+    const rows = document.querySelectorAll('#filterSuumoContent .filter-phase-cell');
+    const idx = STEP_PHASES.findIndex(p => p.key === phaseKey);
+    if (rows[idx]) rows[idx].focus();
+  }
 }
 
 function toggleFilterStep(key) {
@@ -1764,6 +1777,16 @@ function toggleFilterStep(key) {
   else currentFilters.selectedSteps.add(key);
   renderFilterSuumo();
   renderBoard();
+  // Restore focus to the same step label
+  setTimeout(() => {
+    const labels = document.querySelectorAll('.filter-step-label');
+    for (const l of labels) {
+      if (l.querySelector('input')?.onchange?.toString().includes(`'${key}'`) ||
+          l.textContent.trim().startsWith(STEP_TYPES[key]?.short)) {
+        l.focus(); break;
+      }
+    }
+  }, 10);
 }
 
 function updateFilterIndicator() {
@@ -1888,7 +1911,9 @@ function openNewTask(status) {
   document.getElementById('taskStepType').value = 'other';
   setStatusBtn(status || 'todo');
   setTrainingTypeFromValue('');
-  document.getElementById('taskDueDate').value = toDateStr(new Date()); // 今日を自動入力
+  document.getElementById('taskDueDate').value = toDateStr(new Date());
+  updateDueDateDisplay();
+  updateTrainingDateDisplay();
   document.getElementById('deleteTaskBtn').style.display = 'none';
   document.getElementById('duplicateTaskBtn').style.display = 'none';
   updateStepTypeDisplay();
@@ -1913,6 +1938,8 @@ function openEditTask(id) {
   document.getElementById('deleteTaskBtn').style.display = 'block';
   document.getElementById('duplicateTaskBtn').style.display = 'block';
   updateStepTypeDisplay();
+  updateDueDateDisplay();
+  updateTrainingDateDisplay();
   showModal('taskModal');
 }
 
@@ -2073,22 +2100,44 @@ function handleKeydown(e) {
     if (e.key >= '1' && e.key <= '6' && !e.altKey) {
       e.preventDefault();
       const phase = STEP_PHASES[parseInt(e.key) - 1];
-      if (phase) {
-        toggleFilterPhase(phase.key);
-        // Focus the phase cell of that row so Tab goes to its steps
-        const rows = document.querySelectorAll('#filterSuumoContent .filter-phase-cell');
-        if (rows[parseInt(e.key) - 1]) rows[parseInt(e.key) - 1].focus();
+      if (phase) toggleFilterPhase(phase.key, true);
+      return;
+    }
+    // Space: toggle current item
+    if (e.key === ' ') {
+      e.preventDefault();
+      const el = document.activeElement;
+      if (el?.classList.contains('filter-phase-cell')) { el.click(); }
+      else if (el?.classList.contains('filter-step-label')) {
+        const cb = el.querySelector('input');
+        if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
       }
       return;
     }
-    // Tab: cycle through focusable items
-    if (e.key === 'Tab') {
+    // Tab / Arrow: navigate focusable items
+    const navKeys = ['Tab', 'ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'];
+    if (navKeys.includes(e.key)) {
       e.preventDefault();
       const items = [...document.querySelectorAll('#filterPopup [tabindex="0"]')];
       if (!items.length) return;
       const cur = items.indexOf(document.activeElement);
-      const next = e.shiftKey ? (cur <= 0 ? items.length - 1 : cur - 1) : (cur >= items.length - 1 ? 0 : cur + 1);
-      items[next].focus();
+      let next;
+      if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+        next = cur >= items.length - 1 ? 0 : cur + 1;
+      } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+        next = cur <= 0 ? items.length - 1 : cur - 1;
+      } else if (e.key === 'ArrowRight') {
+        // Jump from phase cell to first step in same row
+        const row = document.activeElement?.closest('.filter-row');
+        if (row) { const firstStep = row.querySelector('.filter-step-label'); if (firstStep) { items.indexOf(firstStep) >= 0 ? (next = items.indexOf(firstStep)) : null; } }
+        if (next === undefined) next = cur >= items.length - 1 ? 0 : cur + 1;
+      } else if (e.key === 'ArrowLeft') {
+        // Jump from step to phase cell in same row
+        const row = document.activeElement?.closest('.filter-row');
+        if (row) { const phaseCell = row.querySelector('.filter-phase-cell'); if (phaseCell) { next = items.indexOf(phaseCell); } }
+        if (next === undefined) next = cur <= 0 ? items.length - 1 : cur - 1;
+      }
+      if (next !== undefined) items[next]?.focus();
       return;
     }
     return; // Block other shortcuts while filter is open
@@ -2552,21 +2601,32 @@ function setStatusBtn(val) {
   document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.val === val));
 }
 
+function updateDueDateDisplay() {
+  const v = document.getElementById('taskDueDate').value;
+  const el = document.getElementById('dueDateDow');
+  if (v) { const d = new Date(v + 'T00:00:00'); el.textContent = '(' + '日月火水木金土'[d.getDay()] + ')'; }
+  else { el.textContent = ''; }
+}
+function updateTrainingDateDisplay() {
+  const v = document.getElementById('taskTrainingDate').value;
+  const el = document.getElementById('trainingDateDow');
+  if (v) { const d = new Date(v + 'T00:00:00'); el.textContent = '(' + '日月火水木金土'[d.getDay()] + ')'; }
+  else { el.textContent = ''; }
+}
+
 function setDuePreset(val) {
   const el = document.getElementById('taskDueDate');
   if (val === 'training') {
     const td = document.getElementById('taskTrainingDate').value;
     if (td) el.value = td;
-    return;
-  }
-  if (val === 'today') {
+  } else if (val === 'today') {
     el.value = toDateStr(new Date());
-    return;
+  } else {
+    const base = el.value ? new Date(el.value + 'T00:00:00') : new Date();
+    base.setDate(base.getDate() + val);
+    el.value = toDateStr(base);
   }
-  // +N日: 現在入力されている日付から加算（累加方式）
-  const base = el.value ? new Date(el.value + 'T00:00:00') : new Date();
-  base.setDate(base.getDate() + val);
-  el.value = toDateStr(base);
+  updateDueDateDisplay();
 }
 
 // ────────────────────────────────────────────
