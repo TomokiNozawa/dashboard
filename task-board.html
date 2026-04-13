@@ -2029,8 +2029,8 @@ function handleKeydown(e) {
     window.location.href = navUrls[parseInt(e.key) - 1];
     return;
   }
-  // R: Sync from sheet
-  if (e.key === 'r' || e.key === 'R') { e.preventDefault(); syncFromSheet(); return; }
+  // R: Sync from sheet (only without modifiers, so Ctrl+Shift+R works for browser reload)
+  if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); syncFromSheet(); return; }
   // F: Filter
   if (e.key === 'f' || e.key === 'F') { e.preventDefault(); openFilterPopup(); return; }
   // T: Toggle theme
