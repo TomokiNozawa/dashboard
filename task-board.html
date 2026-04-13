@@ -292,6 +292,14 @@ body {
 }
 .btn-preset:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.06); }
 
+/* ── Field Number Badge ── */
+.field-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 3px; font-size: 9px; font-weight: 700;
+  background: var(--border-light); color: var(--text-muted); font-family: var(--font-mono);
+  margin-right: 4px; vertical-align: middle;
+}
+
 /* ── Timeline ToDo View ── */
 .todo-section { margin-bottom: 16px; }
 .todo-section-header {
@@ -1044,34 +1052,30 @@ html { scroll-behavior: smooth; }
     <form id="taskForm" onsubmit="return saveTask(event)">
       <input type="hidden" id="taskId">
       <div class="form-group">
-        <label class="form-label">タイトル *</label>
+        <label class="form-label"><span class="field-num">1</span>タイトル *</label>
         <input class="form-input" id="taskTitle" required placeholder="タスク名を入力">
       </div>
       <div class="form-group">
-        <label class="form-label">説明</label>
-        <textarea class="form-textarea" id="taskDescription" placeholder="詳細を入力（任意）"></textarea>
+        <label class="form-label"><span class="field-num">2</span>企業名</label>
+        <input class="form-input" id="taskCompany" placeholder="クリックで選択 / 直接入力" onclick="openCompanyPopup()" autocomplete="off">
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">企業名</label>
-          <input class="form-input" id="taskCompany" placeholder="クリックで選択 / 直接入力" onclick="openCompanyPopup()" autocomplete="off">
-        </div>
-        <div class="form-group">
-          <label class="form-label">研修タイプ</label>
+          <label class="form-label"><span class="field-num">3</span>研修タイプ</label>
           <input class="form-input" id="taskTrainingType" placeholder="ExcelCamp等">
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">ステップタイプ</label>
-        <input type="hidden" id="taskStepType" value="other">
-        <div class="form-input" id="stepTypeDisplay" onclick="openStepPopup()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" tabindex="0">
-          <span id="stepTypeLabel">📌 その他</span>
-          <span style="color:var(--text-muted);font-size:10px">クリックで選択</span>
+        <div class="form-group">
+          <label class="form-label"><span class="field-num">4</span>ステップタイプ</label>
+          <input type="hidden" id="taskStepType" value="other">
+          <div class="form-input" id="stepTypeDisplay" onclick="openStepPopup()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" tabindex="0">
+            <span id="stepTypeLabel">📌 その他</span>
+            <span style="color:var(--text-muted);font-size:10px">クリックで選択</span>
+          </div>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">期限日</label>
+          <label class="form-label"><span class="field-num">5</span>期限日</label>
           <input class="form-input" id="taskDueDate" type="date">
           <div style="display:flex;gap:4px;margin-top:4px">
             <button type="button" class="btn-preset" onclick="setDuePreset(0)">今日</button>
@@ -1081,12 +1085,12 @@ html { scroll-behavior: smooth; }
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">研修日</label>
+          <label class="form-label"><span class="field-num">6</span>研修日</label>
           <input class="form-input" id="taskTrainingDate" type="date">
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">ステータス</label>
+        <label class="form-label"><span class="field-num">7</span>ステータス</label>
         <select class="form-select" id="taskStatus">
           <option value="todo">未着手</option>
           <option value="in_progress">進行中</option>
@@ -1845,10 +1849,28 @@ function handleKeydown(e) {
     if (document.getElementById('taskModal').classList.contains('active')) { closeTaskModal(); return; }
   }
 
-  // Modal shortcuts (Ctrl+S save, Ctrl+D duplicate)
-  if (document.getElementById('taskModal').classList.contains('active')) {
+  // Modal shortcuts
+  if (document.getElementById('taskModal').classList.contains('active') &&
+      !document.getElementById('stepPopup').classList.contains('active') &&
+      !document.getElementById('companyPopup').classList.contains('active')) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); document.getElementById('taskForm').requestSubmit(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); duplicateTask(); return; }
+    // Alt+1-7: focus form fields (only when not typing in input)
+    if (e.altKey && e.key >= '1' && e.key <= '7') {
+      e.preventDefault();
+      const fieldMap = { '1':'taskTitle', '2':'taskCompany', '3':'taskTrainingType', '4':'stepTypeDisplay', '5':'taskDueDate', '6':'taskTrainingDate', '7':'taskStatus' };
+      const el = document.getElementById(fieldMap[e.key]);
+      if (el) { if (e.key === '4') { openStepPopup(); } else if (e.key === '2') { openCompanyPopup(); } else { el.focus(); } }
+      return;
+    }
+  }
+
+  // Side nav shortcuts: Ctrl+Shift+1-4
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key >= '1' && e.key <= '4') {
+    e.preventDefault();
+    const navUrls = ['index.html', 'task-board.html', 'materials.html', 'shift.html'];
+    window.location.href = navUrls[parseInt(e.key) - 1];
+    return;
   }
 
   // Search navigation
@@ -1991,8 +2013,7 @@ function focusPhaseGroup(idx) {
   groups[idx].style.borderRadius = '8px';
   groups[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   const items = groups[idx].querySelectorAll('.step-item');
-  if (items.length === 1) { items[0].click(); }
-  else if (items.length > 0) { items[0].focus(); }
+  if (items.length > 0) { items[0].focus(); }
 }
 
 // Keyboard navigation for step popup
