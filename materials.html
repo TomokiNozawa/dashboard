@@ -565,7 +565,9 @@ async function syncTaskBoard(sentUpdates) {
   const patchOps = {};
 
   for (const [taskId, task] of Object.entries(allTasks)) {
-    if (!task || task.ruleId !== 'material_send') continue;
+    if (!task) continue;
+    const isMatSend = task.ruleId === 'material_send' || task.stepType === 'material_send';
+    if (!isMatSend) continue;
     if (task.status === 'done') continue;
 
     // Match by company + training date
@@ -602,7 +604,8 @@ async function readTaskBoardDoneStatus() {
   const results = [];
   for (const [taskId, task] of Object.entries(allTasks)) {
     if (!task) continue;
-    if (task.ruleId !== 'material_create' && task.ruleId !== 'material_send') continue;
+    const rid = task.ruleId || ''; const st = task.stepType || '';
+    if (rid !== 'material_create' && rid !== 'material_send' && st !== 'material_create' && st !== 'material_send') continue;
     if (task.status !== 'done') continue;
     results.push({
       ruleId: task.ruleId,
@@ -616,7 +619,7 @@ async function readTaskBoardDoneStatus() {
 
 function matchTaskBoardToDashboard(doneTasks) {
   // Returns diffs where TaskBoard says done but dashboard says not done
-  // ruleId "material_create" → dashboard created, "material_send" → dashboard sent
+  // ruleId/stepType "material_create" → dashboard created, "material_send" → dashboard sent
   const diffs = [];
 
   for (const task of doneTasks) {
@@ -627,7 +630,7 @@ function matchTaskBoardToDashboard(doneTasks) {
         if (d.date !== task.trainingDate) continue;
         const dayKey = String(d.n);
 
-        if (task.ruleId === 'material_create' && !t.created[dayKey]) {
+        if ((task.ruleId === 'material_create' || task.stepType === 'material_create') && !t.created[dayKey]) {
           diffs.push({
             source: 'TaskBoard',
             type: 'created',
@@ -637,7 +640,7 @@ function matchTaskBoardToDashboard(doneTasks) {
             training: t,
           });
         }
-        if (task.ruleId === 'material_send') {
+        if (task.ruleId === 'material_send' || task.stepType === 'material_send') {
           const sentObj = getSentObj(t);
           if (!sentObj[dayKey]) {
             diffs.push({

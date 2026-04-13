@@ -112,8 +112,81 @@ body {
 .login-error { color: var(--accent-red); font-size: 12px; margin-top: 12px; display: none; }
 
 /* ── App Layout ── */
-.app { display: none; flex-direction: column; height: 100vh; }
+.app { display: none; flex-direction: column; height: 100vh; padding-left: 56px; }
 .app.active { display: flex; }
+
+/* ── Side Nav ── */
+.side-nav {
+  position: fixed; top: 0; left: 0; width: 56px; height: 100vh;
+  background: var(--bg-secondary); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 0; z-index: 200; overflow: hidden;
+  transition: width 0.2s ease;
+}
+.side-nav:hover { width: 140px; }
+.side-nav-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 16px; color: var(--text-muted); text-decoration: none;
+  font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden;
+  border-radius: 0; transition: all var(--transition);
+}
+.side-nav-item:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.side-nav-item.active { color: var(--accent-blue); background: rgba(90,173,255,0.08); border-right: 2px solid var(--accent-blue); }
+.side-nav-item span:last-child { opacity: 0; transition: opacity 0.15s; }
+.side-nav:hover .side-nav-item span:last-child { opacity: 1; }
+
+/* ── Step Type Popup ── */
+.step-popup-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 1200; justify-content: center; align-items: center;
+  backdrop-filter: blur(2px);
+}
+.step-popup-overlay.active { display: flex; }
+.step-popup {
+  background: var(--bg-modal); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 20px; width: 480px; max-width: 95vw; max-height: 80vh; overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+.step-popup h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.step-group { margin-bottom: 12px; }
+.step-group-label {
+  font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;
+  padding-left: 4px;
+}
+.step-group-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.step-item {
+  padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all var(--transition); color: var(--text-secondary);
+}
+.step-item:hover { border-color: var(--accent-blue); color: var(--text-primary); background: var(--bg-card-hover); }
+.step-item.selected { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.1); }
+
+/* ── Company Popup ── */
+.company-popup-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 1200; justify-content: center; align-items: center;
+  backdrop-filter: blur(2px);
+}
+.company-popup-overlay.active { display: flex; }
+.company-popup {
+  background: var(--bg-modal); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 20px; width: 400px; max-width: 95vw; box-shadow: var(--shadow-lg);
+}
+.company-popup h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+.company-search {
+  width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px;
+  font-family: var(--font); outline: none; margin-bottom: 10px;
+}
+.company-search:focus { border-color: var(--border-focus); }
+.company-list-popup { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.company-option {
+  padding: 8px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 13px; transition: all var(--transition); color: var(--text-secondary);
+}
+.company-option:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.company-option.selected { background: rgba(90,173,255,0.1); color: var(--accent-blue); font-weight: 600; }
 
 /* ── Top Bar ── */
 .topbar {
@@ -201,6 +274,58 @@ body {
 }
 .filter-clear:hover { border-color: var(--accent-red); color: var(--accent-red); }
 
+/* ── Due Date Preset Buttons ── */
+.btn-preset {
+  padding: 2px 8px; font-size: 10px; font-weight: 500; font-family: var(--font);
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-muted); cursor: pointer; transition: all var(--transition);
+}
+.btn-preset:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.06); }
+
+/* ── Timeline ToDo View ── */
+.todo-section { margin-bottom: 16px; }
+.todo-section-header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0; margin-bottom: 6px;
+  border-bottom: 1px solid var(--border-light); font-size: 13px; font-weight: 600;
+}
+.todo-section-header .count {
+  font-size: 10px; background: var(--border-light); color: var(--text-muted);
+  padding: 1px 8px; border-radius: 10px;
+}
+.todo-section-header.urgent { color: var(--accent-red); border-bottom-color: var(--accent-red); }
+.todo-section-header.tomorrow { color: var(--accent-orange); }
+.todo-section-header.future { color: var(--text-secondary); }
+.todo-section-header.nodue { color: var(--text-muted); }
+.todo-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 4px;
+  cursor: pointer; transition: all var(--transition);
+}
+.todo-row:hover { background: var(--bg-card-hover); border-color: #3a4860; }
+.todo-checkbox {
+  width: 18px; height: 18px; border: 2px solid var(--border); border-radius: 4px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all var(--transition); font-size: 11px; color: transparent;
+}
+.todo-checkbox:hover { border-color: var(--accent-green); color: var(--accent-green); }
+.todo-company { font-size: 12px; font-weight: 600; min-width: 80px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo-detail { font-size: 11px; color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo-due {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; flex-shrink: 0;
+}
+.todo-due.overdue { background: rgba(248,81,73,0.12); color: var(--accent-red); }
+.todo-due.today { background: rgba(240,136,62,0.12); color: var(--accent-orange); }
+.todo-due.soon { background: rgba(232,184,64,0.12); color: var(--accent-yellow); }
+.todo-due.normal { background: rgba(139,149,165,0.06); color: var(--text-muted); }
+.todo-done-btn {
+  padding: 3px 10px; font-size: 10px; font-weight: 600; font-family: var(--font);
+  border: 1px solid rgba(66,199,96,0.3); border-radius: 4px; cursor: pointer;
+  background: rgba(66,199,96,0.08); color: var(--accent-green); transition: all var(--transition);
+  flex-shrink: 0;
+}
+.todo-done-btn:hover { background: rgba(66,199,96,0.2); }
+
 /* ── Kanban Board ── */
 .board-container {
   display: flex; gap: 14px; padding: 14px 20px;
@@ -253,24 +378,25 @@ body {
 .task-card.drag-ghost { box-shadow: var(--shadow-drag); transform: rotate(2deg) scale(1.03); z-index: 999; }
 
 .task-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
-.task-priority {
+.step-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+  white-space: nowrap;
+}
+.step-badge .step-icon { font-size: 11px; }
+.step-badge.phase-pre { background: rgba(90,173,255,0.12); color: var(--accent-blue); }
+.step-badge.phase-prep { background: rgba(184,140,255,0.12); color: var(--accent-purple); }
+.step-badge.phase-review { background: rgba(86,212,221,0.12); color: var(--accent-cyan); }
+.step-badge.phase-mid { background: rgba(66,199,96,0.12); color: var(--accent-green); }
+.step-badge.phase-final { background: rgba(232,184,64,0.12); color: var(--accent-yellow); }
+.step-badge.phase-other { background: rgba(139,149,165,0.08); color: var(--text-secondary); }
+.urgency-bar {
   width: 4px; height: 16px; border-radius: 2px; flex-shrink: 0;
 }
-.task-priority.urgent { background: var(--accent-red); box-shadow: 0 0 6px rgba(248,81,73,0.4); }
-.task-priority.high { background: var(--accent-orange); }
-.task-priority.medium { background: var(--accent-yellow); }
-.task-priority.low { background: var(--accent-blue); }
-
-.task-category {
-  font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 3px;
-  text-transform: uppercase; letter-spacing: 0.3px;
-}
-.task-category.prep { background: rgba(90,173,255,0.12); color: var(--accent-blue); }
-.task-category.material { background: rgba(184,140,255,0.12); color: var(--accent-purple); }
-.task-category.instructor { background: rgba(240,136,62,0.12); color: var(--accent-orange); }
-.task-category.billing { background: rgba(66,199,96,0.12); color: var(--accent-green); }
-.task-category.review { background: rgba(86,212,221,0.12); color: var(--accent-cyan); }
-.task-category.other { background: rgba(139,149,165,0.08); color: var(--text-secondary); }
+.urgency-bar.overdue { background: var(--accent-red); box-shadow: 0 0 6px rgba(248,81,73,0.4); }
+.urgency-bar.today { background: var(--accent-orange); }
+.urgency-bar.soon { background: var(--accent-yellow); }
+.urgency-bar.normal { background: var(--border); }
 
 .task-card-title { font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 6px; }
 
@@ -553,7 +679,7 @@ body {
   color: var(--text-muted); background: var(--bg-secondary);
 }
 .cal-day {
-  min-height: 90px; padding: 6px; background: var(--bg-card);
+  min-height: 120px; padding: 6px; background: var(--bg-card);
   cursor: pointer; transition: background var(--transition); position: relative;
 }
 .cal-day:hover { background: var(--bg-card-hover); }
@@ -566,12 +692,17 @@ body {
   font-size: 9px; padding: 1px 4px; border-radius: 2px; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis; cursor: pointer;
 }
-.cal-task-dot.prep { background: rgba(90,173,255,0.15); color: var(--accent-blue); }
-.cal-task-dot.material { background: rgba(184,140,255,0.15); color: var(--accent-purple); }
-.cal-task-dot.instructor { background: rgba(240,136,62,0.15); color: var(--accent-orange); }
-.cal-task-dot.billing { background: rgba(66,199,96,0.15); color: var(--accent-green); }
-.cal-task-dot.review { background: rgba(86,212,221,0.15); color: var(--accent-cyan); }
-.cal-task-dot.other { background: rgba(139,149,165,0.1); color: var(--text-secondary); }
+.cal-task-dot.phase-pre { background: rgba(90,173,255,0.15); color: var(--accent-blue); }
+.cal-task-dot.phase-prep { background: rgba(184,140,255,0.15); color: var(--accent-purple); }
+.cal-task-dot.phase-review { background: rgba(86,212,221,0.15); color: var(--accent-cyan); }
+.cal-task-dot.phase-mid { background: rgba(66,199,96,0.15); color: var(--accent-green); }
+.cal-task-dot.phase-final { background: rgba(232,184,64,0.15); color: var(--accent-yellow); }
+.cal-task-dot.phase-other { background: rgba(139,149,165,0.1); color: var(--text-secondary); }
+.cal-training-marker {
+  font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 2px;
+  background: rgba(248,81,73,0.15); color: var(--accent-red);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;
+}
 .cal-task-dot.overdue { border-left: 2px solid var(--accent-red); }
 .cal-day-more { font-size: 9px; color: var(--text-muted); margin-top: 2px; cursor: pointer; }
 .cal-day-conflict {
@@ -640,6 +771,8 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
+  .app { padding-left: 0; }
+  .side-nav { display: none; }
   .topbar { padding: 8px 12px; flex-wrap: wrap; }
   .topbar-subtitle { display: none; }
   .topbar-divider { display: none; }
@@ -702,6 +835,26 @@ html { scroll-behavior: smooth; }
 
 <!-- Main App -->
 <div class="app" id="app">
+  <!-- Side Nav -->
+  <nav class="side-nav" id="sideNav">
+    <a class="side-nav-item" href="index.html" title="NozaBoard">
+      <svg viewBox="0 0 100 100" width="22" height="22"><defs><linearGradient id="sng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5aadff"/><stop offset="100%" stop-color="#b88cff"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(#sng)"/><text x="50" y="68" text-anchor="middle" fill="#fff" font-family="Inter,sans-serif" font-weight="700" font-size="52">N</text></svg>
+      <span>NozaBoard</span>
+    </a>
+    <a class="side-nav-item active" href="task-board.html" title="タスクボード">
+      <span style="font-size:18px">&#9744;</span>
+      <span>タスク</span>
+    </a>
+    <a class="side-nav-item" href="materials.html" title="教材作成">
+      <span style="font-size:18px">&#128230;</span>
+      <span>教材</span>
+    </a>
+    <a class="side-nav-item" href="shift.html" title="シフト管理">
+      <span style="font-size:18px">&#128101;</span>
+      <span>シフト</span>
+    </a>
+  </nav>
+
   <!-- Top Bar -->
   <div class="topbar">
     <a class="topbar-brand" href="index.html" title="NozaBoard">
@@ -779,21 +932,14 @@ html { scroll-behavior: smooth; }
     <select class="filter-select" id="filterCompany" onchange="applyFilters()">
       <option value="">全企業</option>
     </select>
-    <select class="filter-select" id="filterCategory" onchange="applyFilters()">
-      <option value="">全カテゴリ</option>
-      <option value="prep">事前準備</option>
-      <option value="material">教材</option>
-      <option value="instructor">インストラクター</option>
-      <option value="billing">請求・報告</option>
-      <option value="review">復習</option>
-      <option value="other">その他</option>
-    </select>
-    <select class="filter-select" id="filterPriority" onchange="applyFilters()">
-      <option value="">全優先度</option>
-      <option value="urgent">緊急</option>
-      <option value="high">高</option>
-      <option value="medium">中</option>
-      <option value="low">低</option>
+    <select class="filter-select" id="filterPhase" onchange="applyFilters()">
+      <option value="">全フェーズ</option>
+      <option value="pre">📋 事前mtg</option>
+      <option value="prep">📦👤 教材・講師</option>
+      <option value="review">🔄 復習</option>
+      <option value="mid">📊 中間報告</option>
+      <option value="final">📊 最終報告</option>
+      <option value="other">📌 その他</option>
     </select>
     <button class="filter-clear" onclick="clearFilters()">クリア</button>
   </div>
@@ -801,7 +947,7 @@ html { scroll-behavior: smooth; }
   <!-- Tab Bar -->
   <div class="tab-bar" id="tabBar">
     <button class="tab-item active" onclick="switchView('kanban')" data-view="kanban">カンバン<span class="tab-kbd">Alt&1</span></button>
-    <button class="tab-item" onclick="switchView('timeline')" data-view="timeline">タイムライン<span class="tab-kbd">Alt&2</span></button>
+    <button class="tab-item" onclick="switchView('timeline')" data-view="timeline">やること<span class="tab-kbd">Alt&2</span></button>
     <button class="tab-item" onclick="switchView('calendar')" data-view="calendar">カレンダー<span class="tab-kbd">Alt&3</span></button>
     <button class="tab-item" onclick="switchView('company')" data-view="company">企業別<span class="tab-kbd">Alt&4</span></button>
     <button class="tab-item" onclick="switchView('stats')" data-view="stats">統計<span class="tab-kbd">Alt&5</span></button>
@@ -837,18 +983,14 @@ html { scroll-behavior: smooth; }
   </div>
   </div>
 
-  <!-- Timeline View (C1) -->
+  <!-- Timeline View → ToDo View -->
   <div class="view-container" id="view-timeline">
     <div class="timeline-view">
-      <div class="timeline-header">
-        <h3 id="timelineTitle">タイムライン</h3>
-        <div class="timeline-nav">
-          <button onclick="shiftTimeline(-7)">&larr; 1週</button>
-          <button onclick="shiftTimeline(0)" class="active">今週</button>
-          <button onclick="shiftTimeline(7)">1週 &rarr;</button>
-        </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <h3 style="font-size:15px;font-weight:600">やること一覧</h3>
+        <span id="todoTotalCount" style="font-size:11px;color:var(--text-muted)"></span>
       </div>
-      <div id="timelineGrid" style="overflow-x:auto"></div>
+      <div id="todoContainer"></div>
     </div>
   </div>
 
@@ -906,40 +1048,31 @@ html { scroll-behavior: smooth; }
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">企業名</label>
-          <input class="form-input" id="taskCompany" placeholder="企業名" list="companyList">
-          <datalist id="companyList"></datalist>
+          <input class="form-input" id="taskCompany" placeholder="クリックで選択 / 直接入力" onclick="openCompanyPopup()" autocomplete="off">
         </div>
         <div class="form-group">
           <label class="form-label">研修タイプ</label>
           <input class="form-input" id="taskTrainingType" placeholder="ExcelCamp等">
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">カテゴリ</label>
-          <select class="form-select" id="taskCategory">
-            <option value="other">その他</option>
-            <option value="prep">事前準備</option>
-            <option value="material">教材</option>
-            <option value="instructor">インストラクター</option>
-            <option value="billing">請求・報告</option>
-            <option value="review">復習</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">優先度</label>
-          <select class="form-select" id="taskPriorityInput">
-            <option value="medium">中</option>
-            <option value="low">低</option>
-            <option value="high">高</option>
-            <option value="urgent">緊急</option>
-          </select>
+      <div class="form-group">
+        <label class="form-label">ステップタイプ</label>
+        <input type="hidden" id="taskStepType" value="other">
+        <div class="form-input" id="stepTypeDisplay" onclick="openStepPopup()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" tabindex="0">
+          <span id="stepTypeLabel">📌 その他</span>
+          <span style="color:var(--text-muted);font-size:10px">クリックで選択</span>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">期限日</label>
           <input class="form-input" id="taskDueDate" type="date">
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <button type="button" class="btn-preset" onclick="setDuePreset(0)">今日</button>
+            <button type="button" class="btn-preset" onclick="setDuePreset(3)">+3日</button>
+            <button type="button" class="btn-preset" onclick="setDuePreset(7)">+1週</button>
+            <button type="button" class="btn-preset" onclick="setDuePreset('training')">研修日</button>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">研修日</label>
@@ -955,9 +1088,11 @@ html { scroll-behavior: smooth; }
         </select>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none;margin-right:auto">削除</button>
-        <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">キャンセル</button>
-        <button type="submit" class="btn btn-primary">保存</button>
+        <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none">削除</button>
+        <button type="button" class="btn btn-secondary" id="duplicateTaskBtn" onclick="duplicateTask()" style="display:none" title="複製 (Ctrl&D)">複製</button>
+        <span style="flex:1"></span>
+        <button type="button" class="btn btn-secondary" onclick="closeTaskModal()">キャンセル <span style="font-size:9px;color:var(--text-muted);margin-left:4px">Esc</span></button>
+        <button type="submit" class="btn btn-primary">保存 <span style="font-size:9px;color:rgba(255,255,255,0.6);margin-left:4px">Ctrl&S</span></button>
       </div>
     </form>
   </div>
@@ -970,6 +1105,23 @@ html { scroll-behavior: smooth; }
     <div class="search-results" id="searchResults">
       <div class="search-empty">キーワードを入力してください</div>
     </div>
+  </div>
+</div>
+
+<!-- Step Type Popup -->
+<div class="step-popup-overlay" id="stepPopup" onclick="closeStepPopup()">
+  <div class="step-popup" onclick="event.stopPropagation()">
+    <h4>ステップタイプを選択</h4>
+    <div id="stepPopupContent"></div>
+  </div>
+</div>
+
+<!-- Company Popup -->
+<div class="company-popup-overlay" id="companyPopup" onclick="closeCompanyPopup()">
+  <div class="company-popup" onclick="event.stopPropagation()">
+    <h4>企業名を選択</h4>
+    <input class="company-search" id="companySearchInput" placeholder="企業名を検索..." oninput="filterCompanyPopup(this.value)">
+    <div class="company-list-popup" id="companyPopupList"></div>
   </div>
 </div>
 
@@ -987,16 +1139,61 @@ const SESSION_DAYS = 30;
 // Password hash (SHA-256 of correct password) — set during first login or change via console
 const PASSWORD_HASH_KEY = 'taskboard_pw_hash';
 
-const CATEGORY_LABELS = {
-  prep: '事前準備', material: '教材', instructor: 'インストラクター',
-  billing: '請求・報告', review: '復習', other: 'その他'
+const STEP_TYPES = {
+  premtg_schedule:  { phase:'pre',    icon:'📋', short:'日程調整',    label:'事前mtg日程調整' },
+  premtg_prepare:   { phase:'pre',    icon:'📋', short:'資料準備',    label:'事前mtg資料準備' },
+  premtg_send:      { phase:'pre',    icon:'📋', short:'資料送付',    label:'事前mtg資料送付' },
+  roster_send:      { phase:'pre',    icon:'📋', short:'名簿送付',    label:'名簿送付' },
+  material_create:  { phase:'prep',   icon:'📦', short:'教材作成',    label:'教材作成' },
+  material_send:    { phase:'prep',   icon:'📦', short:'教材送付',    label:'教材送付' },
+  survey_prep:      { phase:'prep',   icon:'📦', short:'アンケート',  label:'アンケート準備' },
+  instructor:       { phase:'prep',   icon:'👤', short:'講師調整',    label:'インストラクター調整' },
+  review_remind:    { phase:'review', icon:'🔄', short:'リマインド',  label:'復習リマインド送付' },
+  mid_schedule:     { phase:'mid',    icon:'📊', short:'日程調整',    label:'中間報告会日程調整' },
+  mid_create:       { phase:'mid',    icon:'📊', short:'資料作成',    label:'中間報告資料作成' },
+  mid_send:         { phase:'mid',    icon:'📊', short:'資料送付',    label:'中間報告資料送付' },
+  final_schedule:   { phase:'final',  icon:'📊', short:'日程調整',    label:'最終報告会日程調整' },
+  final_create:     { phase:'final',  icon:'📊', short:'資料作成',    label:'最終報告資料作成' },
+  final_send:       { phase:'final',  icon:'📊', short:'資料送付',    label:'最終報告資料送付' },
+  invoice:          { phase:'final',  icon:'📊', short:'請求書',      label:'請求書作成' },
+  other:            { phase:'other',  icon:'📌', short:'その他',      label:'その他' },
 };
-const PRIORITY_LABELS = { urgent: '緊急', high: '高', medium: '中', low: '低' };
+const PHASE_META = {
+  pre:    { label:'事前mtg',    color:'var(--accent-blue)' },
+  prep:   { label:'教材・講師', color:'var(--accent-purple)' },
+  review: { label:'復習',       color:'var(--accent-cyan)' },
+  mid:    { label:'中間報告',   color:'var(--accent-green)' },
+  final:  { label:'最終報告',   color:'var(--accent-yellow)' },
+  other:  { label:'その他',     color:'var(--text-muted)' },
+};
+// Legacy mapping for migration
+const LEGACY_CAT_MAP = { prep:'premtg_schedule', material:'material_create', instructor:'instructor', billing:'other', review:'review_remind', other:'other' };
+const LEGACY_RULE_MAP = { premtg:'premtg_schedule', roster_send:'roster_send', material_create:'material_create', survey_prep:'survey_prep', material_send:'material_send', instructor:'instructor', invoice:'invoice', report:'final_create', review_remind:'review_remind' };
+function getStepType(t) { return t.stepType || LEGACY_RULE_MAP[t.ruleId] || LEGACY_CAT_MAP[t.category] || 'other'; }
+function getStepInfo(t) { const st = getStepType(t); return STEP_TYPES[st] || STEP_TYPES.other; }
+
 const STATUS_LABELS = { todo: '未着手', in_progress: '進行中', done: '完了' };
+
+// ── Sheets sync config ──
+const SHEETS_SSID = '1ZAyQWtU1N5rByZuSAGvZs8t6kwWL2g0de1__5b6yark';
+const SHEETS_HEADER_ROW = 5;
+const SHEETS_COL_DATE = 0;     // A
+const SHEETS_COL_COMPANY = 6;  // G
+const SHEETS_COL_CONTENT = 8;  // I
+// stepType → sheet column letter (only for types that have a corresponding spushi column)
+const STEP_TO_SHEET_COL = {
+  premtg_schedule: 'V',   // 21
+  roster_send: 'W',       // 22
+  material_send: 'Y',     // 24
+  survey_prep: 'Z',       // 25
+  invoice: 'AC',          // 28
+};
+let sheetsCreds = null;
+let sheetsAccessToken = null;
 
 let db = null;
 let allTasks = {};
-let currentFilters = { company: '', category: '', priority: '', due: '' };
+let currentFilters = { company: '', phase: '', due: '' };
 let searchSelectedIdx = -1;
 let currentView = 'kanban';
 let timelineOffset = 0;
@@ -1090,7 +1287,7 @@ function initApp() {
     firebase.auth().signInAnonymously().then(() => {
       document.getElementById('app').classList.add('active');
       setSyncStatus('connected', 'リアルタイム同期中');
-      listenTasks();
+      migrateTaskData().then(() => listenTasks());
     }).catch(err => {
       console.error('Auth error:', err);
       setSyncStatus('error', '認証エラー');
@@ -1114,6 +1311,43 @@ function saveFirebaseConfig() {
     initApp();
   } catch (e) {
     showToast('Firebase Config が無効です: ' + e.message, 'error');
+  }
+}
+
+// ────────────────────────────────────────────
+// Data Migration (v1 → v2: category/priority → stepType)
+// ────────────────────────────────────────────
+async function migrateTaskData() {
+  if (!db) return;
+  try {
+    const verSnap = await db.ref('config/schemaVersion').once('value');
+    if ((verSnap.val() || 0) >= 2) return; // Already migrated
+
+    const snap = await db.ref('tasks').once('value');
+    const tasks = snap.val();
+    if (!tasks) { await db.ref('config/schemaVersion').set(2); return; }
+
+    const updates = {};
+    let count = 0;
+    Object.entries(tasks).forEach(([id, t]) => {
+      if (t.stepType) return; // Already has stepType
+      let stepType = 'other';
+      if (t.ruleId && LEGACY_RULE_MAP[t.ruleId]) {
+        stepType = LEGACY_RULE_MAP[t.ruleId];
+      } else if (t.category && LEGACY_CAT_MAP[t.category]) {
+        stepType = LEGACY_CAT_MAP[t.category];
+      }
+      updates[`tasks/${id}/stepType`] = stepType;
+      count++;
+    });
+
+    if (count > 0) {
+      await db.ref().update(updates);
+      console.log(`Migration: ${count} tasks updated with stepType`);
+    }
+    await db.ref('config/schemaVersion').set(2);
+  } catch (e) {
+    console.error('Migration error:', e);
   }
 }
 
@@ -1174,8 +1408,7 @@ function renderBoard() {
   // Apply filters
   const filtered = tasksArr.filter(t => {
     if (currentFilters.company && t.company !== currentFilters.company) return false;
-    if (currentFilters.category && t.category !== currentFilters.category) return false;
-    if (currentFilters.priority && t.priority !== currentFilters.priority) return false;
+    if (currentFilters.phase) { const si = getStepInfo(t); if (si.phase !== currentFilters.phase) return false; }
     if (currentFilters.due) {
       const dueInfo = getDueInfo(t.dueDate);
       if (currentFilters.due === 'overdue' && dueInfo.type !== 'overdue') return false;
@@ -1192,12 +1425,14 @@ function renderBoard() {
     return true;
   });
 
-  // Sort: urgent first, then by dueDate
-  const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+  // Sort: by dueDate urgency (overdue first, then today, then soon, then rest)
   filtered.sort((a, b) => {
-    const pa = priorityOrder[a.priority] ?? 2;
-    const pb = priorityOrder[b.priority] ?? 2;
-    if (pa !== pb) return pa - pb;
+    const da = getDueInfo(a.dueDate);
+    const db = getDueInfo(b.dueDate);
+    const urgOrder = { overdue: 0, today: 1, soon: 2, normal: 3 };
+    const ua = urgOrder[da.type] ?? 3;
+    const ub = urgOrder[db.type] ?? 3;
+    if (ua !== ub) return ua - ub;
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
     if (a.dueDate) return -1;
     if (b.dueDate) return 1;
@@ -1234,18 +1469,23 @@ function renderBoard() {
   initDragDrop();
 }
 
+function renderStepBadge(t) {
+  const info = getStepInfo(t);
+  const phase = info.phase || 'other';
+  return `<span class="step-badge phase-${phase}" title="${escHtml(info.label)}"><span class="step-icon">${info.icon}</span>${escHtml(info.short)}</span>`;
+}
+
 function renderTaskCard(t) {
   const dueInfo = getDueInfo(t.dueDate);
-  const catLabel = CATEGORY_LABELS[t.category] || '';
-  const catClass = t.category || 'other';
+  const urgencyClass = t.status === 'done' ? 'normal' : dueInfo.type;
 
   return `
     <div class="task-card" draggable="true" data-id="${t._id}"
          ondragstart="onDragStart(event)" ondragend="onDragEnd(event)"
          onclick="if(!window._wasDragged){openEditTask('${t._id}')}">
       <div class="task-card-header">
-        <span class="task-priority ${t.priority || 'medium'}"></span>
-        <span class="task-category ${catClass}">${catLabel}</span>
+        <span class="urgency-bar ${urgencyClass}"></span>
+        ${renderStepBadge(t)}
         ${t.autoGenerated ? '<span class="task-auto-badge">&#9881; auto</span>' : ''}
       </div>
       <div class="task-card-title">${escHtml(t.title)}</div>
@@ -1331,8 +1571,7 @@ function toggleFilter() {
 
 function applyFilters() {
   currentFilters.company = document.getElementById('filterCompany').value;
-  currentFilters.category = document.getElementById('filterCategory').value;
-  currentFilters.priority = document.getElementById('filterPriority').value;
+  currentFilters.phase = document.getElementById('filterPhase').value;
   renderBoard();
 }
 
@@ -1351,10 +1590,9 @@ function filterByDue(type) {
 }
 
 function clearFilters() {
-  currentFilters = { company: '', category: '', priority: '', due: '' };
+  currentFilters = { company: '', phase: '', due: '' };
   document.getElementById('filterCompany').value = '';
-  document.getElementById('filterCategory').value = '';
-  document.getElementById('filterPriority').value = '';
+  document.getElementById('filterPhase').value = '';
   document.querySelectorAll('.summary-card').forEach(c => c.classList.remove('active'));
   renderBoard();
 }
@@ -1426,6 +1664,9 @@ function initDragDrop() {
     if (status === 'done') updates.completedAt = firebase.database.ServerValue.TIMESTAMP;
     db.ref('tasks/' + taskId).update(updates).then(() => {
       showToast(`「${STATUS_LABELS[status]}」に移動しました`, 'success');
+      if (status === 'done' && allTasks[taskId]) {
+        writeBackToSheet(allTasks[taskId]).catch(e => console.warn('Sheets sync error:', e));
+      }
     });
   });
 }
@@ -1437,8 +1678,11 @@ function openNewTask(status) {
   document.getElementById('taskModalTitle').textContent = '新規タスク';
   document.getElementById('taskForm').reset();
   document.getElementById('taskId').value = '';
+  document.getElementById('taskStepType').value = 'other';
   document.getElementById('taskStatus').value = status || 'todo';
   document.getElementById('deleteTaskBtn').style.display = 'none';
+  document.getElementById('duplicateTaskBtn').style.display = 'none';
+  updateStepTypeDisplay();
   showModal('taskModal');
   setTimeout(() => document.getElementById('taskTitle').focus(), 100);
 }
@@ -1452,12 +1696,13 @@ function openEditTask(id) {
   document.getElementById('taskDescription').value = t.description || '';
   document.getElementById('taskCompany').value = t.company || '';
   document.getElementById('taskTrainingType').value = t.trainingType || '';
-  document.getElementById('taskCategory').value = t.category || 'other';
-  document.getElementById('taskPriorityInput').value = t.priority || 'medium';
+  document.getElementById('taskStepType').value = getStepType(t);
   document.getElementById('taskDueDate').value = t.dueDate || '';
   document.getElementById('taskTrainingDate').value = t.trainingDate || '';
   document.getElementById('taskStatus').value = t.status || 'todo';
   document.getElementById('deleteTaskBtn').style.display = 'block';
+  document.getElementById('duplicateTaskBtn').style.display = 'block';
+  updateStepTypeDisplay();
   showModal('taskModal');
 }
 
@@ -1471,8 +1716,7 @@ function saveTask(e) {
     description: document.getElementById('taskDescription').value.trim(),
     company: document.getElementById('taskCompany').value.trim(),
     trainingType: document.getElementById('taskTrainingType').value.trim(),
-    category: document.getElementById('taskCategory').value,
-    priority: document.getElementById('taskPriorityInput').value,
+    stepType: document.getElementById('taskStepType').value,
     dueDate: document.getElementById('taskDueDate').value,
     trainingDate: document.getElementById('taskTrainingDate').value,
     status: document.getElementById('taskStatus').value,
@@ -1483,11 +1727,17 @@ function saveTask(e) {
     data.completedAt = firebase.database.ServerValue.TIMESTAMP;
   }
 
+  const wasNotDone = !allTasks[id] || allTasks[id].status !== 'done';
+  const nowDone = data.status === 'done';
+
   if (id) {
     // Update
     db.ref('tasks/' + id).update(data).then(() => {
       showToast('タスクを更新しました', 'success');
       closeTaskModal();
+      if (nowDone && wasNotDone) {
+        writeBackToSheet({ ...allTasks[id], ...data }).catch(e => console.warn('Sheets sync error:', e));
+      }
     });
   } else {
     // Create
@@ -1496,6 +1746,9 @@ function saveTask(e) {
     db.ref('tasks').push(data).then(() => {
       showToast('タスクを作成しました', 'success');
       closeTaskModal();
+      if (nowDone) {
+        writeBackToSheet(data).catch(e => console.warn('Sheets sync error:', e));
+      }
     });
   }
   return false;
@@ -1507,6 +1760,10 @@ function moveTask(id, newStatus) {
   if (newStatus === 'done') updates.completedAt = firebase.database.ServerValue.TIMESTAMP;
   db.ref('tasks/' + id).update(updates).then(() => {
     showToast(`「${STATUS_LABELS[newStatus]}」に移動しました`, 'success');
+    // Write back to spushi when marking as done
+    if (newStatus === 'done' && allTasks[id]) {
+      writeBackToSheet(allTasks[id]).catch(e => console.warn('Sheets sync error:', e));
+    }
   });
 }
 
@@ -1555,13 +1812,14 @@ function doSearch(query) {
     return;
   }
 
-  results.innerHTML = matched.map(([id, t]) =>
-    `<div class="search-result" onclick="closeSearch();openEditTask('${id}')">
-      <span class="task-priority ${t.priority || 'medium'}" style="width:3px;height:14px;border-radius:2px;flex-shrink:0"></span>
+  results.innerHTML = matched.map(([id, t]) => {
+    const si = getStepInfo(t);
+    return `<div class="search-result" onclick="closeSearch();openEditTask('${id}')">
+      <span style="font-size:12px;flex-shrink:0">${si.icon}</span>
       <span class="search-result-title">${escHtml(t.title)}</span>
       <span class="search-result-meta">${escHtml(t.company || '')} ${STATUS_LABELS[t.status] || ''}</span>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
   searchSelectedIdx = -1;
 }
 
@@ -1573,10 +1831,18 @@ function handleKeydown(e) {
   const tag = document.activeElement?.tagName;
   const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 
-  // Escape: close modals
+  // Escape: close modals/popups
   if (e.key === 'Escape') {
+    if (document.getElementById('stepPopup').classList.contains('active')) { closeStepPopup(); return; }
+    if (document.getElementById('companyPopup').classList.contains('active')) { closeCompanyPopup(); return; }
     if (document.getElementById('searchOverlay').classList.contains('active')) { closeSearch(); return; }
     if (document.getElementById('taskModal').classList.contains('active')) { closeTaskModal(); return; }
+  }
+
+  // Modal shortcuts (Ctrl+S save, Ctrl+D duplicate)
+  if (document.getElementById('taskModal').classList.contains('active')) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); document.getElementById('taskForm').requestSubmit(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); duplicateTask(); return; }
   }
 
   // Search navigation
@@ -1680,149 +1946,236 @@ function getAllTasksArr() {
 }
 
 // ────────────────────────────────────────────
-// C1: Timeline View
+// Step Type Popup
 // ────────────────────────────────────────────
-function shiftTimeline(days) {
-  if (days === 0) timelineOffset = 0;
-  else timelineOffset += days;
-  renderTimeline();
-}
-
-function renderTimeline() {
-  const container = document.getElementById('timelineGrid');
-  const tasks = getAllTasksArr();
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  // Group by company, collect training dates
-  const companies = {};
-  tasks.forEach(t => {
-    const c = t.company || 'その他';
-    if (!companies[c]) companies[c] = { tasks: [], trainingDates: new Set() };
-    companies[c].tasks.push(t);
-    if (t.trainingDate) companies[c].trainingDates.add(t.trainingDate);
-  });
-
-  // Sort companies by earliest training date
-  const sorted = Object.entries(companies).sort((a, b) => {
-    const aMin = [...a[1].trainingDates].sort()[0] || '9999';
-    const bMin = [...b[1].trainingDates].sort()[0] || '9999';
-    return aMin.localeCompare(bMin);
-  });
-
-  // Detect conflicts (E5)
-  const dateCompanies = {};
-  tasks.forEach(t => {
-    if (t.trainingDate && t.status !== 'done') {
-      if (!dateCompanies[t.trainingDate]) dateCompanies[t.trainingDate] = new Set();
-      dateCompanies[t.trainingDate].add(t.company);
-    }
-  });
-
-  // Prep steps in order
-  const STEP_ORDER = ['instructor','premtg','roster_send','material_create','survey_prep','material_send'];
-  const STEP_LABELS = { instructor:'インストラクター調整', premtg:'事前mtg', roster_send:'名簿送付', material_create:'教材作成', survey_prep:'アンケート準備', material_send:'教材送付', invoice:'請求書', report:'報告資料', review_remind:'復習リマインド' };
-  const STEP_COLORS = { instructor:'var(--accent-orange)', premtg:'var(--accent-blue)', roster_send:'var(--accent-blue)', material_create:'var(--accent-purple)', survey_prep:'var(--accent-blue)', material_send:'var(--accent-purple)', invoice:'var(--accent-green)', report:'var(--accent-green)', review_remind:'var(--accent-cyan)' };
-
-  let html = '<div style="display:flex;flex-direction:column;gap:12px">';
-
-  // Legend
-  html += '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-secondary);align-items:center">';
-  html += '<span style="font-weight:600;color:var(--text-muted)">凡例:</span>';
-  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--accent-green);border-radius:50%"></span>完了</span>';
-  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--accent-yellow);border-radius:2px"></span>進行中</span>';
-  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--text-muted);border-radius:2px"></span>未着手</span>';
-  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:var(--accent-red);border-radius:2px"></span>期限超過</span>';
-  html += '<span style="display:flex;align-items:center;gap:4px"><span style="width:16px;height:3px;background:var(--accent-red);border-radius:1px"></span>研修日</span>';
-  html += '</div>';
-
-  sorted.forEach(([comp, data]) => {
-    const activeTasks = data.tasks.filter(t => t.status !== 'done');
-    const doneTasks = data.tasks.filter(t => t.status === 'done');
-    const total = data.tasks.length;
-    const doneCount = doneTasks.length;
-    const pct = total ? Math.round(doneCount / total * 100) : 0;
-    const trainingDatesArr = [...data.trainingDates].sort();
-
-    // Check for conflicts
-    const hasConflict = trainingDatesArr.some(td => dateCompanies[td] && dateCompanies[td].size > 1);
-
-    html += `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;${hasConflict ? 'border-left:3px solid var(--accent-red);' : ''}">`;
-
-    // Company header
-    html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">`;
-    html += `<div style="font-size:14px;font-weight:600;flex:1">${escHtml(comp)}</div>`;
-    if (trainingDatesArr.length) {
-      html += `<div style="display:flex;gap:6px;align-items:center">`;
-      trainingDatesArr.forEach(td => {
-        const d = new Date(td + 'T00:00:00');
-        const dow = '日月火水木金土'[d.getDay()];
-        const m = String(d.getMonth()+1).padStart(2,'0');
-        const day = String(d.getDate()).padStart(2,'0');
-        const diff = Math.floor((d - today) / 86400000);
-        const urgency = diff < 0 ? 'color:var(--text-muted)' : diff <= 7 ? 'color:var(--accent-red);font-weight:700' : 'color:var(--accent-orange)';
-        const conflictN = dateCompanies[td]?.size || 0;
-        html += `<span style="font-size:12px;${urgency}" title="${conflictN > 1 ? '同日'+conflictN+'社研修' : '研修日'}">${m}/${day}(${dow})${diff >= 0 ? ' '+diff+'日後' : ''}</span>`;
-      });
-      html += `</div>`;
-    }
-    html += `<div style="display:flex;align-items:center;gap:6px">`;
-    html += `<div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--accent-green);border-radius:3px"></div></div>`;
-    html += `<span style="font-size:11px;color:var(--text-muted)">${doneCount}/${total}</span>`;
-    html += `</div></div>`;
-
-    // Preparation steps as a pipeline
-    html += `<div style="display:flex;flex-wrap:wrap;gap:6px">`;
-
-    // Collect steps for this company
-    const tasksByRule = {};
-    data.tasks.forEach(t => {
-      const rule = t.ruleId || 'manual';
-      if (!tasksByRule[rule]) tasksByRule[rule] = [];
-      tasksByRule[rule].push(t);
+function openStepPopup() {
+  const current = document.getElementById('taskStepType').value;
+  const phases = [
+    { key: 'pre', label: '📋 事前mtg', items: ['premtg_schedule','premtg_prepare','premtg_send','roster_send'] },
+    { key: 'prep', label: '📦👤 教材・講師', items: ['material_create','material_send','survey_prep','instructor'] },
+    { key: 'review', label: '🔄 復習', items: ['review_remind'] },
+    { key: 'mid', label: '📊 中間報告', items: ['mid_schedule','mid_create','mid_send'] },
+    { key: 'final', label: '📊 最終報告', items: ['final_schedule','final_create','final_send','invoice'] },
+    { key: 'other', label: '📌 その他', items: ['other'] },
+  ];
+  let html = '';
+  phases.forEach(p => {
+    html += `<div class="step-group"><div class="step-group-label">${p.label}</div><div class="step-group-items">`;
+    p.items.forEach(key => {
+      const info = STEP_TYPES[key];
+      const sel = key === current ? ' selected' : '';
+      html += `<div class="step-item${sel}" onclick="selectStepType('${key}')">${info.icon} ${info.label}</div>`;
     });
-
-    // Show ordered steps
-    const stepsToShow = [...STEP_ORDER];
-    // Also add any other rules not in STEP_ORDER
-    Object.keys(tasksByRule).forEach(r => { if (!stepsToShow.includes(r) && r !== 'manual') stepsToShow.push(r); });
-    // Add manual tasks
-    if (tasksByRule['manual']) stepsToShow.push('manual');
-
-    stepsToShow.forEach(ruleId => {
-      const ruleTasks = tasksByRule[ruleId];
-      if (!ruleTasks) return;
-
-      ruleTasks.forEach(t => {
-        const isDone = t.status === 'done';
-        const isInProgress = t.status === 'in_progress';
-        const dueInfo = getDueInfo(t.dueDate);
-        const isOverdue = dueInfo.type === 'overdue';
-
-        let bg, textColor, borderStyle;
-        if (isDone) { bg = 'rgba(66,199,96,0.12)'; textColor = 'var(--accent-green)'; borderStyle = '1px solid rgba(66,199,96,0.3)'; }
-        else if (isOverdue) { bg = 'rgba(248,81,73,0.12)'; textColor = 'var(--accent-red)'; borderStyle = '1px solid rgba(248,81,73,0.3)'; }
-        else if (isInProgress) { bg = 'rgba(232,184,64,0.12)'; textColor = 'var(--accent-yellow)'; borderStyle = '1px solid rgba(232,184,64,0.3)'; }
-        else { bg = 'var(--bg-column)'; textColor = 'var(--text-secondary)'; borderStyle = '1px solid var(--border-light)'; }
-
-        const label = STEP_LABELS[ruleId] || (t.title || '').replace(/^[^:]+:\s*/, '');
-        const shortLabel = label.length > 12 ? label.substring(0, 12) + '…' : label;
-        // Show training type for per-day tasks
-        const extra = (ruleId !== 'premtg' && ruleId !== 'roster_send' && ruleId !== 'invoice' && ruleId !== 'manual' && t.trainingType)
-          ? `<div style="font-size:8px;opacity:0.7;margin-top:1px">${escHtml(t.trainingType).substring(0, 16)}</div>` : '';
-        const dueLine = !isDone && t.dueDate ? `<div style="font-size:8px;opacity:0.7;margin-top:1px">${dueInfo.label.replace('期限: ','')}</div>` : '';
-
-        html += `<div onclick="openEditTask('${t._id}')" style="cursor:pointer;padding:6px 10px;background:${bg};border:${borderStyle};border-radius:6px;color:${textColor};font-size:11px;font-weight:500;min-width:80px;transition:all 0.15s" title="${escHtml(t.title)}${t.dueDate ? '\n期限: '+t.dueDate : ''}">`;
-        html += `${isDone ? '<s>' : ''}${escHtml(shortLabel)}${isDone ? '</s>' : ''}`;
-        html += extra;
-        html += dueLine;
-        html += `</div>`;
-      });
-    });
-
     html += '</div></div>';
   });
+  document.getElementById('stepPopupContent').innerHTML = html;
+  document.getElementById('stepPopup').classList.add('active');
+}
 
-  html += '</div>';
+function closeStepPopup() { document.getElementById('stepPopup').classList.remove('active'); }
+
+function selectStepType(key) {
+  document.getElementById('taskStepType').value = key;
+  const info = STEP_TYPES[key];
+  document.getElementById('stepTypeLabel').textContent = `${info.icon} ${info.label}`;
+  closeStepPopup();
+  onStepTypeChange();
+}
+
+function updateStepTypeDisplay() {
+  const st = document.getElementById('taskStepType').value;
+  const info = STEP_TYPES[st] || STEP_TYPES.other;
+  document.getElementById('stepTypeLabel').textContent = `${info.icon} ${info.label}`;
+}
+
+function onStepTypeChange() {
+  const st = document.getElementById('taskStepType').value;
+  const titleEl = document.getElementById('taskTitle');
+  if (st !== 'other') {
+    const info = STEP_TYPES[st];
+    const company = document.getElementById('taskCompany').value.trim();
+    const training = document.getElementById('taskTrainingType').value.trim();
+    const autoTitle = `${info.label}: ${company || '企業名'}${training ? ' ' + training : ''}`;
+    if (!titleEl.value || Object.values(STEP_TYPES).some(s => titleEl.value.startsWith(s.label + ':'))) {
+      titleEl.value = autoTitle;
+    }
+  }
+}
+
+// ────────────────────────────────────────────
+// Company Popup
+// ────────────────────────────────────────────
+function openCompanyPopup() {
+  const companies = new Set();
+  Object.values(allTasks).forEach(t => { if (t.company) companies.add(t.company); });
+  const sorted = [...companies].sort((a, b) => a.localeCompare(b, 'ja'));
+  const current = document.getElementById('taskCompany').value;
+
+  let html = '';
+  sorted.forEach(c => {
+    const sel = c === current ? ' selected' : '';
+    html += `<div class="company-option${sel}" onclick="selectCompany('${escHtml(c)}')">${escHtml(c)}</div>`;
+  });
+  // Option to type custom
+  html += `<div class="company-option" style="color:var(--text-muted);font-style:italic" onclick="closeCompanyPopup();document.getElementById('taskCompany').focus()">手動入力...</div>`;
+
+  document.getElementById('companyPopupList').innerHTML = html;
+  document.getElementById('companySearchInput').value = '';
+  document.getElementById('companyPopup').classList.add('active');
+  setTimeout(() => document.getElementById('companySearchInput').focus(), 100);
+}
+
+function closeCompanyPopup() { document.getElementById('companyPopup').classList.remove('active'); }
+
+function selectCompany(name) {
+  document.getElementById('taskCompany').value = name;
+  closeCompanyPopup();
+  onStepTypeChange(); // Update title
+}
+
+function filterCompanyPopup(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('#companyPopupList .company-option').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// ────────────────────────────────────────────
+// Task Duplicate
+// ────────────────────────────────────────────
+function duplicateTask() {
+  const id = document.getElementById('taskId').value;
+  if (!id || !db) return;
+  const t = allTasks[id];
+  if (!t) return;
+  const newData = {
+    title: (t.title || '') + ' (コピー)',
+    description: t.description || '',
+    company: t.company || '',
+    trainingType: t.trainingType || '',
+    stepType: getStepType(t),
+    dueDate: t.dueDate || '',
+    trainingDate: t.trainingDate || '',
+    status: 'todo',
+    autoGenerated: false,
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    updatedAt: firebase.database.ServerValue.TIMESTAMP,
+  };
+  db.ref('tasks').push(newData).then(() => {
+    showToast('タスクを複製しました', 'success');
+    closeTaskModal();
+  });
+}
+
+function setDuePreset(val) {
+  const el = document.getElementById('taskDueDate');
+  if (val === 'training') {
+    const td = document.getElementById('taskTrainingDate').value;
+    if (td) el.value = td;
+    return;
+  }
+  const d = new Date();
+  d.setDate(d.getDate() + val);
+  el.value = toDateStr(d);
+}
+
+// ────────────────────────────────────────────
+// C1: ToDo View (was Timeline)
+// ────────────────────────────────────────────
+function renderTimeline() {
+  const container = document.getElementById('todoContainer');
+  const tasks = getAllTasksArr().filter(t => t.status !== 'done');
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Group by due date bucket
+  const buckets = { overdue: [], today: [], tomorrow: [], thisWeek: {}, later: [], nodue: [] };
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+  const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+
+  tasks.forEach(t => {
+    if (!t.dueDate) { buckets.nodue.push(t); return; }
+    const due = new Date(t.dueDate + 'T00:00:00'); due.setHours(0,0,0,0);
+    if (due < today) buckets.overdue.push(t);
+    else if (due.getTime() === today.getTime()) buckets.today.push(t);
+    else if (due.getTime() === tomorrow.getTime()) buckets.tomorrow.push(t);
+    else if (due < weekEnd) {
+      const ds = t.dueDate;
+      if (!buckets.thisWeek[ds]) buckets.thisWeek[ds] = [];
+      buckets.thisWeek[ds].push(t);
+    } else buckets.later.push(t);
+  });
+
+  const sortByCompany = (a, b) => (a.company || '').localeCompare(b.company || '');
+  buckets.overdue.sort(sortByCompany);
+  buckets.today.sort(sortByCompany);
+  buckets.tomorrow.sort(sortByCompany);
+  buckets.later.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
+  buckets.nodue.sort(sortByCompany);
+
+  let html = '';
+  const totalActive = tasks.length;
+  document.getElementById('todoTotalCount').textContent = `未完了 ${totalActive}件`;
+
+  function renderTodoRow(t) {
+    const info = getStepInfo(t);
+    const dueInfo = getDueInfo(t.dueDate);
+    const training = t.trainingType ? ` ${t.trainingType}` : '';
+    return `<div class="todo-row" onclick="openEditTask('${t._id}')">
+      <div class="todo-checkbox" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了にする">✓</div>
+      <span class="todo-company">${escHtml(t.company || '')}</span>
+      <span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 6px"><span class="step-icon">${info.icon}</span>${escHtml(info.short)}</span>
+      <span class="todo-detail">${escHtml(training)}</span>
+      ${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}
+    </div>`;
+  }
+
+  // Overdue + Today
+  const urgentTasks = [...buckets.overdue, ...buckets.today];
+  if (urgentTasks.length) {
+    html += `<div class="todo-section"><div class="todo-section-header urgent">今日やること<span class="count">${urgentTasks.length}件</span></div>`;
+    urgentTasks.forEach(t => html += renderTodoRow(t));
+    html += '</div>';
+  }
+
+  // Tomorrow
+  if (buckets.tomorrow.length) {
+    const d = tomorrow;
+    const dow = '日月火水木金土'[d.getDay()];
+    html += `<div class="todo-section"><div class="todo-section-header tomorrow">明日 ${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${dow})<span class="count">${buckets.tomorrow.length}件</span></div>`;
+    buckets.tomorrow.forEach(t => html += renderTodoRow(t));
+    html += '</div>';
+  }
+
+  // This week (per day)
+  const weekDates = Object.keys(buckets.thisWeek).sort();
+  weekDates.forEach(ds => {
+    const d = new Date(ds + 'T00:00:00');
+    const dow = '日月火水木金土'[d.getDay()];
+    const label = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${dow})`;
+    const dayTasks = buckets.thisWeek[ds];
+    html += `<div class="todo-section"><div class="todo-section-header future">${label}<span class="count">${dayTasks.length}件</span></div>`;
+    dayTasks.sort(sortByCompany).forEach(t => html += renderTodoRow(t));
+    html += '</div>';
+  });
+
+  // Later
+  if (buckets.later.length) {
+    html += `<div class="todo-section"><div class="todo-section-header future" style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">来週以降<span class="count">${buckets.later.length}件</span> ▾</div><div style="display:none">`;
+    buckets.later.forEach(t => html += renderTodoRow(t));
+    html += '</div></div>';
+  }
+
+  // No due date
+  if (buckets.nodue.length) {
+    html += `<div class="todo-section"><div class="todo-section-header nodue">期限未設定<span class="count">${buckets.nodue.length}件</span></div>`;
+    buckets.nodue.forEach(t => html += renderTodoRow(t));
+    html += '</div>';
+  }
+
+  if (!totalActive) {
+    html = '<div style="text-align:center;padding:40px;color:var(--text-muted)">未完了のタスクはありません 🎉</div>';
+  }
+
   container.innerHTML = html;
 }
 
@@ -1851,10 +2204,10 @@ function renderCalendar() {
     tasksByDate[t.dueDate].push(t);
   });
 
-  // Detect conflicts (E5)
+  // Index training dates (for markers)
   const trainingsByDate = {};
   tasks.forEach(t => {
-    if (t.trainingDate && t.status !== 'done') {
+    if (t.trainingDate) {
       if (!trainingsByDate[t.trainingDate]) trainingsByDate[t.trainingDate] = new Set();
       trainingsByDate[t.trainingDate].add(t.company);
     }
@@ -1862,17 +2215,15 @@ function renderCalendar() {
 
   const firstDay = new Date(calYear, calMonth, 1);
   const startDow = firstDay.getDay();
-  const startOffset = startDow === 0 ? 6 : startDow - 1; // Monday start
+  const startOffset = startDow === 0 ? 6 : startDow - 1;
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date(); today.setHours(0,0,0,0);
 
   let html = '<div class="cal-grid">';
-  // Headers
   ['月','火','水','木','金','土','日'].forEach(d => {
     html += `<div class="cal-day-header">${d}</div>`;
   });
 
-  // Cells
   const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
   for (let i = 0; i < totalCells; i++) {
     const dayNum = i - startOffset + 1;
@@ -1884,18 +2235,30 @@ function renderCalendar() {
     const trainComps = trainingsByDate[ds];
     const hasConflict = trainComps && trainComps.size > 1;
 
-    html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}" onclick="filterByDateAndSwitch('${ds}')">`;
+    html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">`;
     if (hasConflict) html += '<div class="cal-day-conflict" title="同日複数社研修"></div>';
     html += `<div class="cal-day-num">${isOther ? '' : dayNum}</div>`;
-    if (!isOther && dayTasks.length) {
-      html += '<div class="cal-day-tasks">';
-      const show = dayTasks.slice(0, 3);
-      show.forEach(t => {
-        const isOverdue = getDueInfo(t.dueDate).type === 'overdue';
-        html += `<div class="cal-task-dot ${t.category || 'other'}${isOverdue ? ' overdue' : ''}" onclick="event.stopPropagation();openEditTask('${t._id}')">${escHtml((t.title||'').substring(0, 12))}</div>`;
-      });
-      if (dayTasks.length > 3) html += `<div class="cal-day-more">+${dayTasks.length - 3}件</div>`;
-      html += '</div>';
+
+    if (!isOther) {
+      // Training date markers
+      if (trainComps) {
+        [...trainComps].forEach(c => {
+          html += `<div class="cal-training-marker">研修: ${escHtml((c||'').substring(0, 8))}</div>`;
+        });
+      }
+      // Tasks
+      if (dayTasks.length) {
+        html += '<div class="cal-day-tasks">';
+        const show = dayTasks.slice(0, 5);
+        show.forEach(t => {
+          const info = getStepInfo(t);
+          const isOverdue = getDueInfo(t.dueDate).type === 'overdue';
+          const comp = (t.company || '').substring(0, 6);
+          html += `<div class="cal-task-dot phase-${info.phase}${isOverdue ? ' overdue' : ''}" onclick="event.stopPropagation();openEditTask('${t._id}')">${info.icon}${escHtml(comp)}</div>`;
+        });
+        if (dayTasks.length > 5) html += `<div class="cal-day-more">+${dayTasks.length - 5}件</div>`;
+        html += '</div>';
+      }
     }
     html += '</div>';
   }
@@ -1955,13 +2318,17 @@ function renderCompanyView() {
 
     data.tasks.forEach(t => {
       const dueInfo = getDueInfo(t.dueDate);
-      const isInstructor = t.category === 'instructor';
+      const si = getStepInfo(t);
+      const stKey = getStepType(t);
+      const isInstructor = stKey === 'instructor';
+      const isMaterial = stKey === 'material_create' || stKey === 'material_send';
       html += `<div class="company-task-row" onclick="openEditTask('${t._id}')" style="cursor:pointer">
         <span class="company-task-status ${t.status}"></span>
-        <span class="task-category ${t.category || 'other'}" style="font-size:8px">${CATEGORY_LABELS[t.category] || ''}</span>
+        <span class="step-badge phase-${si.phase}" style="font-size:8px;padding:1px 5px">${si.icon}${escHtml(si.short)}</span>
         <span class="company-task-title">${escHtml(t.title).replace(escHtml(name), '').replace(/^[：:\s]+/, '')}</span>
         ${dueInfo.label ? `<span class="company-task-due task-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}
         ${isInstructor ? '<a class="company-shift-link" href="shift.html" onclick="event.stopPropagation()" title="シフト管理">Shift</a>' : ''}
+        ${isMaterial ? '<a class="company-shift-link" href="materials.html" onclick="event.stopPropagation()" title="教材ダッシュボード" style="color:var(--accent-purple);border-color:rgba(184,140,255,0.3)">教材</a>' : ''}
       </div>`;
     });
 
@@ -1992,20 +2359,20 @@ function renderStats() {
     <div class="stats-kpi"><div class="stats-kpi-value" style="color:var(--accent-purple)">${autoGen}</div><div class="stats-kpi-label">自動生成</div></div>
   `;
 
-  // Category breakdown
-  const catCounts = {};
-  Object.keys(CATEGORY_LABELS).forEach(k => catCounts[k] = 0);
-  tasks.forEach(t => { catCounts[t.category || 'other'] = (catCounts[t.category || 'other'] || 0) + 1; });
-  const catColors = { prep: 'blue', material: 'purple', instructor: 'orange', billing: 'green', review: 'cyan', other: 'gray' };
-  const maxCat = Math.max(...Object.values(catCounts), 1);
+  // Phase breakdown
+  const phaseCounts = {};
+  Object.keys(PHASE_META).forEach(k => phaseCounts[k] = 0);
+  tasks.forEach(t => { const p = getStepInfo(t).phase || 'other'; phaseCounts[p] = (phaseCounts[p] || 0) + 1; });
+  const phaseColors = { pre: 'blue', prep: 'purple', review: 'cyan', mid: 'green', final: 'yellow', other: 'gray' };
+  const maxPhase = Math.max(...Object.values(phaseCounts), 1);
 
   let catBars = '';
-  Object.entries(CATEGORY_LABELS).forEach(([k, label]) => {
-    const n = catCounts[k] || 0;
-    const pct = Math.round(n / maxCat * 100);
+  Object.entries(PHASE_META).forEach(([k, meta]) => {
+    const n = phaseCounts[k] || 0;
+    const pct = Math.round(n / maxPhase * 100);
     catBars += `<div class="stats-bar-row">
-      <div class="stats-bar-label">${label}</div>
-      <div class="stats-bar-track"><div class="stats-bar-fill ${catColors[k]}" style="width:${pct}%">${n > 0 ? n : ''}</div></div>
+      <div class="stats-bar-label">${meta.label}</div>
+      <div class="stats-bar-track"><div class="stats-bar-fill ${phaseColors[k]}" style="width:${pct}%">${n > 0 ? n : ''}</div></div>
       <div class="stats-bar-value">${n}</div>
     </div>`;
   });
@@ -2033,18 +2400,23 @@ function renderStats() {
     legend += `<div class="stats-legend-item"><div class="stats-legend-dot" style="background:${d.color}"></div>${d.label}: ${d.n}件</div>`;
   });
 
-  // Priority breakdown
-  const prioCounts = { urgent: 0, high: 0, medium: 0, low: 0 };
-  tasks.filter(t => t.status !== 'done').forEach(t => { prioCounts[t.priority || 'medium']++; });
-  const prioColors = { urgent: 'red', high: 'orange', medium: 'yellow', low: 'blue' };
-  const maxPrio = Math.max(...Object.values(prioCounts), 1);
+  // Urgency breakdown (from due dates)
+  const urgCounts = { overdue: 0, today: 0, soon: 0, normal: 0, nodue: 0 };
+  tasks.filter(t => t.status !== 'done').forEach(t => {
+    if (!t.dueDate) { urgCounts.nodue++; return; }
+    const di = getDueInfo(t.dueDate);
+    urgCounts[di.type] = (urgCounts[di.type] || 0) + 1;
+  });
+  const urgLabels = { overdue:'期限超過', today:'今日', soon:'今週中', normal:'来週以降', nodue:'期限なし' };
+  const urgColors = { overdue:'red', today:'orange', soon:'yellow', normal:'blue', nodue:'gray' };
+  const maxUrg = Math.max(...Object.values(urgCounts), 1);
   let prioBars = '';
-  Object.entries(PRIORITY_LABELS).forEach(([k, label]) => {
-    const n = prioCounts[k] || 0;
-    const pct = Math.round(n / maxPrio * 100);
+  Object.entries(urgLabels).forEach(([k, label]) => {
+    const n = urgCounts[k] || 0;
+    const pct = Math.round(n / maxUrg * 100);
     prioBars += `<div class="stats-bar-row">
       <div class="stats-bar-label">${label}</div>
-      <div class="stats-bar-track"><div class="stats-bar-fill ${prioColors[k]}" style="width:${pct}%">${n > 0 ? n : ''}</div></div>
+      <div class="stats-bar-track"><div class="stats-bar-fill ${urgColors[k]}" style="width:${pct}%">${n > 0 ? n : ''}</div></div>
       <div class="stats-bar-value">${n}</div>
     </div>`;
   });
@@ -2079,11 +2451,11 @@ function renderStats() {
       </div>
     </div>
     <div class="stats-panel">
-      <h4>カテゴリ別タスク数</h4>
+      <h4>フェーズ別タスク数</h4>
       <div class="stats-bar-chart">${catBars}</div>
     </div>
     <div class="stats-panel">
-      <h4>優先度分布（未完了）</h4>
+      <h4>緊急度分布（未完了）</h4>
       <div class="stats-bar-chart">${prioBars}</div>
     </div>
     <div class="stats-panel">
@@ -2091,6 +2463,151 @@ function renderStats() {
       <div class="stats-bar-chart">${compBars}</div>
     </div>
   `;
+}
+
+// ────────────────────────────────────────────
+// Sheets Bi-directional Sync
+// ────────────────────────────────────────────
+async function initSheetsCreds() {
+  if (sheetsCreds) return true;
+  const pw = sessionStorage.getItem('dk_pass');
+  if (!pw) return false;
+  try {
+    const resp = await fetch('encrypted-sheets.json');
+    const payload = await resp.json();
+    const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+    const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+    const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+    const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-CBC', length: 256 }, false, ['decrypt']);
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, encData);
+    sheetsCreds = JSON.parse(new TextDecoder().decode(decrypted).replace(/[\x00-\x1f]/g, '').trim());
+    return true;
+  } catch (e) {
+    console.warn('Sheets creds not available:', e);
+    return false;
+  }
+}
+
+async function getSheetsToken() {
+  if (!sheetsCreds) return null;
+  if (sheetsAccessToken) {
+    try {
+      const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SSID}?fields=spreadsheetId`, {
+        headers: { 'Authorization': `Bearer ${sheetsAccessToken}` }
+      });
+      if (r.ok) return sheetsAccessToken;
+    } catch(e) {}
+  }
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: sheetsCreds.refresh_token,
+    client_id: sheetsCreds.client_id,
+    client_secret: sheetsCreds.client_secret,
+  });
+  const resp = await fetch(sheetsCreds.token_uri, { method: 'POST', body });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  sheetsAccessToken = data.access_token;
+  return sheetsAccessToken;
+}
+
+function sheetsNormalizeCompany(name) {
+  let s = String(name).trim().replace(/[\s\u3000]+/g, '').replace(/株式会社|\(株\)|（株）/g, '');
+  s = s.replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  return s.toUpperCase();
+}
+
+function sheetsCompanyMatch(a, b) {
+  const na = sheetsNormalizeCompany(a), nb = sheetsNormalizeCompany(b);
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+  const minLen = Math.min(na.length, nb.length);
+  if (minLen >= 3 && na.slice(0, minLen) === nb.slice(0, minLen)) return true;
+  return false;
+}
+
+function sheetsParseDate(dateStr, fy) {
+  if (!dateStr || !String(dateStr).includes('/')) return null;
+  const parts = String(dateStr).split('/');
+  if (parts.length !== 2) return null;
+  const m = parseInt(parts[0]), d = parseInt(parts[1]);
+  if (isNaN(m) || isNaN(d)) return null;
+  const y = m >= 4 ? fy : fy + 1;
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+async function writeBackToSheet(task) {
+  // When a task is completed, write "済" to the corresponding spushi column
+  const stepType = getStepType(task);
+  const colLetter = STEP_TO_SHEET_COL[stepType];
+  if (!colLetter) return; // No corresponding column
+
+  if (!(await initSheetsCreds())) {
+    console.warn('Sheets sync skipped: no credentials');
+    return;
+  }
+  const token = await getSheetsToken();
+  if (!token) return;
+
+  const now = new Date();
+  const fy = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const sheetName = `${fy}年`;
+
+  // Read sheet to find matching row
+  const range = encodeURIComponent(sheetName);
+  const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SSID}/values/${range}?majorDimension=ROWS`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!resp.ok) { console.error('Sheets read failed:', resp.status); return; }
+  const data = await resp.json();
+  const rows = data.values || [];
+
+  // Find row(s) matching task's training date + company
+  const matchRows = [];
+  for (let i = SHEETS_HEADER_ROW + 1; i < rows.length; i++) {
+    const row = rows[i];
+    const dateStr = (row[SHEETS_COL_DATE] || '').trim();
+    const dateIso = sheetsParseDate(dateStr, fy);
+    const company = (row[SHEETS_COL_COMPANY] || '').trim();
+    if (!dateIso || !company) continue;
+
+    // Match by training date and company
+    if (task.trainingDate && dateIso === task.trainingDate && sheetsCompanyMatch(company, task.company || '')) {
+      // For per_company tasks, match any row of this company
+      matchRows.push(i + 1); // 1-based row number
+    }
+  }
+
+  if (!matchRows.length) {
+    console.warn(`Sheets sync: no matching row for ${task.title}`);
+    return;
+  }
+
+  // For per_company scope (premtg, roster_send, invoice), write to first match only
+  const perCompanyTypes = ['premtg_schedule', 'roster_send', 'invoice'];
+  const rowsToUpdate = perCompanyTypes.includes(stepType) ? [matchRows[0]] : matchRows;
+
+  // Write "済" to the column
+  const writeBody = {
+    valueInputOption: 'RAW',
+    data: rowsToUpdate.map(row => ({
+      range: `${sheetName}!${colLetter}${row}`,
+      values: [['済']]
+    }))
+  };
+
+  const writeResp = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SSID}/values:batchUpdate`,
+    { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(writeBody) }
+  );
+
+  if (writeResp.ok) {
+    showToast(`スプシ同期: ${colLetter}列に「済」を書き込みました`, 'success');
+  } else {
+    console.error('Sheets write failed:', writeResp.status);
+    showToast('スプシ同期に失敗しました', 'error');
+  }
 }
 </script>
 </body>
