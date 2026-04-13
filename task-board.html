@@ -407,6 +407,13 @@ body {
 .todo-section-header.tomorrow { color: var(--accent-orange); }
 .todo-section-header.future { color: var(--text-secondary); }
 .todo-section-header.nodue { color: var(--text-muted); }
+.todo-group-btn {
+  padding: 4px 12px; font-size: 11px; font-weight: 500; font-family: var(--font);
+  background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-muted); cursor: pointer; transition: all var(--transition);
+}
+.todo-group-btn:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+.todo-group-btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
 .todo-section-header .toggle-arrow { font-size: 10px; color: var(--text-muted); transition: transform 0.2s; }
 .todo-section-header.collapsed .toggle-arrow { transform: rotate(-90deg); }
 .todo-section-body { }
@@ -842,6 +849,28 @@ body {
 .company-phase-badge {
   font-size: 9px; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
 }
+.company-pipeline { display: flex; gap: 2px; align-items: center; margin: 8px 0 4px; }
+.company-pipeline-step {
+  display: flex; align-items: center; gap: 3px; font-size: 10px; padding: 3px 8px;
+  border-radius: 3px; white-space: nowrap; position: relative;
+}
+.company-pipeline-step.done { opacity: 0.4; text-decoration: line-through; }
+.company-pipeline-step.active { font-weight: 700; box-shadow: 0 0 0 1px currentColor; }
+.company-pipeline-arrow { color: var(--text-muted); font-size: 10px; }
+.cal-week-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px;
+  background: var(--border-light); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.cal-week-day {
+  min-height: 400px; padding: 8px; background: var(--bg-card); overflow-y: auto;
+}
+.cal-week-day.today { background: rgba(90,173,255,0.08); }
+.cal-week-day-header { font-size: 12px; font-weight: 600; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border-light); }
+.cal-week-task {
+  display: flex; align-items: center; gap: 4px; padding: 4px 6px; margin-bottom: 3px;
+  font-size: 11px; border-radius: 3px; cursor: pointer; transition: background 0.1s;
+}
+.cal-week-task:hover { background: var(--bg-card-hover); }
 
 /* ── Stats View (C5) ── */
 .stats-view { padding: 16px 20px; overflow: auto; height: 100%; }
@@ -1107,9 +1136,14 @@ html { scroll-behavior: smooth; }
   <!-- Timeline View → ToDo View -->
   <div class="view-container" id="view-timeline">
     <div class="timeline-view">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
         <h3 style="font-size:15px;font-weight:600">やること一覧</h3>
         <span id="todoTotalCount" style="font-size:11px;color:var(--text-muted)"></span>
+        <div style="margin-left:auto;display:flex;gap:2px" id="todoGroupBtns">
+          <button class="todo-group-btn active" data-group="date" onclick="setTodoGroup('date')">日付別</button>
+          <button class="todo-group-btn" data-group="company" onclick="setTodoGroup('company')">企業別</button>
+          <button class="todo-group-btn" data-group="step" onclick="setTodoGroup('step')">ステップ別</button>
+        </div>
       </div>
       <div id="todoContainer"></div>
     </div>
@@ -1119,10 +1153,14 @@ html { scroll-behavior: smooth; }
   <div class="view-container" id="view-calendar">
     <div class="calendar-view">
       <div class="cal-header">
-        <button class="cal-nav-btn" onclick="changeMonth(-1)">&larr;</button>
+        <button class="cal-nav-btn" onclick="calNav(-1)">&larr;</button>
         <h3 id="calTitle"></h3>
-        <button class="cal-nav-btn" onclick="changeMonth(1)">&rarr;</button>
-        <button class="cal-nav-btn" onclick="changeMonth(0)" style="margin-left:8px;font-size:11px">今月</button>
+        <button class="cal-nav-btn" onclick="calNav(1)">&rarr;</button>
+        <button class="cal-nav-btn" onclick="calNav(0)" style="margin-left:8px;font-size:11px">今日</button>
+        <div style="margin-left:auto;display:flex;gap:2px">
+          <button class="todo-group-btn active" data-calmode="month" onclick="setCalMode('month')">月</button>
+          <button class="todo-group-btn" data-calmode="week" onclick="setCalMode('week')">週</button>
+        </div>
       </div>
       <div id="calGrid"></div>
     </div>
@@ -2777,109 +2815,125 @@ function setDuePreset(val) {
 // ────────────────────────────────────────────
 // C1: ToDo View (was Timeline)
 // ────────────────────────────────────────────
+let todoGroupMode = 'date';
+
+function setTodoGroup(mode) {
+  todoGroupMode = mode;
+  document.querySelectorAll('#todoGroupBtns .todo-group-btn').forEach(b => b.classList.toggle('active', b.dataset.group === mode));
+  renderTimeline();
+}
+
 function renderTimeline() {
   const container = document.getElementById('todoContainer');
   const tasks = getAllTasksArr().filter(t => t.status !== 'done');
   const today = new Date(); today.setHours(0,0,0,0);
-
-  // Group by due date bucket
-  const buckets = { overdue: [], today: [], tomorrow: [], thisWeek: {}, later: [], nodue: [] };
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-  const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
-
-  tasks.forEach(t => {
-    if (!t.dueDate) { buckets.nodue.push(t); return; }
-    const due = new Date(t.dueDate + 'T00:00:00'); due.setHours(0,0,0,0);
-    if (due < today) buckets.overdue.push(t);
-    else if (due.getTime() === today.getTime()) buckets.today.push(t);
-    else if (due.getTime() === tomorrow.getTime()) buckets.tomorrow.push(t);
-    else if (due < weekEnd) {
-      const ds = t.dueDate;
-      if (!buckets.thisWeek[ds]) buckets.thisWeek[ds] = [];
-      buckets.thisWeek[ds].push(t);
-    } else buckets.later.push(t);
-  });
-
-  const sortByCompany = (a, b) => (a.company || '').localeCompare(b.company || '');
-  buckets.overdue.sort(sortByCompany);
-  buckets.today.sort(sortByCompany);
-  buckets.tomorrow.sort(sortByCompany);
-  buckets.later.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
-  buckets.nodue.sort(sortByCompany);
-
-  let html = '';
   const totalActive = tasks.length;
   document.getElementById('todoTotalCount').textContent = `未完了 ${totalActive}件`;
 
-  function renderTodoRows(taskList) {
-    let rows = '';
-    taskList.forEach(t => {
-      const info = getStepInfo(t);
-      const dueInfo = getDueInfo(t.dueDate);
-      const training = t.trainingType || '';
-      // Title with company stripped
-      const title = (t.title || '').replace(t.company || '§§§', '').replace(/^[：:\s]+/, '');
-      // Training date display
-      let tDateLabel = '';
-      if (t.trainingDate) {
-        const td = new Date(t.trainingDate + 'T00:00:00');
-        const dow = '日月火水木金土'[td.getDay()];
-        tDateLabel = `${String(td.getMonth()+1).padStart(2,'0')}/${String(td.getDate()).padStart(2,'0')}(${dow})`;
-      }
-      rows += `<tr onclick="openEditTask('${t._id}')">
-        <td class="col-check"><div class="todo-checkbox" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了にする">✓</div></td>
-        <td class="col-company" title="${escHtml(t.company || '')}">${escHtml(t.company || '')}</td>
-        <td class="col-step"><span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 5px">${info.icon}${escHtml(info.short)}</span></td>
-        <td class="col-title" title="${escHtml(title)}">${escHtml(title)}</td>
-        <td class="col-detail" title="${escHtml(training)}">${escHtml(training)}</td>
-        <td class="col-training-date">${tDateLabel}</td>
-        <td class="col-due">${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}</td>
-      </tr>`;
-    });
-    return rows;
+  if (!totalActive) { container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">未完了のタスクはありません</div>'; return; }
+
+  // Common row renderer
+  function todoRow(t, showCompany, showDue) {
+    const info = getStepInfo(t);
+    const dueInfo = getDueInfo(t.dueDate);
+    const training = t.trainingType || '';
+    const title = (t.title || '').replace(t.company || '§§§', '').replace(/^[：:\s]+/, '');
+    let tDateLabel = '';
+    if (t.trainingDate) {
+      const td = new Date(t.trainingDate + 'T00:00:00');
+      tDateLabel = `${String(td.getMonth()+1).padStart(2,'0')}/${String(td.getDate()).padStart(2,'0')}(${'日月火水木金土'[td.getDay()]})`;
+    }
+    return `<tr onclick="openEditTask('${t._id}')">
+      <td class="col-check"><div class="todo-checkbox" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了にする">✓</div></td>
+      ${showCompany ? `<td class="col-company" title="${escHtml(t.company || '')}">${escHtml(t.company || '')}</td>` : ''}
+      <td class="col-step"><span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 5px">${info.icon}${escHtml(info.short)}</span></td>
+      <td class="col-title" title="${escHtml(title)}">${escHtml(title)}</td>
+      <td class="col-detail" title="${escHtml(training)}">${escHtml(training)}</td>
+      <td class="col-training-date">${tDateLabel}</td>
+      ${showDue ? `<td class="col-due">${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}</td>` : ''}
+    </tr>`;
   }
 
-  function renderSection(label, cssClass, taskList, defaultCollapsed) {
+  function section(label, cssClass, taskList, collapsed, showCompany, showDue) {
     if (!taskList.length) return '';
-    const colClass = defaultCollapsed ? ' collapsed' : '';
+    const cc = collapsed ? ' collapsed' : '';
+    const compHead = showCompany ? '<th class="col-company">企業</th>' : '';
+    const dueHead = showDue ? '<th class="col-due">期限</th>' : '';
     return `<div class="todo-section">
-      <div class="todo-section-header ${cssClass}${colClass}" onclick="this.classList.toggle('collapsed')">${label}<span class="count">${taskList.length}件</span><span class="toggle-arrow">▾</span></div>
+      <div class="todo-section-header ${cssClass}${cc}" onclick="this.classList.toggle('collapsed')">${label}<span class="count">${taskList.length}件</span><span class="toggle-arrow">▾</span></div>
       <div class="todo-section-body"><table class="todo-table">
-        <thead><tr><th class="col-check"></th><th class="col-company">企業</th><th class="col-step">ステップ</th><th class="col-title">タイトル</th><th class="col-detail">研修内容</th><th class="col-training-date">研修日</th><th class="col-due">期限</th></tr></thead>
-        <tbody>${renderTodoRows(taskList)}</tbody>
+        <thead><tr><th class="col-check"></th>${compHead}<th class="col-step">ステップ</th><th class="col-title">タイトル</th><th class="col-detail">研修内容</th><th class="col-training-date">研修日</th>${dueHead}</tr></thead>
+        <tbody>${taskList.map(t => todoRow(t, showCompany, showDue)).join('')}</tbody>
       </table></div>
     </div>`;
   }
 
-  // Overdue + Today
-  const urgentTasks = [...buckets.overdue, ...buckets.today];
-  html += renderSection('今日やること', 'urgent', urgentTasks, false);
+  let html = '';
 
-  // Tomorrow
-  if (buckets.tomorrow.length) {
-    const d = tomorrow;
-    const dow = '日月火水木金土'[d.getDay()];
-    html += renderSection(`明日 ${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${dow})`, 'tomorrow', buckets.tomorrow, false);
-  }
+  if (todoGroupMode === 'date') {
+    // ── 日付別 ──
+    const buckets = { overdue: [], today: [], tomorrow: [], thisWeek: {}, later: [], nodue: [] };
+    const tmrw = new Date(today); tmrw.setDate(tmrw.getDate() + 1);
+    const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+    tasks.forEach(t => {
+      if (!t.dueDate) { buckets.nodue.push(t); return; }
+      const due = new Date(t.dueDate + 'T00:00:00'); due.setHours(0,0,0,0);
+      if (due < today) buckets.overdue.push(t);
+      else if (due.getTime() === today.getTime()) buckets.today.push(t);
+      else if (due.getTime() === tmrw.getTime()) buckets.tomorrow.push(t);
+      else if (due < weekEnd) { const ds = t.dueDate; if (!buckets.thisWeek[ds]) buckets.thisWeek[ds] = []; buckets.thisWeek[ds].push(t); }
+      else buckets.later.push(t);
+    });
+    const sc = (a, b) => (a.company || '').localeCompare(b.company || '');
+    buckets.overdue.sort(sc); buckets.today.sort(sc); buckets.tomorrow.sort(sc);
+    buckets.later.sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || '')); buckets.nodue.sort(sc);
 
-  // This week (per day)
-  const weekDates = Object.keys(buckets.thisWeek).sort();
-  weekDates.forEach(ds => {
-    const d = new Date(ds + 'T00:00:00');
-    const dow = '日月火水木金土'[d.getDay()];
-    const label = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${dow})`;
-    buckets.thisWeek[ds].sort(sortByCompany);
-    html += renderSection(label, 'future', buckets.thisWeek[ds], false);
-  });
+    html += section('今日やること', 'urgent', [...buckets.overdue, ...buckets.today], false, true, true);
+    if (buckets.tomorrow.length) {
+      const dow = '日月火水木金土'[tmrw.getDay()];
+      html += section(`明日 ${String(tmrw.getMonth()+1).padStart(2,'0')}/${String(tmrw.getDate()).padStart(2,'0')}(${dow})`, 'tomorrow', buckets.tomorrow, false, true, true);
+    }
+    Object.keys(buckets.thisWeek).sort().forEach(ds => {
+      const d = new Date(ds + 'T00:00:00');
+      const label = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${'日月火水木金土'[d.getDay()]})`;
+      buckets.thisWeek[ds].sort(sc);
+      html += section(label, 'future', buckets.thisWeek[ds], false, true, true);
+    });
+    html += section('来週以降', 'future', buckets.later, true, true, true);
+    html += section('期限未設定', 'nodue', buckets.nodue, true, true, true);
 
-  // Later
-  html += renderSection('来週以降', 'future', buckets.later, true);
+  } else if (todoGroupMode === 'company') {
+    // ── 企業別 ──
+    const byCompany = {};
+    tasks.forEach(t => { const c = t.company || 'その他'; if (!byCompany[c]) byCompany[c] = []; byCompany[c].push(t); });
+    // Sort companies by earliest due date
+    const sorted = Object.entries(byCompany).sort((a, b) => {
+      const aMin = a[1].reduce((m, t) => t.dueDate && t.dueDate < m ? t.dueDate : m, '9999');
+      const bMin = b[1].reduce((m, t) => t.dueDate && t.dueDate < m ? t.dueDate : m, '9999');
+      return aMin.localeCompare(bMin);
+    });
+    sorted.forEach(([company, compTasks]) => {
+      compTasks.sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
+      const hasOverdue = compTasks.some(t => t.dueDate && new Date(t.dueDate + 'T00:00:00') < today);
+      html += section(`${company}`, hasOverdue ? 'urgent' : 'future', compTasks, false, false, true);
+    });
 
-  // No due date
-  html += renderSection('期限未設定', 'nodue', buckets.nodue, true);
-
-  if (!totalActive) {
-    html = '<div style="text-align:center;padding:40px;color:var(--text-muted)">未完了のタスクはありません</div>';
+  } else if (todoGroupMode === 'step') {
+    // ── ステップ別 ──
+    const byStep = {};
+    tasks.forEach(t => { const st = getStepType(t); if (!byStep[st]) byStep[st] = []; byStep[st].push(t); });
+    // Phase order
+    const phaseOrder = ['pre', 'prep', 'review', 'mid', 'final', 'other'];
+    const sorted = Object.entries(byStep).sort((a, b) => {
+      const pa = STEP_TYPES[a[0]]?.phase || 'other';
+      const pb = STEP_TYPES[b[0]]?.phase || 'other';
+      return phaseOrder.indexOf(pa) - phaseOrder.indexOf(pb);
+    });
+    sorted.forEach(([st, stepTasks]) => {
+      const info = STEP_TYPES[st] || { icon: '📌', label: st, phase: 'other' };
+      stepTasks.sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
+      html += section(`${info.icon} ${info.label}`, 'future', stepTasks, false, true, true);
+    });
   }
 
   container.innerHTML = html;
@@ -2892,13 +2946,36 @@ function toDateStr(d) {
 // ────────────────────────────────────────────
 // C4: Calendar View
 // ────────────────────────────────────────────
-function changeMonth(delta) {
-  if (delta === 0) { const now = new Date(); calYear = now.getFullYear(); calMonth = now.getMonth(); }
-  else { calMonth += delta; if (calMonth > 11) { calMonth = 0; calYear++; } if (calMonth < 0) { calMonth = 11; calYear--; } }
+let calMode = 'month';
+let calWeekStart = null; // Date object for week view
+
+function setCalMode(mode) {
+  calMode = mode;
+  document.querySelectorAll('[data-calmode]').forEach(b => b.classList.toggle('active', b.dataset.calmode === mode));
+  if (mode === 'week' && !calWeekStart) {
+    const now = new Date(); now.setHours(0,0,0,0);
+    calWeekStart = new Date(now); calWeekStart.setDate(now.getDate() - now.getDay()); // Sunday
+  }
+  renderCalendar();
+}
+
+function calNav(delta) {
+  if (calMode === 'month') {
+    if (delta === 0) { const now = new Date(); calYear = now.getFullYear(); calMonth = now.getMonth(); }
+    else { calMonth += delta; if (calMonth > 11) { calMonth = 0; calYear++; } if (calMonth < 0) { calMonth = 11; calYear--; } }
+  } else {
+    if (delta === 0) {
+      const now = new Date(); now.setHours(0,0,0,0);
+      calWeekStart = new Date(now); calWeekStart.setDate(now.getDate() - now.getDay());
+    } else {
+      calWeekStart.setDate(calWeekStart.getDate() + delta * 7);
+    }
+  }
   renderCalendar();
 }
 
 function renderCalendar() {
+  if (calMode === 'week') return renderWeekView();
   document.getElementById('calTitle').textContent = `${calYear}年${calMonth + 1}月`;
 
   const tasks = getAllTasksArr();
@@ -3018,6 +3095,60 @@ function closeCalDayPopup() {
   if (el) el.remove();
 }
 
+function renderWeekView() {
+  if (!calWeekStart) { const now = new Date(); now.setHours(0,0,0,0); calWeekStart = new Date(now); calWeekStart.setDate(now.getDate() - now.getDay()); }
+  const wStart = new Date(calWeekStart);
+  const wEnd = new Date(wStart); wEnd.setDate(wEnd.getDate() + 6);
+  const sm = String(wStart.getMonth()+1).padStart(2,'0'), sd = String(wStart.getDate()).padStart(2,'0');
+  const em = String(wEnd.getMonth()+1).padStart(2,'0'), ed = String(wEnd.getDate()).padStart(2,'0');
+  document.getElementById('calTitle').textContent = `${wStart.getFullYear()}年 ${sm}/${sd} - ${em}/${ed}`;
+
+  const tasks = getAllTasksArr();
+  const tasksByDate = {}, trainingsByDate = {};
+  tasks.forEach(t => {
+    if (t.dueDate && t.status !== 'done') { if (!tasksByDate[t.dueDate]) tasksByDate[t.dueDate] = []; tasksByDate[t.dueDate].push(t); }
+    if (t.trainingDate) { if (!trainingsByDate[t.trainingDate]) trainingsByDate[t.trainingDate] = new Set(); trainingsByDate[t.trainingDate].add(t.company); }
+  });
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  let html = '<div class="cal-week-grid">';
+  // Headers
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(wStart); d.setDate(d.getDate() + i);
+    const dow = '日月火水木金土'[d.getDay()];
+    const isToday = d.getTime() === today.getTime();
+    const dm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+    html += `<div class="cal-day-header" style="${isToday ? 'color:var(--accent-blue);font-weight:700' : ''}">${dow} ${dm}/${dd}</div>`;
+  }
+  // Day columns
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(wStart); d.setDate(d.getDate() + i);
+    const ds = toDateStr(d);
+    const isToday = d.getTime() === today.getTime();
+    const dayTasks = tasksByDate[ds] || [];
+    const trainComps = trainingsByDate[ds];
+    html += `<div class="cal-week-day${isToday ? ' today' : ''}">`;
+    // Training markers
+    if (trainComps) {
+      [...trainComps].forEach(c => {
+        html += `<div class="cal-training-marker" style="margin-bottom:4px">研修: ${escHtml((c||'').substring(0,10))}</div>`;
+      });
+    }
+    // Tasks
+    dayTasks.forEach(t => {
+      const si = getStepInfo(t);
+      html += `<div class="cal-week-task phase-${si.phase}" onclick="openEditTask('${t._id}')">
+        <span style="font-size:9px">${si.icon}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.company||'')} ${escHtml(si.short)}</span>
+      </div>`;
+    });
+    if (!dayTasks.length && !trainComps) html += '<div style="font-size:10px;color:var(--text-muted);padding:4px">なし</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+  document.getElementById('calGrid').innerHTML = html;
+}
+
 // ────────────────────────────────────────────
 // C2: Company View
 // ────────────────────────────────────────────
@@ -3071,6 +3202,28 @@ function renderCompanyView() {
     // Auto-expand top 3 (most remaining)
     const autoExpand = idx < 3 && remaining > 0;
 
+    // Pipeline: show step progress
+    const PIPELINE_STEPS = ['premtg_schedule','premtg_prepare','roster_send','material_create','material_send','survey_prep','instructor','final_create','invoice'];
+    const stepStatus = {};
+    data.tasks.forEach(t => {
+      const st = getStepType(t);
+      if (!stepStatus[st]) stepStatus[st] = { total: 0, done: 0 };
+      stepStatus[st].total++;
+      if (t.status === 'done') stepStatus[st].done++;
+    });
+    let pipeline = '<div class="company-pipeline">';
+    PIPELINE_STEPS.forEach((st, i) => {
+      const ss = stepStatus[st];
+      if (!ss) return;
+      const si = STEP_TYPES[st];
+      const pm = PHASE_META[si?.phase] || {};
+      const isDone = ss.done === ss.total;
+      const isActive = !isDone && ss.total > 0;
+      pipeline += `<span class="company-pipeline-step${isDone ? ' done' : ''}${isActive ? ' active' : ''}" style="background:color-mix(in srgb, ${pm.color || 'gray'} 12%, transparent);color:${pm.color || 'var(--text-muted)'}">${si?.icon || ''}${si?.short || st}${ss.total > 1 ? ` ${ss.done}/${ss.total}` : ''}</span>`;
+      if (i < PIPELINE_STEPS.length - 1 && stepStatus[PIPELINE_STEPS[i+1]]) pipeline += '<span class="company-pipeline-arrow">→</span>';
+    });
+    pipeline += '</div>';
+
     html += `<div class="company-card${autoExpand ? ' expanded' : ''}" id="comp-${escHtml(name).replace(/[^a-zA-Z0-9]/g, '_')}">
       <div class="company-card-header" onclick="this.parentElement.classList.toggle('expanded')">
         <div class="company-card-name">${escHtml(name)}</div>
@@ -3082,7 +3235,8 @@ function renderCompanyView() {
         </div>
         <span class="company-chevron">&#9654;</span>
       </div>
-      <div class="company-card-body">`;
+      <div class="company-card-body">
+      ${pipeline}`;
 
     data.tasks.forEach(t => {
       const dueInfo = getDueInfo(t.dueDate);
