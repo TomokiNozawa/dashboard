@@ -1266,9 +1266,9 @@ function doLogout() {
   location.reload();
 }
 
-document.getElementById('loginPassword').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
-});
+// loginPassword may not exist (auto-login mode)
+const _loginPw = document.getElementById('loginPassword');
+if (_loginPw) _loginPw.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
 // ────────────────────────────────────────────
 // Firebase Init
