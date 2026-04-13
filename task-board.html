@@ -393,10 +393,11 @@ body {
 }
 
 /* ── Timeline ToDo View ── */
-.todo-section { margin-bottom: 16px; }
+.todo-section { margin-bottom: 12px; }
 .todo-section-header {
-  display: flex; align-items: center; gap: 8px; padding: 8px 0; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 8px; padding: 8px 0; margin-bottom: 0;
   border-bottom: 1px solid var(--border-light); font-size: 13px; font-weight: 600;
+  cursor: pointer; user-select: none;
 }
 .todo-section-header .count {
   font-size: 10px; background: var(--border-light); color: var(--text-muted);
@@ -406,35 +407,38 @@ body {
 .todo-section-header.tomorrow { color: var(--accent-orange); }
 .todo-section-header.future { color: var(--text-secondary); }
 .todo-section-header.nodue { color: var(--text-muted); }
-.todo-row {
-  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); margin-bottom: 4px;
-  cursor: pointer; transition: all var(--transition);
+.todo-section-header .toggle-arrow { font-size: 10px; color: var(--text-muted); transition: transform 0.2s; }
+.todo-section-header.collapsed .toggle-arrow { transform: rotate(-90deg); }
+.todo-section-body { }
+.todo-section-header.collapsed + .todo-section-body { display: none; }
+.todo-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.todo-table th {
+  text-align: left; font-size: 10px; font-weight: 600; color: var(--text-muted);
+  padding: 4px 8px; border-bottom: 1px solid var(--border-light); white-space: nowrap;
 }
-.todo-row:hover { background: var(--bg-card-hover); border-color: #3a4860; }
+.todo-table td {
+  padding: 5px 8px; border-bottom: 1px solid var(--border-light);
+  font-size: 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.todo-table tr:hover td { background: var(--bg-card-hover); }
+.todo-table .col-check { width: 28px; }
+.todo-table .col-company { width: 130px; font-weight: 600; }
+.todo-table .col-step { width: 90px; }
+.todo-table .col-detail { color: var(--text-secondary); }
+.todo-table .col-due { width: 130px; text-align: right; }
 .todo-checkbox {
-  width: 18px; height: 18px; border: 2px solid var(--border); border-radius: 4px;
+  width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 3px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all var(--transition); font-size: 11px; color: transparent;
+  flex-shrink: 0; transition: all var(--transition); font-size: 10px; color: transparent;
 }
 .todo-checkbox:hover { border-color: var(--accent-green); color: var(--accent-green); }
-.todo-company { font-size: 12px; font-weight: 600; min-width: 80px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.todo-detail { font-size: 11px; color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo-due {
-  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; flex-shrink: 0;
+  font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; white-space: nowrap;
 }
 .todo-due.overdue { background: rgba(248,81,73,0.12); color: var(--accent-red); }
 .todo-due.today { background: rgba(240,136,62,0.12); color: var(--accent-orange); }
 .todo-due.soon { background: rgba(232,184,64,0.12); color: var(--accent-yellow); }
 .todo-due.normal { background: rgba(139,149,165,0.06); color: var(--text-muted); }
-.todo-done-btn {
-  padding: 3px 10px; font-size: 10px; font-weight: 600; font-family: var(--font);
-  border: 1px solid rgba(66,199,96,0.3); border-radius: 4px; cursor: pointer;
-  background: rgba(66,199,96,0.08); color: var(--accent-green); transition: all var(--transition);
-  flex-shrink: 0;
-}
-.todo-done-btn:hover { background: rgba(66,199,96,0.2); }
 
 /* ── Kanban Board ── */
 .board-container {
@@ -665,7 +669,7 @@ body {
 .view-container.active { display: flex; flex-direction: column; }
 
 /* ── Timeline View (C1) ── */
-.timeline-view { padding: 16px 20px; overflow: auto; height: 100%; }
+.timeline-view { padding: 16px 20px; overflow: auto; height: 100%; max-width: 900px; margin: 0 auto; }
 .timeline-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .timeline-header h3 { font-size: 15px; font-weight: 600; }
 .timeline-nav { display: flex; gap: 4px; margin-left: auto; }
@@ -730,7 +734,7 @@ body {
 }
 
 /* ── Company View (C2) ── */
-.company-view { padding: 16px 20px; overflow: auto; height: 100%; }
+.company-view { padding: 16px 20px; overflow: auto; height: 100%; max-width: 900px; margin: 0 auto; }
 .company-list { display: flex; flex-direction: column; gap: 8px; }
 .company-card {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -770,7 +774,7 @@ body {
 .company-shift-link:hover { background: rgba(240,136,62,0.1); }
 
 /* ── Calendar View (C4) ── */
-.calendar-view { padding: 16px 20px; overflow: auto; height: 100%; }
+.calendar-view { padding: 16px 20px; overflow: auto; height: 100%; max-width: 1100px; margin: 0 auto; }
 .cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
 .cal-header h3 { font-size: 15px; font-weight: 600; min-width: 140px; }
 .cal-nav-btn {
@@ -819,9 +823,25 @@ body {
   position: absolute; top: 4px; right: 4px; width: 6px; height: 6px;
   background: var(--accent-red); border-radius: 50%;
 }
+.cal-day-popup {
+  position: fixed; z-index: 1100; background: var(--bg-modal); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow-lg);
+  min-width: 240px; max-width: 340px; max-height: 300px; overflow-y: auto;
+}
+.cal-day-popup h5 { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.cal-day-popup .cal-popup-task {
+  display: flex; align-items: center; gap: 6px; padding: 4px 0;
+  border-bottom: 1px solid var(--border-light); font-size: 11px; cursor: pointer;
+}
+.cal-day-popup .cal-popup-task:hover { background: var(--bg-card-hover); }
+.cal-day-popup .cal-popup-task:last-child { border-bottom: none; }
+.company-phase-badges { display: flex; gap: 3px; flex-wrap: wrap; }
+.company-phase-badge {
+  font-size: 9px; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+}
 
 /* ── Stats View (C5) ── */
-.stats-view { padding: 16px 20px; overflow: auto; height: 100%; }
+.stats-view { padding: 16px 20px; overflow: auto; height: 100%; max-width: 1100px; margin: 0 auto; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .stats-panel {
   background: var(--bg-card); border: 1px solid var(--border);
@@ -905,6 +925,10 @@ body {
   .cal-task-dot { font-size: 8px; }
   .stats-grid { grid-template-columns: 1fr; }
   .stats-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .todo-table .col-company { width: 100px; }
+  .todo-table .col-step { width: 70px; }
+  .todo-table .col-detail { display: none; }
+  .company-phase-badges { display: none; }
 }
 
 @media (max-width: 480px) {
@@ -2105,6 +2129,7 @@ function handleKeydown(e) {
 
   // Escape: close modals/popups
   if (e.key === 'Escape') {
+    if (document.getElementById('calDayPopup')) { closeCalDayPopup(); return; }
     if (document.getElementById('skillRunModal').classList.contains('active')) { closeSkillRunModal(); return; }
     if (document.getElementById('syncDiffModal').classList.contains('active')) { closeSyncDiffModal(); return; }
     if (document.getElementById('filterPopup').classList.contains('active')) { closeFilterPopup(); return; }
@@ -2783,35 +2808,44 @@ function renderTimeline() {
   const totalActive = tasks.length;
   document.getElementById('todoTotalCount').textContent = `未完了 ${totalActive}件`;
 
-  function renderTodoRow(t) {
-    const info = getStepInfo(t);
-    const dueInfo = getDueInfo(t.dueDate);
-    const training = t.trainingType ? ` ${t.trainingType}` : '';
-    return `<div class="todo-row" onclick="openEditTask('${t._id}')">
-      <div class="todo-checkbox" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了にする">✓</div>
-      <span class="todo-company">${escHtml(t.company || '')}</span>
-      <span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 6px"><span class="step-icon">${info.icon}</span>${escHtml(info.short)}</span>
-      ${t.autoGenerated ? '<span class="task-auto-badge">&#9881; auto</span>' : ''}
-      <span class="todo-detail">${escHtml(training)}</span>
-      ${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}
+  function renderTodoRows(taskList) {
+    let rows = '';
+    taskList.forEach(t => {
+      const info = getStepInfo(t);
+      const dueInfo = getDueInfo(t.dueDate);
+      const training = t.trainingType || '';
+      rows += `<tr onclick="openEditTask('${t._id}')">
+        <td class="col-check"><div class="todo-checkbox" onclick="event.stopPropagation();moveTask('${t._id}','done')" title="完了にする">✓</div></td>
+        <td class="col-company">${escHtml(t.company || '')}</td>
+        <td class="col-step"><span class="step-badge phase-${info.phase}" style="font-size:9px;padding:1px 5px">${info.icon}${escHtml(info.short)}</span></td>
+        <td class="col-detail">${escHtml(training)}</td>
+        <td class="col-due">${dueInfo.label ? `<span class="todo-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}</td>
+      </tr>`;
+    });
+    return rows;
+  }
+
+  function renderSection(label, cssClass, taskList, defaultCollapsed) {
+    if (!taskList.length) return '';
+    const colClass = defaultCollapsed ? ' collapsed' : '';
+    return `<div class="todo-section">
+      <div class="todo-section-header ${cssClass}${colClass}" onclick="this.classList.toggle('collapsed')">${label}<span class="count">${taskList.length}件</span><span class="toggle-arrow">▾</span></div>
+      <div class="todo-section-body"><table class="todo-table">
+        <thead><tr><th class="col-check"></th><th class="col-company">企業</th><th class="col-step">ステップ</th><th class="col-detail">研修内容</th><th class="col-due">期限</th></tr></thead>
+        <tbody>${renderTodoRows(taskList)}</tbody>
+      </table></div>
     </div>`;
   }
 
   // Overdue + Today
   const urgentTasks = [...buckets.overdue, ...buckets.today];
-  if (urgentTasks.length) {
-    html += `<div class="todo-section"><div class="todo-section-header urgent">今日やること<span class="count">${urgentTasks.length}件</span></div>`;
-    urgentTasks.forEach(t => html += renderTodoRow(t));
-    html += '</div>';
-  }
+  html += renderSection('今日やること', 'urgent', urgentTasks, false);
 
   // Tomorrow
   if (buckets.tomorrow.length) {
     const d = tomorrow;
     const dow = '日月火水木金土'[d.getDay()];
-    html += `<div class="todo-section"><div class="todo-section-header tomorrow">明日 ${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${dow})<span class="count">${buckets.tomorrow.length}件</span></div>`;
-    buckets.tomorrow.forEach(t => html += renderTodoRow(t));
-    html += '</div>';
+    html += renderSection(`明日 ${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${dow})`, 'tomorrow', buckets.tomorrow, false);
   }
 
   // This week (per day)
@@ -2820,28 +2854,18 @@ function renderTimeline() {
     const d = new Date(ds + 'T00:00:00');
     const dow = '日月火水木金土'[d.getDay()];
     const label = `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${dow})`;
-    const dayTasks = buckets.thisWeek[ds];
-    html += `<div class="todo-section"><div class="todo-section-header future">${label}<span class="count">${dayTasks.length}件</span></div>`;
-    dayTasks.sort(sortByCompany).forEach(t => html += renderTodoRow(t));
-    html += '</div>';
+    buckets.thisWeek[ds].sort(sortByCompany);
+    html += renderSection(label, 'future', buckets.thisWeek[ds], false);
   });
 
   // Later
-  if (buckets.later.length) {
-    html += `<div class="todo-section"><div class="todo-section-header future" style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">来週以降<span class="count">${buckets.later.length}件</span> ▾</div><div style="display:none">`;
-    buckets.later.forEach(t => html += renderTodoRow(t));
-    html += '</div></div>';
-  }
+  html += renderSection('来週以降', 'future', buckets.later, true);
 
   // No due date
-  if (buckets.nodue.length) {
-    html += `<div class="todo-section"><div class="todo-section-header nodue">期限未設定<span class="count">${buckets.nodue.length}件</span></div>`;
-    buckets.nodue.forEach(t => html += renderTodoRow(t));
-    html += '</div>';
-  }
+  html += renderSection('期限未設定', 'nodue', buckets.nodue, true);
 
   if (!totalActive) {
-    html = '<div style="text-align:center;padding:40px;color:var(--text-muted)">未完了のタスクはありません 🎉</div>';
+    html = '<div style="text-align:center;padding:40px;color:var(--text-muted)">未完了のタスクはありません</div>';
   }
 
   container.innerHTML = html;
@@ -2882,13 +2906,13 @@ function renderCalendar() {
   });
 
   const firstDay = new Date(calYear, calMonth, 1);
-  const startDow = firstDay.getDay();
-  const startOffset = startDow === 0 ? 6 : startDow - 1;
+  const startDow = firstDay.getDay(); // 0=Sun
+  const startOffset = startDow; // Sunday start: no adjustment needed
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date(); today.setHours(0,0,0,0);
 
   let html = '<div class="cal-grid">';
-  ['月','火','水','木','金','土','日'].forEach(d => {
+  ['日','月','火','水','木','金','土'].forEach(d => {
     html += `<div class="cal-day-header">${d}</div>`;
   });
 
@@ -2903,7 +2927,7 @@ function renderCalendar() {
     const trainComps = trainingsByDate[ds];
     const hasConflict = trainComps && trainComps.size > 1;
 
-    html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}">`;
+    html += `<div class="cal-day${isOther ? ' other-month' : ''}${isToday ? ' today' : ''}" onclick="showCalDayPopup(event,'${ds}')">`;
     if (hasConflict) html += '<div class="cal-day-conflict" title="同日複数社研修"></div>';
     html += `<div class="cal-day-num">${isOther ? '' : dayNum}</div>`;
 
@@ -2917,14 +2941,14 @@ function renderCalendar() {
       // Tasks
       if (dayTasks.length) {
         html += '<div class="cal-day-tasks">';
-        const show = dayTasks.slice(0, 5);
+        const show = dayTasks.slice(0, 4);
         show.forEach(t => {
           const info = getStepInfo(t);
           const isOverdue = getDueInfo(t.dueDate).type === 'overdue';
           const comp = (t.company || '').substring(0, 6);
           html += `<div class="cal-task-dot phase-${info.phase}${isOverdue ? ' overdue' : ''}" onclick="event.stopPropagation();openEditTask('${t._id}')">${info.icon}${escHtml(comp)}</div>`;
         });
-        if (dayTasks.length > 5) html += `<div class="cal-day-more">+${dayTasks.length - 5}件</div>`;
+        if (dayTasks.length > 4) html += `<div class="cal-day-more" onclick="event.stopPropagation();showCalDayPopup(event,'${ds}')">+${dayTasks.length - 4}件</div>`;
         html += '</div>';
       }
     }
@@ -2935,10 +2959,49 @@ function renderCalendar() {
   document.getElementById('calGrid').innerHTML = html;
 }
 
-function filterByDateAndSwitch(ds) {
-  // Switch to kanban with date filter (show all tasks for that date)
-  currentFilters = { company: '', category: '', priority: '', due: '' };
-  switchView('kanban');
+function showCalDayPopup(event, ds) {
+  event.stopPropagation();
+  closeCalDayPopup();
+  const tasks = getAllTasksArr().filter(t => t.dueDate === ds && t.status !== 'done');
+  const trainings = getAllTasksArr().filter(t => t.trainingDate === ds);
+  if (!tasks.length && !trainings.length) return;
+
+  const d = new Date(ds + 'T00:00:00');
+  const dow = '日月火水木金土'[d.getDay()];
+  const label = `${d.getMonth()+1}/${String(d.getDate()).padStart(2,'0')}(${dow})`;
+
+  let html = `<h5>${label} — タスク ${tasks.length}件</h5>`;
+  tasks.forEach(t => {
+    const si = getStepInfo(t);
+    html += `<div class="cal-popup-task" onclick="closeCalDayPopup();openEditTask('${t._id}')">
+      <span class="step-badge phase-${si.phase}" style="font-size:8px;padding:1px 4px">${si.icon}${escHtml(si.short)}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.company || '')} ${escHtml(t.trainingType || '')}</span>
+    </div>`;
+  });
+
+  const popup = document.createElement('div');
+  popup.className = 'cal-day-popup';
+  popup.id = 'calDayPopup';
+  popup.innerHTML = html;
+  popup.onclick = e => e.stopPropagation();
+  document.body.appendChild(popup);
+
+  // Position near click
+  const rect = event.currentTarget.getBoundingClientRect();
+  let left = rect.right + 8;
+  let top = rect.top;
+  if (left + 340 > window.innerWidth) left = rect.left - 348;
+  if (top + 300 > window.innerHeight) top = window.innerHeight - 310;
+  popup.style.left = Math.max(8, left) + 'px';
+  popup.style.top = Math.max(8, top) + 'px';
+
+  // Close on outside click
+  setTimeout(() => document.addEventListener('click', closeCalDayPopup, { once: true }), 10);
+}
+
+function closeCalDayPopup() {
+  const el = document.getElementById('calDayPopup');
+  if (el) el.remove();
 }
 
 // ────────────────────────────────────────────
@@ -2964,17 +3027,40 @@ function renderCompanyView() {
 
   document.getElementById('companyCount').textContent = `${sorted.length}社`;
 
-  let html = '';
-  sorted.forEach(([name, data]) => {
+  // Add expand/collapse all buttons
+  let html = `<div style="display:flex;gap:8px;margin-bottom:12px">
+    <button class="btn btn-secondary" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.add('expanded'))" style="font-size:11px;padding:4px 10px">全展開</button>
+    <button class="btn btn-secondary" onclick="document.querySelectorAll('.company-card').forEach(c=>c.classList.remove('expanded'))" style="font-size:11px;padding:4px 10px">全折りたたみ</button>
+  </div>`;
+
+  sorted.forEach(([name, data], idx) => {
     const pct = Math.round(data.done / data.total * 100);
     const remaining = data.total - data.done;
     // Sort tasks: todo first, then in_progress, then done
     const statusOrder = { todo: 0, in_progress: 1, done: 2 };
     data.tasks.sort((a, b) => (statusOrder[a.status] ?? 1) - (statusOrder[b.status] ?? 1));
 
-    html += `<div class="company-card" id="comp-${escHtml(name).replace(/[^a-zA-Z0-9]/g, '_')}">
+    // Phase badges for header
+    const phaseCounts = {};
+    data.tasks.filter(t => t.status !== 'done').forEach(t => {
+      const si = getStepInfo(t);
+      const key = si.phase;
+      phaseCounts[key] = (phaseCounts[key] || 0) + 1;
+    });
+    let phaseBadges = '<div class="company-phase-badges">';
+    Object.entries(phaseCounts).forEach(([phase, cnt]) => {
+      const meta = PHASE_META[phase];
+      if (meta) phaseBadges += `<span class="company-phase-badge phase-${phase}" style="background:color-mix(in srgb, ${meta.color} 15%, transparent);color:${meta.color}">${meta.label}×${cnt}</span>`;
+    });
+    phaseBadges += '</div>';
+
+    // Auto-expand top 3 (most remaining)
+    const autoExpand = idx < 3 && remaining > 0;
+
+    html += `<div class="company-card${autoExpand ? ' expanded' : ''}" id="comp-${escHtml(name).replace(/[^a-zA-Z0-9]/g, '_')}">
       <div class="company-card-header" onclick="this.parentElement.classList.toggle('expanded')">
         <div class="company-card-name">${escHtml(name)}</div>
+        ${phaseBadges}
         <div class="company-card-stats">
           <span class="company-stat">残 <strong>${remaining}</strong>件</span>
           <span class="company-stat">${pct}%</span>
@@ -3048,16 +3134,16 @@ function renderStats() {
   // Status donut
   const r = 50, cx = 60, cy = 60, circ = 2 * Math.PI * r;
   const donuts = [
-    { n: done, color: '#42c760', label: '完了' },
-    { n: inProg, color: '#e8b840', label: '進行中' },
-    { n: todo, color: '#5aadff', label: '未着手' },
+    { n: done, color: '#42c760', label: '完了', status: 'done' },
+    { n: inProg, color: '#e8b840', label: '進行中', status: 'in_progress' },
+    { n: todo, color: '#5aadff', label: '未着手', status: 'todo' },
   ];
-  let donutSvg = `<svg viewBox="0 0 120 120">`;
+  let donutSvg = `<svg viewBox="0 0 120 120" style="transform:rotate(-90deg)">`;
   let offset = 0;
   donuts.forEach(d => {
     const pct = total ? d.n / total : 0;
     const dash = pct * circ;
-    donutSvg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="16" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="-${offset}" opacity="0.85"/>`;
+    donutSvg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="16" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="-${offset}" opacity="0.85" style="cursor:pointer" onclick="statsFilterStatus('${d.status}')"/>`;
     offset += dash;
   });
   donutSvg += '</svg>';
@@ -3065,7 +3151,7 @@ function renderStats() {
   const completionPct = total ? Math.round(done / total * 100) : 0;
   let legend = '';
   donuts.forEach(d => {
-    legend += `<div class="stats-legend-item"><div class="stats-legend-dot" style="background:${d.color}"></div>${d.label}: ${d.n}件</div>`;
+    legend += `<div class="stats-legend-item" style="cursor:pointer" onclick="statsFilterStatus('${d.status}')"><div class="stats-legend-dot" style="background:${d.color}"></div>${d.label}: ${d.n}件</div>`;
   });
 
   // Urgency breakdown (from due dates)
@@ -3131,6 +3217,20 @@ function renderStats() {
       <div class="stats-bar-chart">${compBars}</div>
     </div>
   `;
+}
+
+function statsFilterStatus(status) {
+  // Filter by status and switch to kanban
+  currentFilters.stepTypes = [];
+  switchView('kanban');
+  // Highlight matching tasks (simple: filter cards by status)
+  setTimeout(() => {
+    document.querySelectorAll('.kanban-card').forEach(card => {
+      const s = card.dataset.status;
+      card.style.opacity = (!s || s === status) ? '1' : '0.2';
+    });
+    showToast(`${status === 'done' ? '完了' : status === 'in_progress' ? '進行中' : '未着手'}タスクをハイライト`, 'info');
+  }, 100);
 }
 
 // ────────────────────────────────────────────
