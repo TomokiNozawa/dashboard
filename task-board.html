@@ -3815,20 +3815,19 @@ async function executeSkillBatch() {
 // ────────────────────────────────────────────
 async function initSheetsCreds() {
   if (sheetsCreds) return true;
-  // sessionStorage優先、無ければlocalStorageから（ブラウザ閉じても永続化）
-  let pw = sessionStorage.getItem('dk_pass');
+  // 優先順: sessionStorage > localStorage(NozaBoard共有) > localStorage(taskboard_session)
+  let pw = sessionStorage.getItem('dk_pass')
+        || localStorage.getItem('dk_pass');
   if (!pw) {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const obj = JSON.parse(stored);
-        if (obj && obj.pw) {
-          pw = obj.pw;
-          sessionStorage.setItem('dk_pass', pw);  // 復元
-        }
+        if (obj && obj.pw) pw = obj.pw;
       }
     } catch (e) {}
   }
+  if (pw) sessionStorage.setItem('dk_pass', pw);  // sessionにも復元
   if (!pw) return false;
   try {
     const resp = await fetch('encrypted-sheets.json');
