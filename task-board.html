@@ -1529,7 +1529,7 @@ function initApp() {
     firebase.auth().signInAnonymously().then(() => {
       document.getElementById('app').classList.add('active');
       setSyncStatus('connected', 'リアルタイム同期中');
-      migrateTaskData().then(() => listenTasks());
+      migrateTaskData().then(() => { listenTasks(); startAutoSync(); });
     }).catch(err => {
       console.error('Auth error:', err);
       setSyncStatus('error', '認証エラー');
@@ -3970,18 +3970,20 @@ async function writeBackToSheet(task) {
 // ────────────────────────────────────────────
 // Sync FROM Sheet (pull status updates)
 // ────────────────────────────────────────────
-async function syncFromSheet() {
+async function syncFromSheet(silent = false) {
   const btn = document.getElementById('syncSheetBtn');
-  btn.disabled = true;
-  btn.querySelector('.label-text').textContent = '同期中...';
+  if (!silent) {
+    btn.disabled = true;
+    btn.querySelector('.label-text').textContent = '同期中...';
+  }
 
   try {
     if (!(await initSheetsCreds())) {
-      showToast('Sheets認証情報がありません（NozaBoardにログインしてください）', 'error');
+      if (!silent) showToast('Sheets認証情報がありません（NozaBoardにログインしてください）', 'error');
       return;
     }
     const token = await getSheetsToken();
-    if (!token) { showToast('Sheetsトークン取得失敗', 'error'); return; }
+    if (!token) { if (!silent) showToast('Sheetsトークン取得失敗', 'error'); return; }
 
     const now = new Date();
     const fy = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
@@ -4040,19 +4042,49 @@ async function syncFromSheet() {
     }
 
     if (!diffs.length) {
-      showToast('スプシ同期: 差分なし（全て最新です）', 'info');
+      if (!silent) showToast('スプシ同期: 差分なし（全て最新です）', 'info');
       return;
     }
 
-    // Show confirmation modal
+    if (silent) {
+      // 自動同期: 差分を確認なしで全件「完了」に更新
+      const fbUpdates = {};
+      diffs.forEach(d => {
+        fbUpdates[`tasks/${d.taskId}/status`] = 'done';
+        fbUpdates[`tasks/${d.taskId}/completedAt`] = firebase.database.ServerValue.TIMESTAMP;
+        fbUpdates[`tasks/${d.taskId}/updatedAt`] = firebase.database.ServerValue.TIMESTAMP;
+      });
+      try {
+        await db.ref().update(fbUpdates);
+        showToast(`🔄 自動同期: スプシから${diffs.length}件を完了化`, 'success');
+      } catch (e) { console.warn('Auto sync update error:', e); }
+      return;
+    }
+
+    // Show confirmation modal (manual)
     showSyncDiffModal(diffs);
   } catch (e) {
     console.error('Sync from sheet error:', e);
-    showToast(`スプシ同期エラー: ${e.message}`, 'error');
+    if (!silent) showToast(`スプシ同期エラー: ${e.message}`, 'error');
   } finally {
-    btn.disabled = false;
-    btn.querySelector('.label-text').textContent = 'スプシ同期';
+    if (!silent) {
+      btn.disabled = false;
+      btn.querySelector('.label-text').textContent = 'スプシ同期';
+    }
   }
+}
+
+// 自動同期: 起動時1回 + 5分ごとに silent モードで実行
+let autoSyncTimer = null;
+function startAutoSync() {
+  if (autoSyncTimer) clearInterval(autoSyncTimer);
+  // 起動時1回（10秒後、認証が確実に通った後）
+  setTimeout(() => syncFromSheet(true).catch(e => console.warn('Auto sync error:', e)), 10000);
+  // 以降5分ごと
+  autoSyncTimer = setInterval(() => {
+    syncFromSheet(true).catch(e => console.warn('Auto sync error:', e));
+  }, 5 * 60 * 1000);
+  console.log('[AutoSync] 自動同期を開始 (5分間隔)');
 }
 
 // ────────────────────────────────────────────
