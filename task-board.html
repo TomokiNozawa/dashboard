@@ -1377,7 +1377,7 @@ html { scroll-behavior: smooth; }
 const STORAGE_KEY = 'taskboard_session';
 const CONFIG_KEY = 'taskboard_firebase_config';
 const THEME_KEY = 'noza_theme';
-const SESSION_DAYS = 30;
+const SESSION_DAYS = 365;  // 1年間ログイン保持（同一PC・同一ブラウザ前提）
 // Password hash (SHA-256 of correct password) — set during first login or change via console
 const PASSWORD_HASH_KEY = 'taskboard_pw_hash';
 
@@ -3815,7 +3815,20 @@ async function executeSkillBatch() {
 // ────────────────────────────────────────────
 async function initSheetsCreds() {
   if (sheetsCreds) return true;
-  const pw = sessionStorage.getItem('dk_pass');
+  // sessionStorage優先、無ければlocalStorageから（ブラウザ閉じても永続化）
+  let pw = sessionStorage.getItem('dk_pass');
+  if (!pw) {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const obj = JSON.parse(stored);
+        if (obj && obj.pw) {
+          pw = obj.pw;
+          sessionStorage.setItem('dk_pass', pw);  // 復元
+        }
+      }
+    } catch (e) {}
+  }
   if (!pw) return false;
   try {
     const resp = await fetch('encrypted-sheets.json');
