@@ -2445,6 +2445,9 @@ function handleKeydown(e) {
 
 function highlightSearchResult(items) {
   items.forEach((el, i) => el.classList.toggle('selected', i === searchSelectedIdx));
+  if (searchSelectedIdx >= 0 && items[searchSelectedIdx]) {
+    items[searchSelectedIdx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
 }
 
 // ────────────────────────────────────────────
