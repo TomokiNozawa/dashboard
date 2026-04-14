@@ -2190,6 +2190,41 @@ function handleKeydown(e) {
     if (document.getElementById('taskModal').classList.contains('active')) { closeTaskModal(); return; }
   }
 
+  // Focus trap: Tab key cycles focus within active modal/popup
+  if (e.key === 'Tab') {
+    const activeModal = getActiveModal();
+    if (activeModal) {
+      const focusable = activeModal.querySelectorAll(
+        'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+      );
+      const visible = Array.from(focusable).filter(el => {
+        // visible check
+        return el.offsetParent !== null && !el.hasAttribute('disabled');
+      });
+      if (visible.length === 0) return;
+      const first = visible[0];
+      const last = visible[visible.length - 1];
+      const current = document.activeElement;
+      // If focus is outside the modal, bring it in
+      if (!activeModal.contains(current)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+      }
+      // Cycle at boundaries
+      if (!e.shiftKey && current === last) {
+        e.preventDefault();
+        first.focus();
+        return;
+      }
+      if (e.shiftKey && current === first) {
+        e.preventDefault();
+        last.focus();
+        return;
+      }
+    }
+  }
+
   // Skill run modal shortcuts (Camp selection)
   if (document.getElementById('skillRunModal').classList.contains('active')) {
     const isTextarea = document.activeElement?.tagName === 'TEXTAREA';
@@ -2448,6 +2483,22 @@ function highlightSearchResult(items) {
   if (searchSelectedIdx >= 0 && items[searchSelectedIdx]) {
     items[searchSelectedIdx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
+}
+
+// Focus trap用: 最上位のアクティブなモーダル/ポップアップを返す
+// 複数ある場合は後に開かれた方（z-index高い、DOM順で後）が優先
+function getActiveModal() {
+  const ids = [
+    // より前面に来るポップアップを先にチェック
+    'stepPopup', 'companyPopup',
+    'skillRunModal', 'syncDiffModal', 'filterPopup',
+    'searchOverlay', 'taskModal',
+  ];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el && el.classList.contains('active')) return el;
+  }
+  return null;
 }
 
 // ────────────────────────────────────────────
