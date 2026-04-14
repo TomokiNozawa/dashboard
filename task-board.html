@@ -1273,7 +1273,7 @@ html { scroll-behavior: smooth; }
         </div>
       </div>
       <div class="form-actions" style="flex-wrap:nowrap">
-        <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none;padding:8px 10px;font-size:12px">削除 <span style="font-size:9px;opacity:0.7">Del</span></button>
+        <button type="button" class="btn btn-danger" id="deleteTaskBtn" onclick="deleteTask()" style="display:none;padding:8px 10px;font-size:12px">削除 <span style="font-size:9px;opacity:0.7">Alt&Del</span></button>
         <button type="button" class="btn btn-secondary" id="duplicateTaskBtn" onclick="duplicateTask()" style="display:none;padding:8px 10px;font-size:12px" title="複製 (Alt&D)">複製 <span style="font-size:9px;color:var(--text-muted)">Alt&D</span></button>
         <button type="button" class="btn" id="skillRunBtn" onclick="openSkillRunModal()" style="display:none;padding:8px 10px;font-size:12px;background:rgba(184,140,255,0.1);color:var(--accent-purple);border-color:rgba(184,140,255,0.3)" title="スキル実行 (Alt&R)">▶実行 <span style="font-size:9px;color:var(--text-muted)">Alt&R</span></button>
         <span style="flex:1"></span>
@@ -2353,7 +2353,8 @@ function handleKeydown(e) {
     if (e.altKey && e.key === 's') { e.preventDefault(); document.getElementById('taskForm').requestSubmit(); return; }
     if (e.altKey && e.key === 'd') { e.preventDefault(); duplicateTask(); return; }
     if (e.altKey && (e.key === 'r' || e.key === 'R')) { e.preventDefault(); openSkillRunModal(); return; }
-    if (e.key === 'Delete') { e.preventDefault(); deleteTask(); return; }
+    // タスク削除: Alt+Delete (単体Deleteは入力欄での文字削除に使うため)
+    if (e.altKey && e.key === 'Delete') { e.preventDefault(); deleteTask(); return; }
     // Alt+1-7: focus form fields
     if (e.altKey && e.key >= '1' && e.key <= '7') {
       e.preventDefault();
