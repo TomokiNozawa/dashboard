@@ -4021,7 +4021,7 @@ async function syncFromSheet(silent = false) {
       29: 'invoice',          // AD: 請求書送付
     };
 
-    const DONE_VALUES = new Set(['済', 'ー', '-', '設定済']);
+    const DONE_VALUES = new Set(['済', 'ー', '-', '設定済', '実施無し', 'なし']);
     // (company, date) → set(stepType)  per_day用
     const perDayDone = new Map();
     // (company, date) → set(stepType)  per_term用 (first/last 両方を同じバケツに)
