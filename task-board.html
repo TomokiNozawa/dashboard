@@ -1423,12 +1423,15 @@ const SHEETS_COL_DATE = 0;     // A
 const SHEETS_COL_COMPANY = 6;  // G
 const SHEETS_COL_CONTENT = 8;  // I
 // stepType → sheet column letter (only for types that have a corresponding spushi column)
+// 列配置は sync_tasks.py と同期 (per_term化で W=事前mtg日時挿入により各列+1シフト)
 const STEP_TO_SHEET_COL = {
   premtg_schedule: 'V',   // 21
-  roster_send: 'W',       // 22
-  material_send: 'Y',     // 24
-  survey_prep: 'Z',       // 25
-  invoice: 'AC',          // 28
+  roster_send: 'X',       // 23
+  material_send: 'Z',     // 25
+  survey_prep: 'AA',      // 26
+  invoice: 'AD',          // 29
+  mid_schedule: 'AE',     // 30 (設定済)
+  final_schedule: 'AG',   // 32 (設定済)
 };
 let sheetsCreds = null;
 let sheetsAccessToken = null;
@@ -3941,9 +3944,9 @@ async function writeBackToSheet(task) {
     return;
   }
 
-  // For per_company scope (premtg, roster_send, invoice), write to first match only
-  const perCompanyTypes = ['premtg_schedule', 'roster_send', 'invoice'];
-  const rowsToUpdate = perCompanyTypes.includes(stepType) ? [matchRows[0]] : matchRows;
+  // per_term scope は最初の該当行のみに書き込み (sync_tasks.py と同じ扱い)
+  const perTermTypes = ['premtg_schedule', 'roster_send', 'invoice', 'mid_schedule', 'final_schedule'];
+  const rowsToUpdate = perTermTypes.includes(stepType) ? [matchRows[0]] : matchRows;
 
   // Write "済" to the column
   const writeBody = {
@@ -3996,15 +3999,41 @@ async function syncFromSheet(silent = false) {
     const data = await resp.json();
     const rows = data.values || [];
 
-    // Build lookup: array of {stepType, company, date}
-    const SYNC_COLS = {
-      21: 'premtg_schedule',  // V: 事前mtg
-      22: 'roster_send',      // W: 名簿送付
-      24: 'material_send',    // Y: 教材送付
-      25: 'survey_prep',      // Z: アンケート準備
-      28: 'invoice',          // AC: 請求書
+    // 列配置 (sync_tasks.py 2026-04-15 per_term化に合わせる)
+    //   V=21 事前mtg / W=22 事前mtg日時 / X=23 名簿送付 / Y=24 名簿返信
+    //   Z=25 教材送付 / AA=26 アンケート準備 / AB=27 サポーター / AC=28 ホテル
+    //   AD=29 請求書 / AE=30 中間報告設定 / AG=32 最終報告設定
+    // per_day: 任意行の「済」で各Day完了
+    const SYNC_COLS_PER_DAY = {
+      25: 'material_send',    // Z: 教材送付
+      26: 'survey_prep',      // AA: アンケート準備
     };
-    const sheetDoneList = []; // [{stepType, company, date}]
+    // per_term: 最初のDayの行の値がターム全体の状態を表す (sync_tasks.pyと同じ読み方)
+    //   値 "設定済"/"済"/"ー"/"-" で完了扱い (中間/最終の set_col は "設定済" がある)
+    const SYNC_COLS_PER_TERM_FIRST = {
+      21: 'premtg_schedule',  // V: 事前mtg
+      23: 'roster_send',      // X: 名簿送付
+      30: 'mid_schedule',     // AE: 中間報告設定
+      32: 'final_schedule',   // AG: 最終報告設定
+    };
+    // 請求書は last row の AD列で判定 (sync_tasks.py: term_after_last_day)
+    const SYNC_COLS_PER_TERM_LAST = {
+      29: 'invoice',          // AD: 請求書送付
+    };
+
+    const DONE_VALUES = new Set(['済', 'ー', '-', '設定済']);
+    // (company, date) → set(stepType)  per_day用
+    const perDayDone = new Map();
+    // (company, date) → set(stepType)  per_term用 (first/last 両方を同じバケツに)
+    const perTermDone = new Map();
+
+    const keyOf = (c, d) => `${c}__${d}`;
+    const addDone = (map, c, d, st) => {
+      const k = keyOf(c, d);
+      if (!map.has(k)) map.set(k, new Set());
+      map.get(k).add(st);
+    };
+
     for (let i = SHEETS_HEADER_ROW + 1; i < rows.length; i++) {
       const row = rows[i];
       const dateStr = (row[SHEETS_COL_DATE] || '').trim();
@@ -4012,28 +4041,50 @@ async function syncFromSheet(silent = false) {
       const company = (row[SHEETS_COL_COMPANY] || '').trim();
       if (!dateIso || !company) continue;
 
-      for (const [colIdx, stepType] of Object.entries(SYNC_COLS)) {
+      for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_DAY)) {
         const val = (row[colIdx] || '').trim();
-        if (val === '済' || val === 'ー' || val === '-') {
-          sheetDoneList.push({ stepType, company, date: dateIso });
-        }
+        if (DONE_VALUES.has(val)) addDone(perDayDone, company, dateIso, stepType);
+      }
+      for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_FIRST)) {
+        const val = (row[colIdx] || '').trim();
+        if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
+      }
+      for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_LAST)) {
+        const val = (row[colIdx] || '').trim();
+        if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
       }
     }
 
-    // Find diffs: sheet says 済 but TaskBoard not done
-    const syncableStepTypes = new Set(Object.values(SYNC_COLS));
+    const perDayStepTypes = new Set(Object.values(SYNC_COLS_PER_DAY));
+    const perTermStepTypes = new Set([
+      ...Object.values(SYNC_COLS_PER_TERM_FIRST),
+      ...Object.values(SYNC_COLS_PER_TERM_LAST),
+    ]);
+
     const diffs = [];
     for (const [taskId, task] of Object.entries(allTasks)) {
       if (task.status === 'done') continue;
       const st = getStepType(task);
-      if (!syncableStepTypes.has(st)) continue;
       if (!task.trainingDate || !task.company) continue;
 
-      const match = sheetDoneList.some(sd =>
-        sd.stepType === st &&
-        sd.date === task.trainingDate &&
-        sheetsCompanyMatch(sd.company, task.company)
-      );
+      let match = false;
+      if (perDayStepTypes.has(st)) {
+        // per_day: タスクのtrainingDateとスプシ行の日付が一致した行の列が済ならOK
+        for (const [k, set] of perDayDone) {
+          if (!set.has(st)) continue;
+          const [co, dt] = k.split('__');
+          if (dt === task.trainingDate && sheetsCompanyMatch(co, task.company)) { match = true; break; }
+        }
+      } else if (perTermStepTypes.has(st)) {
+        // per_term: 同じ会社のどれかの行で「済」があればマッチ (trainingDate完全一致でなくてよい)
+        //   理由: ターム=同一企業×シリーズ×60日グループ の first/last 行で済判定
+        //   厳密なターム範囲判定は行わず「同じ企業でその列に済」があれば完了とみなす
+        for (const [k, set] of perTermDone) {
+          if (!set.has(st)) continue;
+          const [co] = k.split('__');
+          if (sheetsCompanyMatch(co, task.company)) { match = true; break; }
+        }
+      }
 
       if (match) {
         const info = getStepInfo(task);
