@@ -1041,11 +1041,11 @@ html { scroll-behavior: smooth; }
       <span style="font-size:18px">&#9745;</span>
       <span>タスク</span>
     </a>
-    <a class="side-nav-item" href="#" onclick="event.preventDefault();demoBlocked('教材準備ダッシュボード')" title="教材作成">
+    <a class="side-nav-item" href="#" onclick="event.preventDefault();demoBlocked(&apos;教材準備ダッシュボード&apos;)" title="教材作成">
       <span style="font-size:18px">&#128230;</span>
       <span>教材</span>
     </a>
-    <a class="side-nav-item" href="#" onclick="event.preventDefault();demoBlocked('シフト管理ダッシュボード')" title="シフト管理">
+    <a class="side-nav-item" href="#" onclick="event.preventDefault();demoBlocked(&apos;シフト管理ダッシュボード&apos;)" title="シフト管理">
       <span style="font-size:18px">&#128101;</span>
       <span>シフト</span>
     </a>
@@ -3608,8 +3608,8 @@ function renderCompanyView() {
         <span class="step-badge phase-${si.phase}" style="font-size:8px;padding:1px 5px">${si.icon}${escHtml(si.short)}</span>
         <span class="company-task-title">${escHtml(t.title).replace(escHtml(name), '').replace(/^[：:\s]+/, '')}</span>
         ${dueInfo.label ? `<span class="company-task-due task-due ${dueInfo.type}">${dueInfo.label}</span>` : ''}
-        ${isInstructor ? '<a class="company-shift-link" href="#" onclick="event.preventDefault();event.stopPropagation();demoBlocked('シフト管理ダッシュボード')" title="シフト管理">Shift</a>' : ''}
-        ${isMaterial ? '<a class="company-shift-link" href="#" onclick="event.preventDefault();event.stopPropagation();demoBlocked('教材準備ダッシュボード')" title="教材ダッシュボード" style="color:var(--accent-purple);border-color:rgba(184,140,255,0.3)">教材</a>' : ''}
+        ${isInstructor ? '<a class="company-shift-link" href="#" onclick="event.preventDefault();event.stopPropagation();demoBlocked(&apos;シフト管理ダッシュボード&apos;)" title="シフト管理">Shift</a>' : ''}
+        ${isMaterial ? '<a class="company-shift-link" href="#" onclick="event.preventDefault();event.stopPropagation();demoBlocked(&apos;教材準備ダッシュボード&apos;)" title="教材ダッシュボード" style="color:var(--accent-purple);border-color:rgba(184,140,255,0.3)">教材</a>' : ''}
       </div>`;
     });
 
