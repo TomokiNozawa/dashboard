@@ -138,6 +138,8 @@ body {
 .side-nav-item.active { color: var(--accent-blue); background: rgba(90,173,255,0.08); border-right: 2px solid var(--accent-blue); }
 .side-nav-item span:last-child { opacity: 0; transition: opacity 0.15s; }
 .side-nav:hover .side-nav-item span:last-child { opacity: 1; }
+.side-nav-item.side-nav-demo { margin-top: auto; border-top: 1px solid var(--border); color: var(--text-muted); }
+.side-nav-item.side-nav-demo:hover { color: var(--accent-blue); }
 
 /* ── Step Type Popup ── */
 .step-popup-overlay {
@@ -1023,6 +1025,10 @@ html { scroll-behavior: smooth; }
     <a class="side-nav-item" href="shift.html" title="シフト管理">
       <span style="font-size:18px">&#128101;</span>
       <span>シフト</span>
+    </a>
+    <a class="side-nav-item side-nav-demo" href="task-board-demo.html" target="_blank" rel="noopener" title="デモ版（外部共有用・別タブ）">
+      <span style="font-size:18px">&#127916;</span>
+      <span>デモ</span>
     </a>
   </nav>
 
