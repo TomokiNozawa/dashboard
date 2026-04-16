@@ -1746,6 +1746,12 @@ function renderTaskCard(t) {
         ${t.status !== 'todo' ? `<button class="task-action-btn" onclick="moveTask('${t._id}','todo')" title="未着手に戻す">&#9664; 未着手</button>` : ''}
         ${t.status !== 'in_progress' ? `<button class="task-action-btn progress" onclick="moveTask('${t._id}','in_progress')" title="進行中へ">進行中</button>` : ''}
         ${t.status !== 'done' ? `<button class="task-action-btn done" onclick="moveTask('${t._id}','done')" title="完了へ">&#10003; 完了</button>` : ''}
+        ${(() => {
+          if (t.status === 'done') return '';
+          const paired = findPairedMaterialTask(t);
+          if (!paired || paired.status === 'done') return '';
+          return `<button class="task-action-btn done" onclick="completeBothMaterial('${t._id}')" title="教材作成・送付の両方を完了" style="background:rgba(66,199,96,0.15);border-color:var(--accent-green)">&#10003;&#10003; 両方完了</button>`;
+        })()}
       </div>
     </div>`;
 }
@@ -2115,6 +2121,45 @@ function moveTask(id, newStatus) {
     if (newStatus === 'done' && allTasks[id]) {
       writeBackToSheet(allTasks[id]).catch(e => console.warn('Sheets sync error:', e));
     }
+  });
+}
+
+// 教材作成/送付のペアタスクを検索 (同じcompany+trainingType+trainingDateで別stepType)
+function findPairedMaterialTask(t) {
+  const st = getStepType(t);
+  if (st !== 'material_create' && st !== 'material_send') return null;
+  const otherType = st === 'material_create' ? 'material_send' : 'material_create';
+  for (const id in allTasks) {
+    const o = allTasks[id];
+    if (!o || id === t._id) continue;
+    if (getStepType(o) !== otherType) continue;
+    if (o.company !== t.company) continue;
+    if ((o.trainingType || '') !== (t.trainingType || '')) continue;
+    if ((o.trainingDate || '') !== (t.trainingDate || '')) continue;
+    return { ...o, _id: id };
+  }
+  return null;
+}
+
+// 教材作成と教材送付を両方完了にする
+function completeBothMaterial(id) {
+  if (!db) return;
+  const t = allTasks[id];
+  if (!t) return;
+  const paired = findPairedMaterialTask({ ...t, _id: id });
+  if (!paired) { showToast('ペアタスクが見つかりません', 'warning'); return; }
+  pushUndo('status_change', id, { status: t.status, title: t.title });
+  pushUndo('status_change', paired._id, { status: paired.status, title: paired.title });
+  const ts = firebase.database.ServerValue.TIMESTAMP;
+  const updates = {
+    [`tasks/${id}/status`]: 'done', [`tasks/${id}/completedAt`]: ts, [`tasks/${id}/updatedAt`]: ts,
+    [`tasks/${paired._id}/status`]: 'done', [`tasks/${paired._id}/completedAt`]: ts, [`tasks/${paired._id}/updatedAt`]: ts,
+  };
+  db.ref().update(updates).then(() => {
+    showToast('教材作成・送付を両方完了しました', 'success');
+    // スプシはsource_colを持つmaterial_send側だけ書き戻す(作成はZ列済で自動done化される)
+    const sendTask = getStepType(t) === 'material_send' ? t : paired;
+    writeBackToSheet(sendTask).catch(e => console.warn('Sheets sync error:', e));
   });
 }
 
