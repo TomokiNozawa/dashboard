@@ -574,9 +574,36 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 // State
 // ============================================================
 let shiftData = null;
+let currentMonthKey = null;
 let fileSha = null;
 let pat = null;
 let changeCount = 0;
+
+function applyMonthAlias(key) {
+  if (!shiftData || !shiftData.months || !shiftData.months[key]) return;
+  currentMonthKey = key;
+  shiftData.schedule = shiftData.months[key].schedule;
+  shiftData.instructors = shiftData.months[key].instructors;
+}
+
+function syncAliasToMonths() {
+  if (currentMonthKey && shiftData && shiftData.months && shiftData.months[currentMonthKey]) {
+    shiftData.months[currentMonthKey].schedule = shiftData.schedule;
+    shiftData.months[currentMonthKey].instructors = shiftData.instructors;
+  }
+}
+
+function switchMonth(key) {
+  if (key === currentMonthKey) return;
+  syncAliasToMonths();
+  applyMonthAlias(key);
+  if (shiftData.currentMonth !== key) {
+    shiftData.currentMonth = key;
+    changeCount++;
+    updateSaveBadge();
+  }
+  renderApp();
+}
 const SESSION_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days
 const API_BASE = 'https://api.github.com';
 const REPO = 'TomokiNozawa/dashboard-data';
@@ -736,6 +763,10 @@ async function loadData() {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   const decoded = new TextDecoder('utf-8').decode(bytes);
   shiftData = JSON.parse(decoded);
+  if (shiftData.months) {
+    const key = shiftData.currentMonth || Object.keys(shiftData.months).sort().reverse()[0];
+    applyMonthAlias(key);
+  }
 }
 
 async function saveData() {
@@ -744,7 +775,11 @@ async function saveData() {
   fab.textContent = '保存中...';
 
   try {
-    const jsonStr = JSON.stringify(shiftData, null, 2);
+    syncAliasToMonths();
+    const cleaned = JSON.parse(JSON.stringify(shiftData));
+    delete cleaned.schedule;
+    delete cleaned.instructors;
+    const jsonStr = JSON.stringify(cleaned, null, 2);
     const utf8Bytes = new TextEncoder().encode(jsonStr);
     let binaryStr = '';
     utf8Bytes.forEach(b => binaryStr += String.fromCharCode(b));
@@ -881,10 +916,21 @@ function renderApp() {
   const sysUpdateDisplay = formatDateJP(d.lastSystemUpdate || '-');
   const sysVer = d.systemVersion || '-';
 
+  const availableMonths = d.availableMonths || Object.keys(d.months || {}).sort();
+  const monthOptionsHtml = availableMonths.map(k => {
+    const m = parseInt(k.split('-')[1], 10);
+    const sel = k === currentMonthKey ? 'selected' : '';
+    return `<option value="${k}" ${sel}>${m}月</option>`;
+  }).join('');
+  const currentMonthLabel = currentMonthKey ? `${parseInt(currentMonthKey.split('-')[1], 10)}月` : '-';
+
   app.innerHTML = `
     <div class="page-header">
       <span style="font-size:24px">&#128101;</span>
-      <h1>4月 シフト管理</h1>
+      <h1 style="display:flex;align-items:center;gap:8px;">
+        <select id="monthSelector" onchange="switchMonth(this.value)" style="font-size:inherit;font-weight:inherit;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;cursor:pointer;">${monthOptionsHtml}</select>
+        シフト管理
+      </h1>
       <div class="header-right">
         <div class="sub" style="display:grid;grid-template-columns:auto auto;gap:0 8px;font-variant-numeric:tabular-nums;font-family:'Inter',monospace;">
           <span style="text-align:right;">System ${sysVer}:</span><span>${sysUpdateDisplay}</span>
@@ -1448,8 +1494,9 @@ function refreshSummary() {
 // ============================================================
 function renderCalendar() {
   const panel = document.getElementById('panel-calendar');
-  const year = 2026;
-  const month = 4; // April
+  const [yearStr, monthStr] = (currentMonthKey || '2026-04').split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
 
   const firstDay = new Date(year, month - 1, 1);
   const lastDay = new Date(year, month, 0);
@@ -2410,7 +2457,9 @@ function modalRemoveAssignedByName(schedIdx, name, reopenFn, ...reopenArgs) {
 
 // -- Calendar day modal (EDITABLE, Timeline view) --
 function openCalendarDayModal(day) {
-  const year = 2026, month = 4;
+  const [yearStr, monthStr] = (currentMonthKey || '2026-04').split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
   const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   const dowIdx = new Date(year, month - 1, day).getDay();
   const dow = JP_DAY_NAMES[dowIdx];
