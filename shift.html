@@ -158,10 +158,10 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .avail-table th, .avail-table td { padding: 8px 6px; min-width: 56px; }
 .avail-table th.date-header { font-size: 11px; padding: 10px 4px; white-space: nowrap; }
 .avail-cell {
-  width: 48px; height: 36px; border-radius: 6px; cursor: pointer;
+  min-width: 48px; padding: 0 6px; height: 36px; border-radius: 6px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 600; user-select: none; transition: all 0.15s;
-  margin: 0 auto;
+  font-size: 11px; font-weight: 600; user-select: none; transition: all 0.15s;
+  margin: 0 auto; white-space: nowrap;
 }
 .avail-cell:hover { transform: scale(1.15); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 .avail-full { background: rgba(63,185,80,0.25); color: var(--green); }
@@ -1212,17 +1212,17 @@ function updateInstNeeded(idx, val) {
 // ============================================================
 // Availability Matrix
 // ============================================================
-const AVAIL_STATES = ['', '全日OK', '全日NG', 'AM', 'PM', '保留', 'NG', '未回答'];
-const AVAIL_LABELS = { '': '', '全日': '全', '全日OK': '全○', '全日NG': '全✕', 'AM': 'AM', 'PM': 'PM', '保留': '保', 'NG': 'NG', '未回答': '?' };
-const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', '全日OK': 'avail-full-ok', '全日NG': 'avail-full-ng', 'AM': 'avail-am', 'PM': 'avail-pm', '保留': 'avail-hold', 'NG': 'avail-ng', '未回答': 'avail-pending' };
+const AVAIL_STATES = ['', '全日(出張OK)', '全日(出張NG)', 'AM', 'PM', '保留', 'NG', '未回答'];
+const AVAIL_LABELS = { '': '', '全日': '全日', '全日(出張OK)': '出張OK', '全日(出張NG)': '出張NG', 'AM': 'AM', 'PM': 'PM', '保留': '保留', 'NG': 'NG', '未回答': '未回答' };
+const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', '全日(出張OK)': 'avail-full-ok', '全日(出張NG)': 'avail-full-ng', 'AM': 'avail-am', 'PM': 'avail-pm', '保留': 'avail-hold', 'NG': 'avail-ng', '未回答': 'avail-pending' };
 // 「全日」系の判定ヘルパー (出張OK/NG両方を受ける)。既存「全日」値(4月データ等)も包含
-const isFullDay = v => v === '全日' || v === '全日OK' || v === '全日NG';
+const isFullDay = v => v === '全日' || v === '全日(出張OK)' || v === '全日(出張NG)';
 let availFilterDate = null; // null = show all, string = filter by date
 
 function renderAvailability() {
   const d = shiftData;
   const panel = document.getElementById('panel-availability');
-  const dates = d.schedule.filter(s => s.instNeeded > 0);
+  const dates = d.schedule;  // Campがある全日を表示 (instNeeded==0も含む)
 
   if (dates.length === 0) {
     panel.innerHTML = '<p style="color:var(--text2);padding:20px;">インストが必要な日程がありません。</p>';
@@ -1252,13 +1252,13 @@ function renderAvailability() {
 
   let html = `<div class="section">
     <div class="legend">
-      <span class="legend-item"><span class="avail-cell avail-full-ok" style="display:inline-flex;width:32px;height:24px;font-size:10px;">全○</span> 出張OK</span>
-      <span class="legend-item"><span class="avail-cell avail-full-ng" style="display:inline-flex;width:32px;height:24px;font-size:10px;">全✕</span> 出張NG</span>
+      <span class="legend-item"><span class="avail-cell avail-full-ok" style="display:inline-flex;width:52px;height:24px;font-size:10px;padding:0 4px;">出張OK</span> 全日(出張OK)</span>
+      <span class="legend-item"><span class="avail-cell avail-full-ng" style="display:inline-flex;width:52px;height:24px;font-size:10px;padding:0 4px;">出張NG</span> 全日(出張NG)</span>
       <span class="legend-item"><span class="avail-cell avail-am" style="display:inline-flex;width:32px;height:24px;font-size:10px;">AM</span> 午前</span>
       <span class="legend-item"><span class="avail-cell avail-pm" style="display:inline-flex;width:32px;height:24px;font-size:10px;">PM</span> 午後</span>
-      <span class="legend-item"><span class="avail-cell avail-hold" style="display:inline-flex;width:32px;height:24px;font-size:10px;">保</span> 保留</span>
+      <span class="legend-item"><span class="avail-cell avail-hold" style="display:inline-flex;width:40px;height:24px;font-size:10px;">保留</span> 保留</span>
       <span class="legend-item"><span class="avail-cell avail-ng" style="display:inline-flex;width:32px;height:24px;font-size:10px;">NG</span> 不可</span>
-      <span class="legend-item"><span class="avail-cell avail-pending" style="display:inline-flex;width:32px;height:24px;font-size:10px;">?</span> 未回答</span>
+      <span class="legend-item"><span class="avail-cell avail-pending" style="display:inline-flex;width:52px;height:24px;font-size:10px;padding:0 4px;">未回答</span> 未回答</span>
       <span class="legend-item"><span class="avail-cell avail-empty" style="display:inline-flex;width:32px;height:24px;font-size:10px;">-</span> 該当なし</span>
       ${filterLabel}
     </div>
@@ -1763,7 +1763,7 @@ function renderSuggestPanel() {
   });
 
   // --- Mini availability matrix (left side) ---
-  const dates = d.schedule.filter(s => s.instNeeded > 0);
+  const dates = d.schedule;  // Campがある全日を表示 (instNeeded==0も含む)
   const uniqueDates = [];
   const seenDates = new Set();
   dates.forEach(s => { if (!seenDates.has(s.date)) { seenDates.add(s.date); uniqueDates.push({ date: s.date, dow: s.dow }); } });
@@ -1810,13 +1810,13 @@ function renderSuggestPanel() {
       let cls = '', label = '-';
       if (isTeacher) { cls = 'teacher-mark'; label = '講師'; }
       else if (isAssigned) { cls = 'assigned-mark'; label = '配置'; }
-      else if (avail === '全日OK' || avail === '全日') { cls = 'avail-full-ok'; label = '全○'; }
-      else if (avail === '全日NG') { cls = 'avail-full-ng'; label = '全✕'; }
+      else if (avail === '全日(出張OK)' || avail === '全日') { cls = 'avail-full-ok'; label = '出張OK'; }
+      else if (avail === '全日(出張NG)') { cls = 'avail-full-ng'; label = '出張NG'; }
       else if (avail === 'AM') { cls = 'avail-am'; label = 'AM'; }
       else if (avail === 'PM') { cls = 'avail-pm'; label = 'PM'; }
-      else if (avail === '保留') { cls = 'avail-hold'; label = '保'; }
+      else if (avail === '保留') { cls = 'avail-hold'; label = '保留'; }
       else if (avail === 'NG') { cls = 'avail-ng'; label = 'NG'; }
-      else if (avail === '未回答') { cls = 'avail-pending'; label = '?'; }
+      else if (avail === '未回答') { cls = 'avail-pending'; label = '未回答'; }
       else { cls = 'avail-empty'; }
       row += `<td><div class="avail-cell ${cls}" style="width:32px;height:22px;font-size:10px;margin:auto;">${label}</div></td>`;
     });
@@ -1885,13 +1885,13 @@ function renderSuggestPanel() {
 }
 
 function buildSuggestRightHtml(d) {
-  let allSessions = d.schedule.filter(s => s.instNeeded > 0);
+  let allSessions = d.schedule;  // Campがある全セッションを表示 (instNeeded==0も含む)
   if (suggestFilterDate) {
     allSessions = allSessions.filter(s => s.date === suggestFilterDate);
   }
 
   if (allSessions.length === 0) {
-    return '<p style="color:var(--text2);padding:16px;">インストが必要な日程がありません。</p>';
+    return '<p style="color:var(--text2);padding:16px;">Campの予定がありません。</p>';
   }
 
   let html = '<div class="suggestion-list">';
@@ -2236,11 +2236,11 @@ function openAvailabilityModal(instIdx) {
   const inst = shiftData.instructors[instIdx];
   const typeLabel = inst.type || '-';
 
-  const availColorMap = { '全日': 'var(--green)', '全日OK': 'var(--green)', '全日NG': 'var(--green)', 'AM': 'var(--blue)', 'PM': 'var(--purple)', '保留': 'var(--yellow)', 'NG': 'var(--red)', '未回答': 'var(--text2)' };
-  const availBgMap = { '全日': 'rgba(63,185,80,0.25)', '全日OK': 'rgba(63,185,80,0.25)', '全日NG': 'rgba(63,185,80,0.12)', 'AM': 'rgba(88,166,255,0.25)', 'PM': 'rgba(188,140,255,0.25)', '保留': 'rgba(210,153,34,0.25)', 'NG': 'rgba(248,81,73,0.25)', '未回答': 'rgba(139,148,158,0.18)' };
+  const availColorMap = { '全日': 'var(--green)', '全日(出張OK)': 'var(--green)', '全日(出張NG)': 'var(--green)', 'AM': 'var(--blue)', 'PM': 'var(--purple)', '保留': 'var(--yellow)', 'NG': 'var(--red)', '未回答': 'var(--text2)' };
+  const availBgMap = { '全日': 'rgba(63,185,80,0.25)', '全日(出張OK)': 'rgba(63,185,80,0.25)', '全日(出張NG)': 'rgba(63,185,80,0.12)', 'AM': 'rgba(88,166,255,0.25)', 'PM': 'rgba(188,140,255,0.25)', '保留': 'rgba(210,153,34,0.25)', 'NG': 'rgba(248,81,73,0.25)', '未回答': 'rgba(139,148,158,0.18)' };
 
   // Build availability list with clickable status
-  const dates = shiftData.schedule.filter(s => s.instNeeded > 0);
+  const dates = shiftData.schedule;  // Campがある全日を表示
   const seenDates = new Set();
   const uniqueDates = [];
   dates.forEach(s => { if (!seenDates.has(s.date)) { seenDates.add(s.date); uniqueDates.push({ date: s.date, dow: s.dow }); } });
