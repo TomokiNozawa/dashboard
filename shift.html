@@ -2883,6 +2883,7 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     if (rChanged || sChanged) {
       diffs.push({
         rowNum: sheetRowNum, dateStr: date, start, company, content,
+        location: (s && s.location) || '',
         rOld: currentR, rNew: newR, rChanged,
         sOld: currentS, sNew: newS, sChanged,
       });
@@ -3087,9 +3088,15 @@ async function openExportModal() {
           return `<td style="${bl}padding:8px;color:${color};font-weight:${weight};vertical-align:top;">${inner}</td>`;
         };
         diffs2.forEach(d => {
+          const locHtml = d.location
+            ? `<span style="font-size:11px;color:var(--text2);margin-left:6px;">📍${(d.location||'').replace(/</g,'&lt;')}</span>`
+            : '';
           html += `<tr style="border-bottom:1px solid var(--border-light);">
             <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${d.start || ''}</span></td>
-            <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${(d.company||'').replace(/</g,'&lt;')}<br><span style="font-size:11px;color:var(--text3);">${(d.content||'').slice(0,40).replace(/</g,'&lt;')}</span></td>
+            <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">
+              <div>${(d.company||'').replace(/</g,'&lt;')}${locHtml}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;">${(d.content||'').slice(0,40).replace(/</g,'&lt;')}</div>
+            </td>
             ${cell(d.rOld, d.rChanged, false, true)}
             ${cell(d.rNew, d.rChanged, true, false)}
             ${cell(d.sOld, d.sChanged, false, true)}
