@@ -2780,7 +2780,7 @@ function buildSheet1ExportData() {
       }
       return prefix + text;
     });
-    result.push({ date, cellValue: lines.join('\n'), sessionCount: sessions.length });
+    result.push({ date, cellValue: lines.join('\n'), sessionCount: sessions.length, checked: true });
   });
   return result;
 }
@@ -2886,6 +2886,7 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
         location: (s && s.location) || '',
         rOld: currentR, rNew: newR, rChanged,
         sOld: currentS, sNew: newS, sChanged,
+        checked: true,
       });
     }
   });
@@ -3037,90 +3038,173 @@ async function openExportModal() {
       body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);font-size:13px;">✓ 差分なし (スプシ①/② ともに最新状態です)</div>';
       setTimeout(() => document.getElementById('exportCancelBtn')?.focus(), 0);
     } else {
-      // セクション1: スプシ① 備考列
-      let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:14px;">スプシ①/②合わせて <strong style="color:var(--text);">${total}件</strong> の差分があります</div>`;
-      html += `<section style="margin-bottom:24px;">
-        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text);border-left:3px solid var(--blue);padding-left:8px;">スプシ① 備考列 (${monthNum}月シート) - ${diffs1.length}件</h4>`;
-      if (diffs1.length === 0) {
-        html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
-      } else {
-        html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--border-light);"><th style="padding:8px 10px;text-align:left;white-space:nowrap;">日</th><th style="padding:8px 10px;text-align:left;width:45%;">Before</th><th style="padding:8px 10px;text-align:left;width:45%;">After</th></tr></thead><tbody>';
-        diffs1.forEach(d => {
-          const oldHtml = (d.old || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
-          const newHtml = (d.neu || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
-          html += `<tr style="border-bottom:1px solid var(--border-light);"><td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日</td><td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${oldHtml}</td><td style="padding:8px 10px;color:var(--green);vertical-align:top;">${newHtml}</td></tr>`;
-        });
-        html += '</tbody></table>';
-      }
-      html += '</section>';
-
-      // セクション2: スプシ② ｻﾎﾟ/赤井列 (1セッション=1行、R/S並列表示)
-      html += `<section>
-        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text);border-left:3px solid var(--purple);padding-left:8px;">スプシ② ｻﾎﾟ列(S)/赤井列(R) (${yearSheetName}シート) - ${diffs2.length}件</h4>`;
-      if (diffs2.length === 0) {
-        html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
-      } else {
-        html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-          <thead>
-            <tr style="background:var(--border-light);">
-              <th rowspan="2" style="padding:8px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border);">日/時間</th>
-              <th rowspan="2" style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);">会社 / 内容</th>
-              <th colspan="2" style="padding:6px 10px;text-align:center;border-left:1px solid var(--border);color:var(--red);">赤井列(R)</th>
-              <th colspan="2" style="padding:6px 10px;text-align:center;border-left:1px solid var(--border);">ｻﾎﾟ列(S)</th>
-            </tr>
-            <tr style="background:var(--border-light);">
-              <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);">Before</th>
-              <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);">After</th>
-              <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);">Before</th>
-              <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);">After</th>
-            </tr>
-          </thead>
-          <tbody>`;
-        const cell = (val, changed, after, borderLeft) => {
-          const v = (val || '').toString().replace(/</g,'&lt;');
-          const inner = v || '<span style="color:var(--text3);">(空欄)</span>';
-          const bl = borderLeft ? 'border-left:1px solid var(--border);' : '';
-          if (!changed) {
-            return `<td style="${bl}padding:8px;color:var(--text3);vertical-align:top;font-size:11px;">${inner}</td>`;
-          }
-          const color = after ? 'var(--green)' : 'var(--text2)';
-          const weight = after ? '600' : '400';
-          return `<td style="${bl}padding:8px;color:${color};font-weight:${weight};vertical-align:top;">${inner}</td>`;
-        };
-        diffs2.forEach((d, i) => {
-          const prev = diffs2[i - 1];
-          const isNewDate = !prev || prev.dateStr !== d.dateStr;
-          // 日付区切り: 新しい日の先頭行は太めの濃い線で区切る (同一日内は通常の細い薄線)
-          const topBorder = (isNewDate && i > 0) ? 'border-top:2px solid var(--text3);' : '';
-          const locHtml = d.location
-            ? `<span style="font-size:11px;color:var(--text2);margin-left:6px;">📍${(d.location||'').replace(/</g,'&lt;')}</span>`
-            : '';
-          html += `<tr style="${topBorder}border-bottom:1px solid var(--border-light);">
-            <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${d.start || ''}</span></td>
-            <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">
-              <div>${(d.company||'').replace(/</g,'&lt;')}${locHtml}</div>
-              <div style="font-size:11px;color:var(--text3);margin-top:2px;">${(d.content||'').slice(0,40).replace(/</g,'&lt;')}</div>
-            </td>
-            ${cell(d.rOld, d.rChanged, false, true)}
-            ${cell(d.rNew, d.rChanged, true, false)}
-            ${cell(d.sOld, d.sChanged, false, true)}
-            ${cell(d.sNew, d.sChanged, true, false)}
-          </tr>`;
-        });
-        html += '</tbody></table>';
-      }
-      html += '</section>';
-
-      body.innerHTML = html;
-      const btn = document.getElementById('exportConfirmBtn');
-      btn.disabled = false;
-      btn.style.opacity = '1';
-      setTimeout(() => btn.focus(), 0);
+      renderExportBody();
+      setTimeout(() => document.getElementById('exportConfirmBtn')?.focus(), 0);
     }
   } catch (e) {
     document.getElementById('exportModalBody').innerHTML = `<div style="padding:20px;color:var(--red);font-size:13px;">エラー: ${e.message}</div>`;
     setTimeout(() => document.getElementById('exportCancelBtn')?.focus(), 0);
   }
+}
+
+// ============================================================
+// Export modal: body rendering + selection
+// ============================================================
+function renderExportBody() {
+  const body = document.getElementById('exportModalBody');
+  if (!body) return;
+  const diffs1 = window._exportDiffs1 || [];
+  const diffs2 = window._exportDiffs2 || [];
+  const monthNum = window._exportMonthNum;
+  const yearSheetName = window._exportYearSheet;
+  const checked1 = diffs1.filter(d => d.checked).length;
+  const checked2 = diffs2.filter(d => d.checked).length;
+  const totalChecked = checked1 + checked2;
+
+  // セクション1: スプシ① 備考列
+  let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:14px;">選択中 <strong style="color:var(--green);">${totalChecked}件</strong> / 全差分 ${diffs1.length + diffs2.length}件</div>`;
+
+  html += `<section style="margin-bottom:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <h4 style="margin:0;font-size:13px;color:var(--text);border-left:3px solid var(--blue);padding-left:8px;">スプシ① 備考列 (${monthNum}月シート) - ${checked1}/${diffs1.length}件選択</h4>
+      <div style="display:flex;gap:6px;">
+        <button onclick="toggleAllExport(1, true)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">全選択</button>
+        <button onclick="toggleAllExport(1, false)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">全解除</button>
+      </div>
+    </div>`;
+  if (diffs1.length === 0) {
+    html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
+  } else {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--border-light);">';
+    html += '<th style="padding:8px;width:32px;text-align:center;"></th>';
+    html += '<th style="padding:8px 10px;text-align:left;white-space:nowrap;">日</th>';
+    html += '<th style="padding:8px 10px;text-align:left;width:45%;">Before</th>';
+    html += '<th style="padding:8px 10px;text-align:left;width:45%;">After</th>';
+    html += '</tr></thead><tbody>';
+    diffs1.forEach((d, i) => {
+      const oldHtml = (d.old || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
+      const newHtml = (d.neu || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
+      const opacity = d.checked ? '1' : '0.35';
+      html += `<tr style="border-bottom:1px solid var(--border-light);opacity:${opacity};">
+        <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(1, ${i}, this.checked)" aria-label="${d.day}日を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
+        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日</td>
+        <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${oldHtml}</td>
+        <td style="padding:8px 10px;color:var(--green);vertical-align:top;">${newHtml}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+  html += '</section>';
+
+  // セクション2: スプシ② ｻﾎﾟ/赤井列
+  html += `<section>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <h4 style="margin:0;font-size:13px;color:var(--text);border-left:3px solid var(--purple);padding-left:8px;">スプシ② ｻﾎﾟ列(S)/赤井列(R) (${yearSheetName}シート) - ${checked2}/${diffs2.length}件選択</h4>
+      <div style="display:flex;gap:6px;">
+        <button onclick="toggleAllExport(2, true)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">全選択</button>
+        <button onclick="toggleAllExport(2, false)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">全解除</button>
+      </div>
+    </div>`;
+  if (diffs2.length === 0) {
+    html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
+  } else {
+    html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:var(--border-light);">
+          <th rowspan="2" style="padding:8px;width:32px;text-align:center;border-bottom:1px solid var(--border);"></th>
+          <th rowspan="2" style="padding:8px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border);">日/時間</th>
+          <th rowspan="2" style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);">会社 / 内容</th>
+          <th colspan="2" style="padding:6px 10px;text-align:center;border-left:1px solid var(--border);color:var(--red);">赤井列(R)</th>
+          <th colspan="2" style="padding:6px 10px;text-align:center;border-left:1px solid var(--border);">ｻﾎﾟ列(S)</th>
+        </tr>
+        <tr style="background:var(--border-light);">
+          <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);">Before</th>
+          <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);">After</th>
+          <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);">Before</th>
+          <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);">After</th>
+        </tr>
+      </thead>
+      <tbody>`;
+    const cell = (val, changed, after, borderLeft) => {
+      const v = (val || '').toString().replace(/</g,'&lt;');
+      const inner = v || '<span style="color:var(--text3);">(空欄)</span>';
+      const bl = borderLeft ? 'border-left:1px solid var(--border);' : '';
+      if (!changed) {
+        return `<td style="${bl}padding:8px;color:var(--text3);vertical-align:top;font-size:11px;">${inner}</td>`;
+      }
+      const color = after ? 'var(--green)' : 'var(--text2)';
+      const weight = after ? '600' : '400';
+      return `<td style="${bl}padding:8px;color:${color};font-weight:${weight};vertical-align:top;">${inner}</td>`;
+    };
+    // 日付毎にグループ化してヘッダー行を挟む
+    let lastDate = null;
+    diffs2.forEach((d, i) => {
+      if (d.dateStr !== lastDate) {
+        // 日付ヘッダー行 (その日の全選択トグル)
+        const dayIndices = diffs2.map((x, xi) => x.dateStr === d.dateStr ? xi : -1).filter(xi => xi >= 0);
+        const dayTotal = dayIndices.length;
+        const dayChecked = dayIndices.filter(xi => diffs2[xi].checked).length;
+        const allChecked = dayChecked === dayTotal;
+        const someChecked = dayChecked > 0;
+        const label = allChecked ? 'checked' : '';
+        const indeterminate = (!allChecked && someChecked);
+        const topBorder = (lastDate !== null) ? 'border-top:2px solid var(--text3);' : '';
+        html += `<tr style="${topBorder}background:var(--border-light);">
+          <td style="padding:6px 8px;text-align:center;"><input type="checkbox" ${label} data-indeterm="${indeterminate ? '1' : '0'}" onchange="toggleDateExport('${d.dateStr}', this.checked)" aria-label="${d.dateStr} 日別全選択" style="cursor:pointer;width:16px;height:16px;"></td>
+          <td colspan="6" style="padding:6px 10px;font-weight:600;font-size:11px;color:var(--text);">📅 ${d.dateStr} — ${dayChecked}/${dayTotal}件選択</td>
+        </tr>`;
+        lastDate = d.dateStr;
+      }
+      const locHtml = d.location
+        ? `<span style="font-size:11px;color:var(--text2);margin-left:6px;">📍${(d.location||'').replace(/</g,'&lt;')}</span>`
+        : '';
+      const opacity = d.checked ? '1' : '0.35';
+      html += `<tr style="border-bottom:1px solid var(--border-light);opacity:${opacity};">
+        <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(2, ${i}, this.checked)" aria-label="${d.dateStr} ${d.start} ${d.company} を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
+        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${d.start || ''}</span></td>
+        <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">
+          <div>${(d.company||'').replace(/</g,'&lt;')}${locHtml}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${(d.content||'').slice(0,40).replace(/</g,'&lt;')}</div>
+        </td>
+        ${cell(d.rOld, d.rChanged, false, true)}
+        ${cell(d.rNew, d.rChanged, true, false)}
+        ${cell(d.sOld, d.sChanged, false, true)}
+        ${cell(d.sNew, d.sChanged, true, false)}
+      </tr>`;
+    });
+    html += '</tbody></table>';
+  }
+  html += '</section>';
+
+  body.innerHTML = html;
+  // indeterminate 状態を反映 (DOM差分なので描画後に設定)
+  body.querySelectorAll('input[type="checkbox"][data-indeterm="1"]').forEach(cb => { cb.indeterminate = true; });
+
+  // 確定ボタン状態更新
+  const btn = document.getElementById('exportConfirmBtn');
+  if (btn) {
+    btn.disabled = totalChecked === 0;
+    btn.style.opacity = totalChecked === 0 ? '0.45' : '1';
+    btn.textContent = totalChecked === 0 ? '書き出し対象なし (Alt+S)' : `この内容で書き出す (${totalChecked}件) (Alt+S)`;
+  }
+}
+
+function toggleExportItem(kind, idx, checked) {
+  const arr = kind === 1 ? window._exportDiffs1 : window._exportDiffs2;
+  if (arr && arr[idx]) arr[idx].checked = checked;
+  renderExportBody();
+}
+
+function toggleAllExport(kind, checked) {
+  const arr = kind === 1 ? window._exportDiffs1 : window._exportDiffs2;
+  if (arr) arr.forEach(d => { d.checked = checked; });
+  renderExportBody();
+}
+
+function toggleDateExport(dateStr, checked) {
+  const arr = window._exportDiffs2;
+  if (arr) arr.forEach(d => { if (d.dateStr === dateStr) d.checked = checked; });
+  renderExportBody();
 }
 
 function closeExportModal() {
@@ -3140,21 +3224,19 @@ function closeExportModal() {
 }
 
 async function confirmExport() {
-  const diffs1 = window._exportDiffs1 || [];
-  const diffs2 = window._exportDiffs2 || [];
+  const diffs1 = (window._exportDiffs1 || []).filter(d => d.checked);
+  const diffs2 = (window._exportDiffs2 || []).filter(d => d.checked);
   const monthNum = window._exportMonthNum;
   const yearSheetName = window._exportYearSheet;
-  if (!diffs1.length && !diffs2.length) { closeExportModal(); return; }
+  if (!diffs1.length && !diffs2.length) { return; }  // 何も選択されていない
   const btn = document.getElementById('exportConfirmBtn');
   btn.disabled = true;
   btn.textContent = '書き込み中...';
   try {
-    // スプシ① 備考列
     if (diffs1.length) {
       const rows = diffs1.map(d => ({ day: d.day, value: d.neu }));
       await writeSheet1Biko(monthNum, rows);
     }
-    // スプシ② ｻﾎﾟ/赤井列
     if (diffs2.length) {
       await writeSheet2(yearSheetName, diffs2);
     }
@@ -3163,7 +3245,7 @@ async function confirmExport() {
     showToast(msg, 'success');
   } catch (e) {
     btn.disabled = false;
-    btn.textContent = 'この内容で書き出す (Alt+S)';
+    renderExportBody();  // ボタンラベルを件数表示に戻す
     showToast('書込エラー: ' + e.message, 'error');
   }
 }
