@@ -165,10 +165,13 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 }
 .avail-cell:hover { transform: scale(1.15); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 .avail-full { background: rgba(63,185,80,0.25); color: var(--green); }
+.avail-full-ok { background: rgba(63,185,80,0.25); color: var(--green); }
+.avail-full-ng { background: rgba(63,185,80,0.12); color: var(--green); outline: 1px dashed rgba(210,153,34,0.7); outline-offset: -2px; }
 .avail-am { background: rgba(88,166,255,0.25); color: var(--blue); }
 .avail-pm { background: rgba(188,140,255,0.25); color: var(--purple); }
 .avail-hold { background: rgba(210,153,34,0.25); color: var(--yellow); }
 .avail-ng { background: rgba(248,81,73,0.25); color: var(--red); }
+.avail-pending { background: rgba(139,148,158,0.18); color: var(--text2); border: 1px dashed rgba(139,148,158,0.5); }
 .avail-empty { background: rgba(110,118,129,0.08); color: var(--text3); }
 .avail-name-cell { text-align: left !important; white-space: nowrap; font-weight: 500; font-size: 13px; position: sticky; left: 0; z-index: 1; padding: 10px 14px !important; min-width: 120px; }
 .avail-group-header { background: var(--border-light) !important; }
@@ -1209,9 +1212,11 @@ function updateInstNeeded(idx, val) {
 // ============================================================
 // Availability Matrix
 // ============================================================
-const AVAIL_STATES = ['', '全日', 'AM', 'PM', '保留', 'NG'];
-const AVAIL_LABELS = { '': '', '全日': '全', 'AM': 'AM', 'PM': 'PM', '保留': '保', 'NG': 'NG' };
-const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', 'AM': 'avail-am', 'PM': 'avail-pm', '保留': 'avail-hold', 'NG': 'avail-ng' };
+const AVAIL_STATES = ['', '全日OK', '全日NG', 'AM', 'PM', '保留', 'NG', '未回答'];
+const AVAIL_LABELS = { '': '', '全日': '全', '全日OK': '全○', '全日NG': '全✕', 'AM': 'AM', 'PM': 'PM', '保留': '保', 'NG': 'NG', '未回答': '?' };
+const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', '全日OK': 'avail-full-ok', '全日NG': 'avail-full-ng', 'AM': 'avail-am', 'PM': 'avail-pm', '保留': 'avail-hold', 'NG': 'avail-ng', '未回答': 'avail-pending' };
+// 「全日」系の判定ヘルパー (出張OK/NG両方を受ける)。既存「全日」値(4月データ等)も包含
+const isFullDay = v => v === '全日' || v === '全日OK' || v === '全日NG';
 let availFilterDate = null; // null = show all, string = filter by date
 
 function renderAvailability() {
@@ -1247,12 +1252,14 @@ function renderAvailability() {
 
   let html = `<div class="section">
     <div class="legend">
-      <span class="legend-item"><span class="avail-cell avail-full" style="display:inline-flex;width:32px;height:24px;font-size:10px;">全</span> 全日</span>
+      <span class="legend-item"><span class="avail-cell avail-full-ok" style="display:inline-flex;width:32px;height:24px;font-size:10px;">全○</span> 出張OK</span>
+      <span class="legend-item"><span class="avail-cell avail-full-ng" style="display:inline-flex;width:32px;height:24px;font-size:10px;">全✕</span> 出張NG</span>
       <span class="legend-item"><span class="avail-cell avail-am" style="display:inline-flex;width:32px;height:24px;font-size:10px;">AM</span> 午前</span>
       <span class="legend-item"><span class="avail-cell avail-pm" style="display:inline-flex;width:32px;height:24px;font-size:10px;">PM</span> 午後</span>
       <span class="legend-item"><span class="avail-cell avail-hold" style="display:inline-flex;width:32px;height:24px;font-size:10px;">保</span> 保留</span>
       <span class="legend-item"><span class="avail-cell avail-ng" style="display:inline-flex;width:32px;height:24px;font-size:10px;">NG</span> 不可</span>
-      <span class="legend-item"><span class="avail-cell avail-empty" style="display:inline-flex;width:32px;height:24px;font-size:10px;">-</span> 未回答</span>
+      <span class="legend-item"><span class="avail-cell avail-pending" style="display:inline-flex;width:32px;height:24px;font-size:10px;">?</span> 未回答</span>
+      <span class="legend-item"><span class="avail-cell avail-empty" style="display:inline-flex;width:32px;height:24px;font-size:10px;">-</span> 該当なし</span>
       ${filterLabel}
     </div>
     <div class="table-wrap" style="max-height:700px;overflow:auto;">
@@ -1657,7 +1664,7 @@ function showAssignDropdown(event, schedIdx) {
   // Collect names assigned to time-overlapping sessions (same date, time conflict only)
   const conflicting = getConflictingAssigned(s);
   const available = shiftData.instructors
-    .filter(inst => { const a = inst.availability && inst.availability[s.date]; return a !== 'NG'; })
+    .filter(inst => { const a = inst.availability && inst.availability[s.date]; return a !== 'NG' && a !== '未回答'; })
     .map(inst => inst.name)
     .filter(name => !assigned.includes(name))
     .filter(name => !conflicting.has(name))
@@ -1803,11 +1810,13 @@ function renderSuggestPanel() {
       let cls = '', label = '-';
       if (isTeacher) { cls = 'teacher-mark'; label = '講師'; }
       else if (isAssigned) { cls = 'assigned-mark'; label = '配置'; }
-      else if (avail === '全日') { cls = 'avail-full'; label = '全'; }
+      else if (avail === '全日OK' || avail === '全日') { cls = 'avail-full-ok'; label = '全○'; }
+      else if (avail === '全日NG') { cls = 'avail-full-ng'; label = '全✕'; }
       else if (avail === 'AM') { cls = 'avail-am'; label = 'AM'; }
       else if (avail === 'PM') { cls = 'avail-pm'; label = 'PM'; }
       else if (avail === '保留') { cls = 'avail-hold'; label = '保'; }
       else if (avail === 'NG') { cls = 'avail-ng'; label = 'NG'; }
+      else if (avail === '未回答') { cls = 'avail-pending'; label = '?'; }
       else { cls = 'avail-empty'; }
       row += `<td><div class="avail-cell ${cls}" style="width:32px;height:22px;font-size:10px;margin:auto;">${label}</div></td>`;
     });
@@ -1906,8 +1915,8 @@ function buildSuggestRightHtml(d) {
       if (isTeachingOnDate(inst.name, s.date, s)) return false;
       if (conflicting.has(inst.name)) return false;
       const avail = inst.availability && inst.availability[s.date];
-      if (!avail || avail === 'NG') return false;
-      if (avail === '全日') return true;
+      if (!avail || avail === 'NG' || avail === '未回答') return false;
+      if (isFullDay(avail)) return true;
       if (avail === 'AM' && isAM) return true;
       if (avail === 'PM' && isPM) return true;
       if (avail === 'AM' && !isPM) return true;
@@ -1930,7 +1939,7 @@ function buildSuggestRightHtml(d) {
         ${candidates.length > 0
           ? candidates.map(inst => {
               const avail = (inst.availability && inst.availability[s.date]) || '';
-              const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : 'var(--purple)';
+              const availColor = isFullDay(avail) ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : 'var(--purple)';
               return `<span style="font-size:11px;color:${availColor};">${inst.name}</span>`;
             }).join('<span style="color:var(--text3);font-size:10px;">/</span>')
           : '<span style="color:var(--red);font-size:11px;">なし</span>'}
@@ -2114,7 +2123,7 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
   // Collect names assigned to time-overlapping sessions (same date, time conflict only)
   const conflicting = getConflictingAssigned(s);
   const available = shiftData.instructors
-    .filter(inst => { const a = inst.availability && inst.availability[s.date]; return a !== 'NG'; })
+    .filter(inst => { const a = inst.availability && inst.availability[s.date]; return a !== 'NG' && a !== '未回答'; })
     .map(inst => inst.name)
     .filter(name => !assigned.includes(name))
     .filter(name => !conflicting.has(name))
@@ -2227,8 +2236,8 @@ function openAvailabilityModal(instIdx) {
   const inst = shiftData.instructors[instIdx];
   const typeLabel = inst.type || '-';
 
-  const availColorMap = { '全日': 'var(--green)', 'AM': 'var(--blue)', 'PM': 'var(--purple)', '保留': 'var(--yellow)', 'NG': 'var(--red)' };
-  const availBgMap = { '全日': 'rgba(63,185,80,0.25)', 'AM': 'rgba(88,166,255,0.25)', 'PM': 'rgba(188,140,255,0.25)', '保留': 'rgba(210,153,34,0.25)', 'NG': 'rgba(248,81,73,0.25)' };
+  const availColorMap = { '全日': 'var(--green)', '全日OK': 'var(--green)', '全日NG': 'var(--green)', 'AM': 'var(--blue)', 'PM': 'var(--purple)', '保留': 'var(--yellow)', 'NG': 'var(--red)', '未回答': 'var(--text2)' };
+  const availBgMap = { '全日': 'rgba(63,185,80,0.25)', '全日OK': 'rgba(63,185,80,0.25)', '全日NG': 'rgba(63,185,80,0.12)', 'AM': 'rgba(88,166,255,0.25)', 'PM': 'rgba(188,140,255,0.25)', '保留': 'rgba(210,153,34,0.25)', 'NG': 'rgba(248,81,73,0.25)', '未回答': 'rgba(139,148,158,0.18)' };
 
   // Build availability list with clickable status
   const dates = shiftData.schedule.filter(s => s.instNeeded > 0);
@@ -2312,7 +2321,7 @@ function openContactModal(instIdx) {
   let fullCount = 0, amCount = 0, pmCount = 0, holdCount = 0, ngCount = 0;
   if (inst.availability) {
     Object.values(inst.availability).forEach(v => {
-      if (v === '全日') fullCount++;
+      if (isFullDay(v)) fullCount++;
       else if (v === 'AM') amCount++;
       else if (v === 'PM') pmCount++;
       else if (v === '保留') holdCount++;
@@ -2384,16 +2393,16 @@ function openAssignmentModal(schedIdx) {
   let availableHtml = '';
   shiftData.instructors.forEach(inst => {
     const avail = inst.availability && inst.availability[s.date];
-    if (!avail || avail === 'NG') return;
+    if (!avail || avail === 'NG' || avail === '未回答') return;
     let canWork = false;
-    if (avail === '全日') canWork = true;
+    if (isFullDay(avail)) canWork = true;
     else if (avail === 'AM' && (isAM || !isPM)) canWork = true;
     else if (avail === 'PM' && (isPM || !isAM)) canWork = true;
     else if (avail === '保留') canWork = true;
 
     if (canWork) {
       const isAssigned = s.assigned && s.assigned.includes(inst.name);
-      const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
+      const availColor = isFullDay(avail) ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
       const assignedClass = isAssigned ? ' is-assigned' : '';
       const action = isAssigned
         ? `onclick="event.stopPropagation();modalRemoveAssignedByName(${schedIdx},'${escapeHtml(inst.name)}',openAssignmentModal,${schedIdx});"`
@@ -2565,8 +2574,8 @@ function openCalendarDayModal(day) {
   let unavailHtml = '';
   shiftData.instructors.forEach(inst => {
     const avail = inst.availability && inst.availability[dateStr];
-    if (avail && avail !== 'NG') {
-      const availColor = avail === '全日' ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
+    if (avail && avail !== 'NG' && avail !== '未回答') {
+      const availColor = isFullDay(avail) ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
       const assignedCount = daySchedules.filter(s => (s.assigned || []).includes(inst.name)).length;
       if (allTeachersOnDate.has(inst.name)) {
         unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">講師</span></div>`;
