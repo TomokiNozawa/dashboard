@@ -581,6 +581,12 @@ let currentMonthKey = null;
 let fileSha = null;
 let pat = null;
 let changeCount = 0;
+let sheetsCreds = null; // Google Sheets OAuth (refresh_token等)、encrypted-sheets.json 経由で取得
+let sheetsAccessToken = null;
+
+// スプシID (スキル シフト月次調整 SKILL.md と同じ)
+const SHEET1_ID = '1IqclCXG661Ssx8OZkjEmDiriiN36CEtB3uHNTc_bnWU'; // インストラクター管理表
+const SHEET2_ID = '1ZAyQWtU1N5rByZuSAGvZs8t6kwWL2g0de1__5b6yark'; // toB管理表
 
 function applyMonthAlias(key) {
   if (!shiftData || !shiftData.months || !shiftData.months[key]) return;
@@ -644,6 +650,7 @@ async function init() {
     if (elapsed < SESSION_TIMEOUT) {
       try {
         pat = await decryptPAT(storedPass);
+        try { sheetsCreds = JSON.parse(await decryptFile(storedPass, 'encrypted-sheets.json')); } catch(e) { console.warn('Sheets creds not available:', e); }
         localStorage.setItem('dk_ts', Date.now().toString());
         showApp();
         return;
@@ -683,6 +690,7 @@ async function doLogin() {
 
   try {
     pat = await decryptPAT(password);
+    try { sheetsCreds = JSON.parse(await decryptFile(password, 'encrypted-sheets.json')); } catch(e) { console.warn('Sheets creds not available:', e); }
     localStorage.setItem('dk_pass', password);
     localStorage.setItem('dk_ts', Date.now().toString());
     showApp();
@@ -723,6 +731,40 @@ async function decryptPAT(password) {
   const token = decoded.replace(/[\x00-\x1f]/g, '').trim();
   if (!token || token.length < 10) throw new Error('Invalid');
   return token;
+}
+
+// 汎用復号: 暗号化ファイルを復号してプレーンテキストを返す
+async function decryptFile(password, filename) {
+  const resp = await fetch(filename);
+  const payload = await resp.json();
+  const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+  const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-CBC', length: 256 }, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, encData);
+  return new TextDecoder().decode(decrypted).replace(/\0+$/, '');
+}
+
+// Sheets access_token 取得(refresh_tokenでリフレッシュ)
+async function getSheetsAccessToken() {
+  if (sheetsAccessToken && sheetsAccessToken.expires_at > Date.now() + 60000) return sheetsAccessToken.token;
+  if (!sheetsCreds) throw new Error('Sheets認証情報なし (encrypted-sheets.json未読込)');
+  const body = new URLSearchParams({
+    client_id: sheetsCreds.client_id,
+    client_secret: sheetsCreds.client_secret,
+    refresh_token: sheetsCreds.refresh_token,
+    grant_type: 'refresh_token',
+  });
+  const resp = await fetch(sheetsCreds.token_uri || 'https://oauth2.googleapis.com/token', {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body,
+  });
+  if (!resp.ok) throw new Error('Sheets token refresh失敗: ' + resp.status);
+  const j = await resp.json();
+  sheetsAccessToken = { token: j.access_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000 };
+  return j.access_token;
 }
 
 // ============================================================
@@ -941,6 +983,7 @@ function renderApp() {
         </div>
         <div class="action-bar" id="actionBar">
           <button class="save-fab" id="saveFab" onclick="saveData()">💾 保存 <span class="save-badge" id="saveBadge">${changeCount}</span></button>
+          <button class="save-fab" id="exportFab" onclick="openExportModal()" style="background:var(--blue);color:#fff;" title="スプシ①備考列へ書き出し">📤 スプシ書き出し</button>
         </div>
       </div>
     </div>
@@ -2659,6 +2702,172 @@ document.addEventListener('DOMContentLoaded', init);
     }
   });
 })();
+
+// ============================================================
+// Export to Sheets (Phase 1: スプシ①備考N列)
+// ============================================================
+const CIRCLE_NUMS = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
+
+// shift-data.schedule → スプシ①備考セル値を構築 (日付単位)
+function buildSheet1ExportData() {
+  const byDate = {};
+  (shiftData.schedule || []).forEach(s => {
+    if (!byDate[s.date]) byDate[s.date] = [];
+    byDate[s.date].push(s);
+  });
+  Object.values(byDate).forEach(arr => arr.sort((a,b) => (a._col||0) - (b._col||0)));
+  const result = [];
+  Object.keys(byDate).sort().forEach(date => {
+    const sessions = byDate[date];
+    const isSingle = sessions.length === 1;
+    const lines = sessions.map((s, i) => {
+      const prefix = isSingle ? '' : (CIRCLE_NUMS[i] || (i+1) + '.');
+      let text;
+      if (!s.instNeeded || s.instNeeded === 0) {
+        text = 'なし';
+      } else if (!s.assigned || s.assigned.length === 0) {
+        text = '';  // 未配置
+      } else {
+        const ic = s.instConfirm || {};
+        const names = s.assigned
+          .filter(n => ic[n] !== 'NG')
+          .map(n => (ic[n] === 'OK') ? n : n + '？');
+        text = names.length > 0 ? names.join('+') : 'なし';
+      }
+      return prefix + text;
+    });
+    result.push({ date, cellValue: lines.join('\n'), sessionCount: sessions.length });
+  });
+  return result;
+}
+
+// スプシ①から現在のN列値を取得 (範囲: N月!N4:N34)
+async function fetchSheet1CurrentBiko(monthNum) {
+  const token = await getSheetsAccessToken();
+  const range = encodeURIComponent(`${monthNum}月!N4:N34`);
+  const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET1_ID}/values/${range}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!resp.ok) throw new Error('スプシ①取得失敗: ' + resp.status + ' ' + await resp.text());
+  const j = await resp.json();
+  const values = j.values || [];
+  const result = {};
+  for (let i = 0; i < 31; i++) {
+    const day = i + 1;
+    result[day] = (values[i] && values[i][0] !== undefined) ? values[i][0] : '';
+  }
+  return result;
+}
+
+// スプシ① batchUpdate (備考列一括書き込み)
+async function writeSheet1Biko(monthNum, rowsToUpdate) {
+  // rowsToUpdate: [{day: 7, value: '福田+赤井？'}, ...]
+  const token = await getSheetsAccessToken();
+  const data = rowsToUpdate.map(r => ({
+    range: `${monthNum}月!N${r.day + 3}`,  // 1日=r4, 31日=r34
+    values: [[r.value]],
+  }));
+  const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET1_ID}/values:batchUpdate`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }),
+  });
+  if (!resp.ok) throw new Error('スプシ①書込失敗: ' + resp.status + ' ' + await resp.text());
+  return await resp.json();
+}
+
+// モーダル表示
+async function openExportModal() {
+  if (!sheetsCreds) {
+    showToast('スプシ認証情報なし (encrypted-sheets.json未配布)', 'error');
+    return;
+  }
+  if (!currentMonthKey) {
+    showToast('対象月が未選択', 'error');
+    return;
+  }
+  const monthNum = parseInt(currentMonthKey.split('-')[1], 10);
+
+  // モーダル雛形
+  const wrap = document.createElement('div');
+  wrap.id = 'exportModal';
+  wrap.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;';
+  wrap.addEventListener('click', e => { if (e.target === wrap) closeExportModal(); });
+  wrap.innerHTML = `<div style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:900px;width:90%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0;">
+      <h3 style="margin:0;font-size:17px;">📤 スプシ① 備考列書き出し (${monthNum}月)</h3>
+      <button onclick="closeExportModal()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px;">×</button>
+    </div>
+    <div id="exportModalBody" style="flex:1;overflow:auto;"><div style="padding:40px;text-align:center;color:var(--text2);">読込中...</div></div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;">
+      <button onclick="closeExportModal()" style="padding:8px 16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;">キャンセル</button>
+      <button id="exportConfirmBtn" onclick="confirmExport()" disabled style="padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;opacity:0.5;">この内容で書き出す</button>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+
+  try {
+    // 現状のスプシ値取得
+    const current = await fetchSheet1CurrentBiko(monthNum);
+    // 新値構築
+    const newData = buildSheet1ExportData();
+    // 差分計算
+    const diffs = [];
+    newData.forEach(row => {
+      const day = parseInt(row.date.split('-')[2], 10);
+      const old = current[day] || '';
+      if (old !== row.cellValue) {
+        diffs.push({ day, dateStr: row.date, old, neu: row.cellValue });
+      }
+    });
+    window._exportDiffs = diffs;
+    window._exportMonthNum = monthNum;
+    // テーブル描画
+    const body = document.getElementById('exportModalBody');
+    if (diffs.length === 0) {
+      body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);font-size:13px;">✓ 差分なし (スプシ①は既に最新状態です)</div>';
+    } else {
+      let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">${diffs.length}件の備考セルに差分があります</div><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--border-light);"><th style="padding:6px 8px;text-align:left;">日</th><th style="padding:6px 8px;text-align:left;width:40%;">Before (スプシ現状)</th><th style="padding:6px 8px;text-align:left;width:40%;">After (書き出し内容)</th></tr></thead><tbody>`;
+      diffs.forEach(d => {
+        const oldHtml = (d.old || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
+        const newHtml = (d.neu || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
+        html += `<tr style="border-bottom:1px solid var(--border-light);"><td style="padding:6px 8px;font-weight:600;vertical-align:top;">${d.day}日</td><td style="padding:6px 8px;color:var(--text2);vertical-align:top;">${oldHtml}</td><td style="padding:6px 8px;color:var(--green);vertical-align:top;">${newHtml}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      body.innerHTML = html;
+      const btn = document.getElementById('exportConfirmBtn');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  } catch (e) {
+    document.getElementById('exportModalBody').innerHTML = `<div style="padding:20px;color:var(--red);font-size:13px;">エラー: ${e.message}</div>`;
+  }
+}
+
+function closeExportModal() {
+  const m = document.getElementById('exportModal');
+  if (m) m.remove();
+  window._exportDiffs = null;
+}
+
+async function confirmExport() {
+  const diffs = window._exportDiffs || [];
+  const monthNum = window._exportMonthNum;
+  if (!diffs.length) { closeExportModal(); return; }
+  const btn = document.getElementById('exportConfirmBtn');
+  btn.disabled = true;
+  btn.textContent = '書き込み中...';
+  try {
+    const rows = diffs.map(d => ({ day: d.day, value: d.neu }));
+    await writeSheet1Biko(monthNum, rows);
+    closeExportModal();
+    showToast(`✓ スプシ① ${diffs.length}件の備考列を更新しました`, 'success');
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'この内容で書き出す';
+    showToast('書込エラー: ' + e.message, 'error');
+  }
+}
 
 // ============================================================
 // Shortcut Help Modal (共通)
