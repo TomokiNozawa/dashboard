@@ -3087,11 +3087,15 @@ async function openExportModal() {
           const weight = after ? '600' : '400';
           return `<td style="${bl}padding:8px;color:${color};font-weight:${weight};vertical-align:top;">${inner}</td>`;
         };
-        diffs2.forEach(d => {
+        diffs2.forEach((d, i) => {
+          const prev = diffs2[i - 1];
+          const isNewDate = !prev || prev.dateStr !== d.dateStr;
+          // 日付区切り: 新しい日の先頭行は太めの濃い線で区切る (同一日内は通常の細い薄線)
+          const topBorder = (isNewDate && i > 0) ? 'border-top:2px solid var(--text3);' : '';
           const locHtml = d.location
             ? `<span style="font-size:11px;color:var(--text2);margin-left:6px;">📍${(d.location||'').replace(/</g,'&lt;')}</span>`
             : '';
-          html += `<tr style="border-bottom:1px solid var(--border-light);">
+          html += `<tr style="${topBorder}border-bottom:1px solid var(--border-light);">
             <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${d.start || ''}</span></td>
             <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">
               <div>${(d.company||'').replace(/</g,'&lt;')}${locHtml}</div>
