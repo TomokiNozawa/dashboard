@@ -2127,23 +2127,35 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
   const conflicting = getConflictingAssigned(s);
   const available = shiftData.instructors
     .filter(inst => { const a = inst.availability && inst.availability[s.date]; return a !== 'NG' && a !== '未回答'; })
-    .map(inst => inst.name)
-    .filter(name => !assigned.includes(name))
-    .filter(name => !conflicting.has(name))
-    .filter(name => !isTeachingOnDate(name, s.date, s));
+    .filter(inst => !assigned.includes(inst.name))
+    .filter(inst => !conflicting.has(inst.name))
+    .filter(inst => !isTeachingOnDate(inst.name, s.date, s));
 
   if (available.length === 0) {
     showToast('配置可能なインストラクターがいません', 'error');
     return;
   }
 
+  // availabilityの優先順で並べる(全日OK→全日NG→AM→PM→保留)
+  const AVAIL_PRIO = {'全日(出張OK)':0, '全日':1, '全日(出張NG)':2, 'AM':3, 'PM':4, '保留':5};
+  available.sort((a, b) => {
+    const av = (a.availability && a.availability[s.date]) || '';
+    const bv = (b.availability && b.availability[s.date]) || '';
+    return (AVAIL_PRIO[av] ?? 99) - (AVAIL_PRIO[bv] ?? 99);
+  });
+
   const dropdown = document.createElement('div');
   dropdown.className = 'modal-dropdown';
 
-  available.forEach(name => {
+  available.forEach(inst => {
+    const name = inst.name;
+    const avail = (inst.availability && inst.availability[s.date]) || '';
+    const label = AVAIL_LABELS[avail] || '';
+    const cls = AVAIL_CLASSES[avail] || '';
     const item = document.createElement('div');
     item.className = 'modal-dropdown-item';
-    item.textContent = name;
+    item.innerHTML = `<span>${escapeHtml(name)}</span>` +
+      (label ? `<span class="avail-cell ${cls}" style="display:inline-flex;min-width:auto;height:18px;font-size:10px;padding:0 6px;margin-left:8px;">${label}</span>` : '');
     item.onclick = (e) => {
       e.stopPropagation();
       if (!shiftData.schedule[schedIdx].assigned) shiftData.schedule[schedIdx].assigned = [];
