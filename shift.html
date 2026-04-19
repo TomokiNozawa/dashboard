@@ -2822,14 +2822,20 @@ async function fetchSheet2Data(yearSheetName) {
 // sheet rows: [日付(0), 曜日(1), 終了flg(2), start(3), end(4), 時間(5), 会社(6), 主担当(7), 内容(8), 確認(9), 場所(10), 参加人数(11), 中田(12), 野沢(13), 樋口(14), 慎也(15), 保坂(16), 赤井(17), ｻﾎﾟ(18)]
 function buildSheet2ExportData(sheetRows, targetMonthNum) {
   const schedule = shiftData.schedule || [];
-  // 日付(MM/DD) + start + company でキー作成
+  // 時刻正規化: "9:00" → "09:00" / "9:0" → "09:00"
+  const normTime = (t) => {
+    const m = (t || '').toString().match(/^(\d{1,2}):(\d{1,2})$/);
+    return m ? `${m[1].padStart(2, '0')}:${m[2].padStart(2, '0')}` : (t || '').toString();
+  };
+  // 日付+start+company のマッチングマップ (ゼロ埋め両対応)
   const schedMap = {};
   schedule.forEach(s => {
     const [yyyy, mm, dd] = s.date.split('-');
-    const mmdd = `${parseInt(mm,10)}/${parseInt(dd,10)}`;  // スプシは "4/15" 等(ゼロ埋めなし)の可能性
-    const mmdd2 = `${mm}/${dd}`;                             // "04/15" 形式
-    [mmdd, mmdd2].forEach(k => {
-      schedMap[`${k}|${s.start}|${s.company}`] = s;
+    const mmddPad = `${mm}/${dd}`;
+    const mmddNo  = `${parseInt(mm,10)}/${parseInt(dd,10)}`;
+    const startN = normTime(s.start);
+    [mmddPad, mmddNo].forEach(k => {
+      schedMap[`${k}|${startN}|${s.company}`] = s;
     });
   });
   // セッション単位で差分をまとめる(R/S両方を1エントリに)
@@ -2840,7 +2846,7 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     const m = date.match(/^(\d{1,2})\/(\d{1,2})/);
     if (!m) return;
     if (parseInt(m[1], 10) !== targetMonthNum) return;
-    const start = (row[3] || '').trim();
+    const start = normTime((row[3] || '').trim());
     const company = (row[6] || '').trim();
     const content = (row[8] || '').trim();
     const key = `${date}|${start}|${company}`;
