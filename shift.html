@@ -2847,14 +2847,21 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     const s = schedMap[key];
     const currentR = (row[17] !== undefined ? row[17] : '').toString();
     const currentS = (row[18] !== undefined ? row[18] : '').toString();
-    let newR = '', newS = '';
+    let newR = 'ー', newS = '';
     if (s) {
       const ic = s.instConfirm || {};
-      if (s.assigned && s.assigned.includes('赤井')) {
+      // 赤井列: 講師なら◯(確定)、インストラクターならinstConfirm依存、どちらでもない→ー
+      if (s.teachers && s.teachers.includes('赤井')) {
+        newR = '◯';
+      } else if (s.assigned && s.assigned.includes('赤井')) {
         const st = ic['赤井'];
         if (st === 'OK') newR = '◯';
-        else if (st !== 'NG') newR = '◯？';
+        else if (st === 'NG') newR = 'ー';
+        else newR = '◯？';
+      } else {
+        newR = 'ー';
       }
+      // ｻﾎﾟ列
       if (!s.instNeeded || s.instNeeded === 0) {
         newS = 'ー';
       } else {
@@ -2874,6 +2881,14 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
         sOld: currentS, sNew: newS, sChanged,
       });
     }
+  });
+  // 日時昇順ソート (月→日→開始時刻)
+  diffs.sort((a, b) => {
+    const [am, ad] = a.dateStr.split('/').map(x => parseInt(x, 10));
+    const [bm, bd] = b.dateStr.split('/').map(x => parseInt(x, 10));
+    if (am !== bm) return am - bm;
+    if (ad !== bd) return ad - bd;
+    return (a.start || '').localeCompare(b.start || '');
   });
   return diffs;
 }
