@@ -2768,7 +2768,7 @@ function buildSheet1ExportData() {
       const prefix = isSingle ? '' : (CIRCLE_NUMS[i] || (i+1) + '.');
       let text;
       if (!s.instNeeded || s.instNeeded === 0) {
-        text = 'なし';
+        text = 'ー';
       } else if (!s.assigned || s.assigned.length === 0) {
         text = '';  // 未配置
       } else {
@@ -2776,7 +2776,7 @@ function buildSheet1ExportData() {
         const names = s.assigned
           .filter(n => ic[n] !== 'NG')
           .map(n => (ic[n] === 'OK') ? n : n + '？');
-        text = names.length > 0 ? names.join('+') : 'なし';
+        text = names.length > 0 ? names.join('+') : 'ー';
       }
       return prefix + text;
     });
@@ -2832,7 +2832,8 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
       schedMap[`${k}|${s.start}|${s.company}`] = s;
     });
   });
-  const updates = [];
+  // セッション単位で差分をまとめる(R/S両方を1エントリに)
+  const diffs = [];
   sheetRows.forEach((row, i) => {
     const sheetRowNum = i + 7;
     const date = (row[0] || '').trim();
@@ -2849,43 +2850,42 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     let newR = '', newS = '';
     if (s) {
       const ic = s.instConfirm || {};
-      // 赤井列
       if (s.assigned && s.assigned.includes('赤井')) {
         const st = ic['赤井'];
         if (st === 'OK') newR = '◯';
         else if (st !== 'NG') newR = '◯？';
       }
-      // ｻﾎﾟ列 (赤井除く)
       if (!s.instNeeded || s.instNeeded === 0) {
-        newS = 'なし';
+        newS = 'ー';
       } else {
         const others = (s.assigned || [])
           .filter(n => n !== '赤井')
           .filter(n => ic[n] !== 'NG');
-        if (others.length === 0) {
-          newS = '';
-        } else {
-          newS = others.map(n => ic[n] === 'OK' ? n : n + '？').join('+');
-        }
+        if (others.length === 0) newS = '';
+        else newS = others.map(n => ic[n] === 'OK' ? n : n + '？').join('+');
       }
     }
-    if (newR !== currentR) {
-      updates.push({ rowNum: sheetRowNum, col: 'R', dateStr: date, start, company, content, oldVal: currentR, newVal: newR, label: '赤井' });
-    }
-    if (newS !== currentS) {
-      updates.push({ rowNum: sheetRowNum, col: 'S', dateStr: date, start, company, content, oldVal: currentS, newVal: newS, label: 'ｻﾎﾟ' });
+    const rChanged = newR !== currentR;
+    const sChanged = newS !== currentS;
+    if (rChanged || sChanged) {
+      diffs.push({
+        rowNum: sheetRowNum, dateStr: date, start, company, content,
+        rOld: currentR, rNew: newR, rChanged,
+        sOld: currentS, sNew: newS, sChanged,
+      });
     }
   });
-  return updates;
+  return diffs;
 }
 
-async function writeSheet2(yearSheetName, updates) {
-  if (!updates.length) return;
+async function writeSheet2(yearSheetName, diffs) {
+  const data = [];
+  diffs.forEach(d => {
+    if (d.rChanged) data.push({ range: `${yearSheetName}!R${d.rowNum}`, values: [[d.rNew]] });
+    if (d.sChanged) data.push({ range: `${yearSheetName}!S${d.rowNum}`, values: [[d.sNew]] });
+  });
+  if (!data.length) return;
   const token = await getSheetsAccessToken();
-  const data = updates.map(u => ({
-    range: `${yearSheetName}!${u.col}${u.rowNum}`,
-    values: [[u.newVal]],
-  }));
   const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET2_ID}/values:batchUpdate`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -3032,18 +3032,48 @@ async function openExportModal() {
       }
       html += '</section>';
 
-      // セクション2: スプシ② ｻﾎﾟ/赤井列
+      // セクション2: スプシ② ｻﾎﾟ/赤井列 (1セッション=1行、R/S並列表示)
       html += `<section>
         <h4 style="margin:0 0 8px;font-size:13px;color:var(--text);border-left:3px solid var(--purple);padding-left:8px;">スプシ② ｻﾎﾟ列(S)/赤井列(R) (${yearSheetName}シート) - ${diffs2.length}件</h4>`;
       if (diffs2.length === 0) {
         html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
       } else {
-        html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--border-light);"><th style="padding:8px 10px;text-align:left;white-space:nowrap;">日/時間</th><th style="padding:8px 10px;text-align:left;">会社/内容</th><th style="padding:8px 10px;text-align:left;white-space:nowrap;">列</th><th style="padding:8px 10px;text-align:left;width:25%;">Before</th><th style="padding:8px 10px;text-align:left;width:25%;">After</th></tr></thead><tbody>';
+        html += `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:var(--border-light);">
+              <th rowspan="2" style="padding:8px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--border);">日/時間</th>
+              <th rowspan="2" style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);">会社 / 内容</th>
+              <th colspan="2" style="padding:6px 10px;text-align:center;border-left:1px solid var(--border);color:var(--red);">赤井列(R)</th>
+              <th colspan="2" style="padding:6px 10px;text-align:center;border-left:1px solid var(--border);">ｻﾎﾟ列(S)</th>
+            </tr>
+            <tr style="background:var(--border-light);">
+              <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);">Before</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);">After</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);">Before</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:400;color:var(--text3);font-size:11px;border-bottom:1px solid var(--border);">After</th>
+            </tr>
+          </thead>
+          <tbody>`;
+        const cell = (val, changed, after, borderLeft) => {
+          const v = (val || '').toString().replace(/</g,'&lt;');
+          const inner = v || '<span style="color:var(--text3);">(空欄)</span>';
+          const bl = borderLeft ? 'border-left:1px solid var(--border);' : '';
+          if (!changed) {
+            return `<td style="${bl}padding:8px;color:var(--text3);vertical-align:top;font-size:11px;">${inner}</td>`;
+          }
+          const color = after ? 'var(--green)' : 'var(--text2)';
+          const weight = after ? '600' : '400';
+          return `<td style="${bl}padding:8px;color:${color};font-weight:${weight};vertical-align:top;">${inner}</td>`;
+        };
         diffs2.forEach(d => {
-          const oldHtml = (d.oldVal || '').replace(/</g,'&lt;') || '<span style="color:var(--text3);">(空欄)</span>';
-          const newHtml = (d.newVal || '').replace(/</g,'&lt;') || '<span style="color:var(--text3);">(空欄)</span>';
-          const labelColor = d.label === '赤井' ? 'var(--red)' : 'var(--text)';
-          html += `<tr style="border-bottom:1px solid var(--border-light);"><td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${d.start || ''}</span></td><td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${(d.company||'').replace(/</g,'&lt;')}<br><span style="font-size:11px;color:var(--text3);">${(d.content||'').slice(0,30).replace(/</g,'&lt;')}</span></td><td style="padding:8px 10px;vertical-align:top;white-space:nowrap;"><span style="padding:2px 6px;border-radius:4px;background:var(--border-light);color:${labelColor};font-size:11px;">${d.label}(${d.col})</span></td><td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${oldHtml}</td><td style="padding:8px 10px;color:var(--green);vertical-align:top;">${newHtml}</td></tr>`;
+          html += `<tr style="border-bottom:1px solid var(--border-light);">
+            <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${d.start || ''}</span></td>
+            <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${(d.company||'').replace(/</g,'&lt;')}<br><span style="font-size:11px;color:var(--text3);">${(d.content||'').slice(0,40).replace(/</g,'&lt;')}</span></td>
+            ${cell(d.rOld, d.rChanged, false, true)}
+            ${cell(d.rNew, d.rChanged, true, false)}
+            ${cell(d.sOld, d.sChanged, false, true)}
+            ${cell(d.sNew, d.sChanged, true, false)}
+          </tr>`;
         });
         html += '</tbody></table>';
       }
