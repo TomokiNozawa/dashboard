@@ -30,6 +30,7 @@
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+body.modal-open { overflow: hidden; }  /* モーダル表示中は背景スクロール禁止 */
 
 /* Login */
 .login-overlay {
@@ -1750,6 +1751,7 @@ function showAssignDropdown(event, schedIdx) {
   setTimeout(() => {
     document.addEventListener('click', closeAssignDropdownOnOutside);
   }, 0);
+  updateModalOpenState();
 }
 
 function closeAssignDropdownOnOutside(e) {
@@ -1763,6 +1765,7 @@ function closeAssignDropdown() {
     activeAssignDropdown.remove();
     activeAssignDropdown = null;
     document.removeEventListener('click', closeAssignDropdownOnOutside);
+    updateModalOpenState();
   }
 }
 
@@ -2092,15 +2095,29 @@ function escapeHtml(str) {
 // ============================================================
 // Modal System
 // ============================================================
+// モーダルが1つでも開いているか判定
+function isAnyModalOpen() {
+  return !!(document.getElementById('modalOverlay')?.classList.contains('active')
+    || document.getElementById('exportModal')
+    || (document.getElementById('shortcutHelpModal') && document.getElementById('shortcutHelpModal').style.display === 'flex')
+    || document.querySelector('.modal-dropdown')
+    || document.querySelector('.assign-dropdown'));
+}
+function updateModalOpenState() {
+  document.body.classList.toggle('modal-open', isAnyModalOpen());
+}
+
 function openShiftModal(title, bodyHtml) {
   document.getElementById('shiftModalTitle').textContent = title;
   document.getElementById('shiftModalBody').innerHTML = bodyHtml;
   document.getElementById('modalOverlay').classList.add('active');
+  updateModalOpenState();
 }
 
 function closeShiftModal(e) {
   if (e && e.target !== document.getElementById('modalOverlay')) return;
   document.getElementById('modalOverlay').classList.remove('active');
+  updateModalOpenState();
   // Refresh suggest panel if opened from there
   if (window._suggestReturnActive) {
     window._suggestReturnActive = false;
@@ -2108,6 +2125,24 @@ function closeShiftModal(e) {
     generateSuggestions();
   }
 }
+
+// モーダル表示中の背景操作をブロック (capture phase、全keydownより先に走る)
+document.addEventListener('keydown', (e) => {
+  if (!document.body.classList.contains('modal-open')) return;
+  // モーダル内にフォーカスがあれば通常処理 (input/textarea/button内での矢印やスペース等は許可)
+  const modalRoot = e.target.closest('#modalOverlay, #exportModal, #shortcutHelpModal, .modal-dropdown, .assign-dropdown');
+  if (modalRoot) return;
+  // 背景のスクロール/移動系ショートカットを無効化
+  const blockKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown','Home','End',' ','Enter'];
+  if (blockKeys.includes(e.key)) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  // 文字キーも含めた Alt/Ctrl なしの単体キーショートカットを止める (タブ切替のg等)
+  if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1 && e.key !== 'Escape') {
+    e.stopPropagation();
+  }
+}, true);
 
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
@@ -2173,6 +2208,7 @@ function closeModalDropdown() {
     activeModalDropdown.remove();
     activeModalDropdown = null;
     document.removeEventListener('click', closeModalDropdownOnOutside);
+    updateModalOpenState();
   }
 }
 
@@ -2240,6 +2276,7 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
   const tagsContainer = event.target.closest('.modal-assign-tags') || event.target.parentElement;
   tagsContainer.insertAdjacentElement('afterend', dropdown);
   activeModalDropdown = dropdown;
+  updateModalOpenState();
 
   setTimeout(() => {
     document.addEventListener('click', closeModalDropdownOnOutside);
@@ -2806,6 +2843,8 @@ async function openExportModal() {
   wrap.setAttribute('aria-modal', 'true');
   wrap.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;';
   wrap.addEventListener('click', e => { if (e.target === wrap) closeExportModal(); });
+  // 背景スクロール/キーロック
+  document.body.classList.add('modal-open');
   wrap.innerHTML = `<div class="export-modal-panel" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;width:min(900px, calc(100vw - 160px));max-height:calc(100vh - 120px);display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden;">
     <div class="export-modal-header" style="position:sticky;top:0;background:var(--card);z-index:5;display:flex;justify-content:space-between;align-items:center;padding:20px 28px 14px;border-bottom:1px solid var(--border-light);">
       <h3 style="margin:0;font-size:16px;">📤 スプシ① 備考列書き出し (${monthNum}月)</h3>
@@ -2899,6 +2938,7 @@ function closeExportModal() {
     document.removeEventListener('keydown', _exportKeydownHandler, true);
     _exportKeydownHandler = null;
   }
+  updateModalOpenState();
   // 開く前のフォーカス位置に戻す
   if (_exportModalPrevFocus && typeof _exportModalPrevFocus.focus === 'function') {
     try { _exportModalPrevFocus.focus(); } catch(e) {}
@@ -2970,8 +3010,13 @@ window.DASHBOARD_SHORTCUTS = [
     });
     body.innerHTML = html;
     modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
   }
-  function hideHelp() { modal.style.display = 'none'; }
+  function hideHelp() {
+    modal.style.display = 'none';
+    if (typeof updateModalOpenState === 'function') updateModalOpenState();
+    else document.body.classList.remove('modal-open');
+  }
   window.openShortcutHelpFromNav = showHelp;  // サイドナビボタンから呼び出し用
   document.addEventListener('keydown', e => {
     if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;

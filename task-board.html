@@ -68,6 +68,7 @@
   --shadow-drag: 0 12px 40px rgba(0,0,0,0.15);
 }
 
+body.modal-open { overflow: hidden; }  /* モーダル/ポップアップ表示中は背景スクロール禁止 */
 body {
   font-family: var(--font);
   background: var(--bg-primary);
@@ -4276,6 +4277,29 @@ async function applySyncDiff() {
   }
   closeSyncDiffModal();
 }
+
+// ============================================================
+// Modal/Popup Background Lock (共通: MutationObserver + keydown capture)
+// ============================================================
+(function(){
+  const MODAL_SEL = '[id$="Modal"].active, [id$="Overlay"].active, [id$="Popup"].active, [id$="Suggest"].active, #exportModal, #shortcutHelpModal[style*="flex"]';
+  function update() {
+    document.body.classList.toggle('modal-open', !!document.querySelector(MODAL_SEL));
+  }
+  const obs = new MutationObserver(update);
+  obs.observe(document.body, { attributes:true, subtree:true, attributeFilter:['class','style'] });
+  // 背景の矢印/スクロール/単体キーショートカットを抑止
+  document.addEventListener('keydown', (e) => {
+    if (!document.body.classList.contains('modal-open')) return;
+    const modalRoot = e.target.closest('[id$="Modal"], [id$="Overlay"], [id$="Popup"], [id$="Suggest"], #exportModal, #shortcutHelpModal');
+    if (modalRoot) return;
+    const blockKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown','Home','End',' ','Enter'];
+    if (blockKeys.includes(e.key)) { e.preventDefault(); e.stopPropagation(); return; }
+    if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1 && e.key !== 'Escape') {
+      e.stopPropagation();
+    }
+  }, true);
+})();
 
 // ============================================================
 // Shortcut Help Modal (共通)

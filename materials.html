@@ -28,6 +28,7 @@
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+body.modal-open { overflow: hidden; }
 
 /* Login */
 .login-overlay {
@@ -1230,6 +1231,28 @@ init();
       if (e.key === 't') { e.preventDefault(); window.toggleTheme(); }
     }
   });
+})();
+
+// ============================================================
+// Modal/Popup Background Lock (共通: MutationObserver + keydown capture)
+// ============================================================
+(function(){
+  const MODAL_SEL = '[id$="Modal"].active, [id$="Overlay"].active, [id$="Popup"].show, #syncDiffModal[style*="flex"], #shortcutHelpModal[style*="flex"]';
+  function update() {
+    document.body.classList.toggle('modal-open', !!document.querySelector(MODAL_SEL));
+  }
+  const obs = new MutationObserver(update);
+  obs.observe(document.body, { attributes:true, subtree:true, attributeFilter:['class','style'] });
+  document.addEventListener('keydown', (e) => {
+    if (!document.body.classList.contains('modal-open')) return;
+    const modalRoot = e.target.closest('[id$="Modal"], [id$="Overlay"], [id$="Popup"], #shortcutHelpModal, #syncDiffModal');
+    if (modalRoot) return;
+    const blockKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown','Home','End',' ','Enter'];
+    if (blockKeys.includes(e.key)) { e.preventDefault(); e.stopPropagation(); return; }
+    if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key.length === 1 && e.key !== 'Escape') {
+      e.stopPropagation();
+    }
+  }, true);
 })();
 
 // ============================================================
