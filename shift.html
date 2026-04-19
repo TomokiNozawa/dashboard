@@ -3058,6 +3058,19 @@ function renderExportBody() {
   const diffs2 = window._exportDiffs2 || [];
   const monthNum = window._exportMonthNum;
   const yearSheetName = window._exportYearSheet;
+  const yearBase = parseInt((yearSheetName || '').replace(/[^0-9]/g, ''), 10) || new Date().getFullYear();
+  const WEEKDAYS_JP = ['日','月','火','水','木','金','土'];
+  const dowOfIso = (iso) => {
+    const p = (iso || '').split('-').map(x => parseInt(x, 10));
+    if (p.length !== 3) return '';
+    return WEEKDAYS_JP[new Date(p[0], p[1] - 1, p[2]).getDay()];
+  };
+  const dowOfMMDD = (mmdd, mn) => {
+    const m = (mmdd || '').match(/^(\d{1,2})\/(\d{1,2})/);
+    if (!m) return '';
+    const yy = (mn >= 4) ? yearBase : yearBase + 1;
+    return WEEKDAYS_JP[new Date(yy, parseInt(m[1],10) - 1, parseInt(m[2],10)).getDay()];
+  };
   const checked1 = diffs1.filter(d => d.checked).length;
   const checked2 = diffs2.filter(d => d.checked).length;
   const totalChecked = checked1 + checked2;
@@ -3086,9 +3099,10 @@ function renderExportBody() {
       const oldHtml = (d.old || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
       const newHtml = (d.neu || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
       const opacity = d.checked ? '1' : '0.35';
+      const dow1 = dowOfIso(d.date);
       html += `<tr style="border-bottom:1px solid var(--border-light);opacity:${opacity};">
-        <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(1, ${i}, this.checked)" aria-label="${d.day}日を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
-        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日</td>
+        <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(1, ${i}, this.checked)" aria-label="${d.day}日(${dow1})を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
+        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日(${dow1})</td>
         <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${oldHtml}</td>
         <td style="padding:8px 10px;color:var(--green);vertical-align:top;">${newHtml}</td>
       </tr>`;
@@ -3150,9 +3164,10 @@ function renderExportBody() {
         const label = allChecked ? 'checked' : '';
         const indeterminate = (!allChecked && someChecked);
         const topBorder = (lastDate !== null) ? 'border-top:2px solid var(--text3);' : '';
+        const dowH = dowOfMMDD(d.dateStr, monthNum);
         html += `<tr style="${topBorder}background:var(--border-light);">
-          <td style="padding:6px 8px;text-align:center;"><input type="checkbox" ${label} data-indeterm="${indeterminate ? '1' : '0'}" onchange="toggleDateExport('${d.dateStr}', this.checked)" aria-label="${d.dateStr} 日別全選択" style="cursor:pointer;width:16px;height:16px;"></td>
-          <td colspan="6" style="padding:6px 10px;font-weight:600;font-size:11px;color:var(--text);">📅 ${d.dateStr} — ${dayChecked}/${dayTotal}件選択</td>
+          <td style="padding:6px 8px;text-align:center;"><input type="checkbox" ${label} data-indeterm="${indeterminate ? '1' : '0'}" onchange="toggleDateExport('${d.dateStr}', this.checked)" aria-label="${d.dateStr}(${dowH}) 日別全選択" style="cursor:pointer;width:16px;height:16px;"></td>
+          <td colspan="6" style="padding:6px 10px;font-weight:600;font-size:11px;color:var(--text);">📅 ${d.dateStr}(${dowH}) — ${dayChecked}/${dayTotal}件選択</td>
         </tr>`;
         lastDate = d.dateStr;
       }
@@ -3161,9 +3176,10 @@ function renderExportBody() {
         : '';
       const opacity = d.checked ? '1' : '0.35';
       const timeRange = d.start && d.end ? `${d.start}-${d.end}` : (d.start || '');
+      const dow2 = dowOfMMDD(d.dateStr, monthNum);
       html += `<tr style="border-bottom:1px solid var(--border-light);opacity:${opacity};">
-        <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(2, ${i}, this.checked)" aria-label="${d.dateStr} ${timeRange} ${d.company} を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
-        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${timeRange}</span></td>
+        <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(2, ${i}, this.checked)" aria-label="${d.dateStr}(${dow2}) ${timeRange} ${d.company} を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
+        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}(${dow2})<br><span style="font-weight:400;color:var(--text3);">${timeRange}</span></td>
         <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">
           <div>${(d.company||'').replace(/</g,'&lt;')}${locHtml}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px;">${(d.content||'').slice(0,40).replace(/</g,'&lt;')}</div>
