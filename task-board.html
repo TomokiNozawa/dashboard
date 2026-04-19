@@ -138,7 +138,12 @@ body {
 .side-nav-item.active { color: var(--accent-blue); background: rgba(90,173,255,0.08); border-right: 2px solid var(--accent-blue); }
 .side-nav-item span:last-child { opacity: 0; transition: opacity 0.15s; }
 .side-nav:hover .side-nav-item span:last-child { opacity: 1; }
-.side-nav-item.side-nav-demo { margin-top: auto; border-top: 1px solid var(--border); color: var(--text-muted); }
+button.side-nav-item {
+  background: none; border: none; font-family: inherit; font-size: 11px; font-weight: 600;
+  text-align: left; cursor: pointer; color: var(--text-muted);
+}
+.side-nav-bottom { margin-top: auto; border-top: 1px solid var(--border); width: 100%; padding-top: 4px; }
+.side-nav-item.side-nav-demo { color: var(--text-muted); }
 .side-nav-item.side-nav-demo:hover { color: var(--accent-blue); }
 
 /* ── Step Type Popup ── */
@@ -1026,14 +1031,16 @@ html { scroll-behavior: smooth; }
       <span style="font-size:18px">&#128101;</span>
       <span>シフト</span>
     </a>
-    <button class="side-nav-item" onclick="openShortcutHelpFromNav()" title="ショートカット一覧 (?)" style="background:none;border:none;font:inherit;text-align:left;margin-top:auto;border-top:1px solid var(--border);color:var(--text-secondary);">
-      <span style="font-size:18px">⌨️</span>
-      <span>ショートカット</span>
-    </button>
-    <a class="side-nav-item side-nav-demo" href="task-board-demo.html" target="_blank" rel="noopener" title="デモ版（外部共有用・別タブ）" style="margin-top:0;">
-      <span style="font-size:18px">&#127916;</span>
-      <span>デモ</span>
-    </a>
+    <div class="side-nav-bottom">
+      <button class="side-nav-item" onclick="openShortcutHelpFromNav()" title="ショートカット一覧 (?)">
+        <span style="font-size:16px">⌨</span>
+        <span>ヘルプ</span>
+      </button>
+      <a class="side-nav-item side-nav-demo" href="task-board-demo.html" target="_blank" rel="noopener" title="デモ版（外部共有用・別タブ）">
+        <span style="font-size:16px">&#127916;</span>
+        <span>デモ</span>
+      </a>
+    </div>
   </nav>
 
   <!-- Top Bar -->
