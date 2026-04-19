@@ -367,7 +367,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 const API_BASE = 'https://api.github.com';
 const REPO = 'TomokiNozawa/dashboard-data';
 const FILE_PATH = 'materials-data.json';
-const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4h
+const SESSION_TIMEOUT = 30 * 24 * 60 * 60 * 1000; // 30 days (localStorage persisted, shared with shift.html)
 
 const SHEETS_SPREADSHEET_ID = '1ZAyQWtU1N5rByZuSAGvZs8t6kwWL2g0de1__5b6yark';
 const SHEETS_HEADER_ROW = 5; // 0-based
@@ -388,11 +388,20 @@ let sortState = { column: 'days', direction: 'asc' };
 let pendingSyncDiffs = []; // for modal
 
 // ============================================================
-// Authentication (shared with shift.html via sessionStorage)
+// Authentication (shared with shift.html via localStorage, 30-day persistence)
 // ============================================================
 async function init() {
-  const storedPass = sessionStorage.getItem('dk_pass');
-  const storedTs = sessionStorage.getItem('dk_ts');
+  let storedPass = localStorage.getItem('dk_pass');
+  let storedTs = localStorage.getItem('dk_ts');
+  // 旧sessionStorageからの自動マイグレーション
+  if (!storedPass && sessionStorage.getItem('dk_pass')) {
+    storedPass = sessionStorage.getItem('dk_pass');
+    storedTs = sessionStorage.getItem('dk_ts');
+    localStorage.setItem('dk_pass', storedPass);
+    localStorage.setItem('dk_ts', storedTs);
+    sessionStorage.removeItem('dk_pass');
+    sessionStorage.removeItem('dk_ts');
+  }
 
   if (storedPass && storedTs) {
     const elapsed = Date.now() - parseInt(storedTs, 10);
@@ -400,16 +409,16 @@ async function init() {
       try {
         pat = await decryptPAT(storedPass);
         try { sheetsCreds = JSON.parse(await decryptFile(storedPass, 'encrypted-sheets.json')); } catch(e) { console.warn('Sheets creds not available:', e); }
-        sessionStorage.setItem('dk_ts', Date.now().toString());
+        localStorage.setItem('dk_ts', Date.now().toString());
         showApp();
         return;
       } catch (e) {
-        sessionStorage.removeItem('dk_pass');
-        sessionStorage.removeItem('dk_ts');
+        localStorage.removeItem('dk_pass');
+        localStorage.removeItem('dk_ts');
       }
     } else {
-      sessionStorage.removeItem('dk_pass');
-      sessionStorage.removeItem('dk_ts');
+      localStorage.removeItem('dk_pass');
+      localStorage.removeItem('dk_ts');
     }
   }
   showLogin();
@@ -437,8 +446,8 @@ async function doLogin() {
   try {
     pat = await decryptPAT(password);
     try { sheetsCreds = JSON.parse(await decryptFile(password, 'encrypted-sheets.json')); } catch(e) { console.warn('Sheets creds not available:', e); }
-    sessionStorage.setItem('dk_pass', password);
-    sessionStorage.setItem('dk_ts', Date.now().toString());
+    localStorage.setItem('dk_pass', password);
+    localStorage.setItem('dk_ts', Date.now().toString());
     showApp();
   } catch (e) {
     errEl.style.display = 'block';
