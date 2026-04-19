@@ -383,7 +383,7 @@ const SHEETS_HEADER_ROW = 5; // 0-based
 const SHEETS_COL_DATE = 0;
 const SHEETS_COL_COMPANY = 6;
 const SHEETS_COL_CONTENT = 8;
-const SHEETS_COL_MATERIAL_SEND = 24; // Y column
+const SHEETS_COL_MATERIAL_SEND = 25; // Z column
 
 const FIREBASE_DB_URL = 'https://task-board-fbf1e-default-rtdb.asia-southeast1.firebasedatabase.app';
 
@@ -586,7 +586,7 @@ async function writeSheetSentStatus(updates) {
   const body = {
     valueInputOption: 'RAW',
     data: updates.map(u => ({
-      range: `${sheetName}!Y${u.row}`,
+      range: `${sheetName}!Z${u.row}`,
       values: [[u.value]]
     }))
   };
