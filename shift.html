@@ -1917,17 +1917,20 @@ function buildSuggestRightHtml(d) {
       const avail = inst.availability && inst.availability[s.date];
       if (!avail || avail === 'NG' || avail === '未回答') return false;
       if (isFullDay(avail)) return true;
+      // AMのみ人 → sessionがAM内に収まる場合のみ候補
       if (avail === 'AM' && isAM) return true;
+      // PMのみ人 → sessionがPM内に収まる場合のみ候補
       if (avail === 'PM' && isPM) return true;
-      if (avail === 'AM' && !isPM) return true;
-      if (avail === 'PM' && !isAM) return true;
+      // 保留 → 終日/AM/PMすべて候補(野沢判断)
+      if (avail === '保留') return true;
       return false;
     });
 
+    const locHtml = s.location ? `<span style="color:var(--text2);font-size:11px;margin-left:6px;">📍 ${escapeHtml(s.location)}</span>` : '';
     html += `<div class="suggestion-item" style="flex-direction:column;align-items:stretch;cursor:pointer;" onclick="openScheduleFromSuggest(${schedIdx})">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <div class="suggestion-info">
-          <div class="suggestion-date">${s.date}(${s.dow}) ${s.start}-${s.end}</div>
+          <div class="suggestion-date">${s.date}(${s.dow}) ${s.start}-${s.end}${locHtml}</div>
           <div class="suggestion-detail">${s.company} / ${s.content} / 必要: ${s.instNeeded}名</div>
         </div>
         <span class="suggest-stat ${statusCls}" style="font-size:11px;padding:3px 10px;">${statusLabel}</span>
@@ -2396,8 +2399,8 @@ function openAssignmentModal(schedIdx) {
     if (!avail || avail === 'NG' || avail === '未回答') return;
     let canWork = false;
     if (isFullDay(avail)) canWork = true;
-    else if (avail === 'AM' && (isAM || !isPM)) canWork = true;
-    else if (avail === 'PM' && (isPM || !isAM)) canWork = true;
+    else if (avail === 'AM' && isAM) canWork = true;  // AMのみ → AM内セッションのみ可
+    else if (avail === 'PM' && isPM) canWork = true;  // PMのみ → PM内セッションのみ可
     else if (avail === '保留') canWork = true;
 
     if (canWork) {
