@@ -2803,7 +2803,101 @@ async function fetchSheet1CurrentBiko(monthNum) {
   return result;
 }
 
+// ============================================================
+// Phase 2: スプシ② (toB管理表 2026年シート) ｻﾎﾟ列(S) + 赤井列(R)
+// ============================================================
+// 2026年シートのデータ取得 (ヘッダーr6、データr7〜)
+async function fetchSheet2Data(yearSheetName) {
+  const token = await getSheetsAccessToken();
+  const range = encodeURIComponent(`${yearSheetName}!A7:S500`);
+  const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET2_ID}/values/${range}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!resp.ok) throw new Error('スプシ②取得失敗: ' + resp.status + ' ' + await resp.text());
+  const j = await resp.json();
+  return j.values || [];
+}
+
+// shift-data.schedule を参照して、スプシ②の更新リストを構築
+// sheet rows: [日付(0), 曜日(1), 終了flg(2), start(3), end(4), 時間(5), 会社(6), 主担当(7), 内容(8), 確認(9), 場所(10), 参加人数(11), 中田(12), 野沢(13), 樋口(14), 慎也(15), 保坂(16), 赤井(17), ｻﾎﾟ(18)]
+function buildSheet2ExportData(sheetRows, targetMonthNum) {
+  const schedule = shiftData.schedule || [];
+  // 日付(MM/DD) + start + company でキー作成
+  const schedMap = {};
+  schedule.forEach(s => {
+    const [yyyy, mm, dd] = s.date.split('-');
+    const mmdd = `${parseInt(mm,10)}/${parseInt(dd,10)}`;  // スプシは "4/15" 等(ゼロ埋めなし)の可能性
+    const mmdd2 = `${mm}/${dd}`;                             // "04/15" 形式
+    [mmdd, mmdd2].forEach(k => {
+      schedMap[`${k}|${s.start}|${s.company}`] = s;
+    });
+  });
+  const updates = [];
+  sheetRows.forEach((row, i) => {
+    const sheetRowNum = i + 7;
+    const date = (row[0] || '').trim();
+    const m = date.match(/^(\d{1,2})\/(\d{1,2})/);
+    if (!m) return;
+    if (parseInt(m[1], 10) !== targetMonthNum) return;
+    const start = (row[3] || '').trim();
+    const company = (row[6] || '').trim();
+    const content = (row[8] || '').trim();
+    const key = `${date}|${start}|${company}`;
+    const s = schedMap[key];
+    const currentR = (row[17] !== undefined ? row[17] : '').toString();
+    const currentS = (row[18] !== undefined ? row[18] : '').toString();
+    let newR = '', newS = '';
+    if (s) {
+      const ic = s.instConfirm || {};
+      // 赤井列
+      if (s.assigned && s.assigned.includes('赤井')) {
+        const st = ic['赤井'];
+        if (st === 'OK') newR = '◯';
+        else if (st !== 'NG') newR = '◯？';
+      }
+      // ｻﾎﾟ列 (赤井除く)
+      if (!s.instNeeded || s.instNeeded === 0) {
+        newS = 'なし';
+      } else {
+        const others = (s.assigned || [])
+          .filter(n => n !== '赤井')
+          .filter(n => ic[n] !== 'NG');
+        if (others.length === 0) {
+          newS = '';
+        } else {
+          newS = others.map(n => ic[n] === 'OK' ? n : n + '？').join('+');
+        }
+      }
+    }
+    if (newR !== currentR) {
+      updates.push({ rowNum: sheetRowNum, col: 'R', dateStr: date, start, company, content, oldVal: currentR, newVal: newR, label: '赤井' });
+    }
+    if (newS !== currentS) {
+      updates.push({ rowNum: sheetRowNum, col: 'S', dateStr: date, start, company, content, oldVal: currentS, newVal: newS, label: 'ｻﾎﾟ' });
+    }
+  });
+  return updates;
+}
+
+async function writeSheet2(yearSheetName, updates) {
+  if (!updates.length) return;
+  const token = await getSheetsAccessToken();
+  const data = updates.map(u => ({
+    range: `${yearSheetName}!${u.col}${u.rowNum}`,
+    values: [[u.newVal]],
+  }));
+  const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET2_ID}/values:batchUpdate`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }),
+  });
+  if (!resp.ok) throw new Error('スプシ②書込失敗: ' + resp.status + ' ' + await resp.text());
+  return await resp.json();
+}
+
+// ============================================================
 // スプシ① batchUpdate (備考列一括書き込み)
+// ============================================================
 async function writeSheet1Biko(monthNum, rowsToUpdate) {
   // rowsToUpdate: [{day: 7, value: '福田+赤井？'}, ...]
   const token = await getSheetsAccessToken();
@@ -2845,9 +2939,9 @@ async function openExportModal() {
   wrap.addEventListener('click', e => { if (e.target === wrap) closeExportModal(); });
   // 背景スクロール/キーロック
   document.body.classList.add('modal-open');
-  wrap.innerHTML = `<div class="export-modal-panel" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;width:min(900px, calc(100vw - 160px));max-height:calc(100vh - 120px);display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden;">
+  wrap.innerHTML = `<div class="export-modal-panel" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;width:min(1100px, calc(100vw - 160px));max-height:calc(100vh - 120px);display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden;">
     <div class="export-modal-header" style="position:sticky;top:0;background:var(--card);z-index:5;display:flex;justify-content:space-between;align-items:center;padding:20px 28px 14px;border-bottom:1px solid var(--border-light);">
-      <h3 style="margin:0;font-size:16px;">📤 スプシ① 備考列書き出し (${monthNum}月)</h3>
+      <h3 style="margin:0;font-size:16px;">📤 スプシ書き出し (${monthNum}月)</h3>
       <button id="exportCloseBtn" onclick="closeExportModal()" title="閉じる (Esc)" aria-label="閉じる" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
     </div>
     <div id="exportModalBody" style="flex:1;overflow:auto;padding:16px 28px;">
@@ -2892,36 +2986,73 @@ async function openExportModal() {
   document.addEventListener('keydown', _exportKeydownHandler, true);
 
   try {
-    const current = await fetchSheet1CurrentBiko(monthNum);
-    const newData = buildSheet1ExportData();
-    const diffs = [];
-    newData.forEach(row => {
+    // スプシ①: 備考列差分
+    const current1 = await fetchSheet1CurrentBiko(monthNum);
+    const newData1 = buildSheet1ExportData();
+    const diffs1 = [];
+    newData1.forEach(row => {
       const day = parseInt(row.date.split('-')[2], 10);
-      const old = current[day] || '';
+      const old = current1[day] || '';
       if (old !== row.cellValue) {
-        diffs.push({ day, dateStr: row.date, old, neu: row.cellValue });
+        diffs1.push({ day, dateStr: row.date, old, neu: row.cellValue });
       }
     });
-    window._exportDiffs = diffs;
+    // スプシ②: ｻﾎﾟ/赤井列差分 (年度判定: 4-12月=同年、1-3月=前年度)
+    const year = (monthNum >= 4) ? parseInt(currentMonthKey.split('-')[0], 10)
+                                  : parseInt(currentMonthKey.split('-')[0], 10) - 1;
+    const yearSheetName = `${year}年`;
+    const sheet2Rows = await fetchSheet2Data(yearSheetName);
+    const diffs2 = buildSheet2ExportData(sheet2Rows, monthNum);
+
+    window._exportDiffs1 = diffs1;
+    window._exportDiffs2 = diffs2;
     window._exportMonthNum = monthNum;
+    window._exportYearSheet = yearSheetName;
+
+    const total = diffs1.length + diffs2.length;
     const body = document.getElementById('exportModalBody');
-    if (diffs.length === 0) {
-      body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);font-size:13px;">✓ 差分なし (スプシ①は既に最新状態です)</div>';
-      // 差分なし → キャンセルボタンにフォーカス
+    if (total === 0) {
+      body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text2);font-size:13px;">✓ 差分なし (スプシ①/② ともに最新状態です)</div>';
       setTimeout(() => document.getElementById('exportCancelBtn')?.focus(), 0);
     } else {
-      let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:10px;">${diffs.length}件の備考セルに差分があります</div><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--border-light);"><th style="padding:8px 10px;text-align:left;white-space:nowrap;">日</th><th style="padding:8px 10px;text-align:left;width:45%;">Before (スプシ現状)</th><th style="padding:8px 10px;text-align:left;width:45%;">After (書き出し内容)</th></tr></thead><tbody>`;
-      diffs.forEach(d => {
-        const oldHtml = (d.old || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
-        const newHtml = (d.neu || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
-        html += `<tr style="border-bottom:1px solid var(--border-light);"><td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日</td><td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${oldHtml}</td><td style="padding:8px 10px;color:var(--green);vertical-align:top;">${newHtml}</td></tr>`;
-      });
-      html += '</tbody></table>';
+      // セクション1: スプシ① 備考列
+      let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:14px;">スプシ①/②合わせて <strong style="color:var(--text);">${total}件</strong> の差分があります</div>`;
+      html += `<section style="margin-bottom:24px;">
+        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text);border-left:3px solid var(--blue);padding-left:8px;">スプシ① 備考列 (${monthNum}月シート) - ${diffs1.length}件</h4>`;
+      if (diffs1.length === 0) {
+        html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
+      } else {
+        html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--border-light);"><th style="padding:8px 10px;text-align:left;white-space:nowrap;">日</th><th style="padding:8px 10px;text-align:left;width:45%;">Before</th><th style="padding:8px 10px;text-align:left;width:45%;">After</th></tr></thead><tbody>';
+        diffs1.forEach(d => {
+          const oldHtml = (d.old || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
+          const newHtml = (d.neu || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
+          html += `<tr style="border-bottom:1px solid var(--border-light);"><td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日</td><td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${oldHtml}</td><td style="padding:8px 10px;color:var(--green);vertical-align:top;">${newHtml}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      }
+      html += '</section>';
+
+      // セクション2: スプシ② ｻﾎﾟ/赤井列
+      html += `<section>
+        <h4 style="margin:0 0 8px;font-size:13px;color:var(--text);border-left:3px solid var(--purple);padding-left:8px;">スプシ② ｻﾎﾟ列(S)/赤井列(R) (${yearSheetName}シート) - ${diffs2.length}件</h4>`;
+      if (diffs2.length === 0) {
+        html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
+      } else {
+        html += '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--border-light);"><th style="padding:8px 10px;text-align:left;white-space:nowrap;">日/時間</th><th style="padding:8px 10px;text-align:left;">会社/内容</th><th style="padding:8px 10px;text-align:left;white-space:nowrap;">列</th><th style="padding:8px 10px;text-align:left;width:25%;">Before</th><th style="padding:8px 10px;text-align:left;width:25%;">After</th></tr></thead><tbody>';
+        diffs2.forEach(d => {
+          const oldHtml = (d.oldVal || '').replace(/</g,'&lt;') || '<span style="color:var(--text3);">(空欄)</span>';
+          const newHtml = (d.newVal || '').replace(/</g,'&lt;') || '<span style="color:var(--text3);">(空欄)</span>';
+          const labelColor = d.label === '赤井' ? 'var(--red)' : 'var(--text)';
+          html += `<tr style="border-bottom:1px solid var(--border-light);"><td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${d.start || ''}</span></td><td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${(d.company||'').replace(/</g,'&lt;')}<br><span style="font-size:11px;color:var(--text3);">${(d.content||'').slice(0,30).replace(/</g,'&lt;')}</span></td><td style="padding:8px 10px;vertical-align:top;white-space:nowrap;"><span style="padding:2px 6px;border-radius:4px;background:var(--border-light);color:${labelColor};font-size:11px;">${d.label}(${d.col})</span></td><td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${oldHtml}</td><td style="padding:8px 10px;color:var(--green);vertical-align:top;">${newHtml}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      }
+      html += '</section>';
+
       body.innerHTML = html;
       const btn = document.getElementById('exportConfirmBtn');
       btn.disabled = false;
       btn.style.opacity = '1';
-      // 差分あり → 確定ボタンにフォーカス (Enter/Space即押しで実行可)
       setTimeout(() => btn.focus(), 0);
     }
   } catch (e) {
@@ -2933,13 +3064,13 @@ async function openExportModal() {
 function closeExportModal() {
   const m = document.getElementById('exportModal');
   if (m) m.remove();
-  window._exportDiffs = null;
+  window._exportDiffs1 = null;
+  window._exportDiffs2 = null;
   if (_exportKeydownHandler) {
     document.removeEventListener('keydown', _exportKeydownHandler, true);
     _exportKeydownHandler = null;
   }
   updateModalOpenState();
-  // 開く前のフォーカス位置に戻す
   if (_exportModalPrevFocus && typeof _exportModalPrevFocus.focus === 'function') {
     try { _exportModalPrevFocus.focus(); } catch(e) {}
   }
@@ -2947,17 +3078,27 @@ function closeExportModal() {
 }
 
 async function confirmExport() {
-  const diffs = window._exportDiffs || [];
+  const diffs1 = window._exportDiffs1 || [];
+  const diffs2 = window._exportDiffs2 || [];
   const monthNum = window._exportMonthNum;
-  if (!diffs.length) { closeExportModal(); return; }
+  const yearSheetName = window._exportYearSheet;
+  if (!diffs1.length && !diffs2.length) { closeExportModal(); return; }
   const btn = document.getElementById('exportConfirmBtn');
   btn.disabled = true;
   btn.textContent = '書き込み中...';
   try {
-    const rows = diffs.map(d => ({ day: d.day, value: d.neu }));
-    await writeSheet1Biko(monthNum, rows);
+    // スプシ① 備考列
+    if (diffs1.length) {
+      const rows = diffs1.map(d => ({ day: d.day, value: d.neu }));
+      await writeSheet1Biko(monthNum, rows);
+    }
+    // スプシ② ｻﾎﾟ/赤井列
+    if (diffs2.length) {
+      await writeSheet2(yearSheetName, diffs2);
+    }
     closeExportModal();
-    showToast(`✓ スプシ① ${diffs.length}件の備考列を更新しました`, 'success');
+    const msg = `✓ スプシ更新完了 (①備考:${diffs1.length}件 / ②ｻﾎﾟ赤井:${diffs2.length}件)`;
+    showToast(msg, 'success');
   } catch (e) {
     btn.disabled = false;
     btn.textContent = 'この内容で書き出す (Alt+S)';
