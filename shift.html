@@ -2827,7 +2827,7 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     const m = (t || '').toString().match(/^(\d{1,2}):(\d{1,2})$/);
     return m ? `${m[1].padStart(2, '0')}:${m[2].padStart(2, '0')}` : (t || '').toString();
   };
-  // 日付+start+company のマッチングマップ (ゼロ埋め両対応)
+  // 日付+start+company+content のマッチングマップ (同日同時刻同会社で複数セッション対応)
   const schedMap = {};
   schedule.forEach(s => {
     const [yyyy, mm, dd] = s.date.split('-');
@@ -2835,7 +2835,7 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     const mmddNo  = `${parseInt(mm,10)}/${parseInt(dd,10)}`;
     const startN = normTime(s.start);
     [mmddPad, mmddNo].forEach(k => {
-      schedMap[`${k}|${startN}|${s.company}`] = s;
+      schedMap[`${k}|${startN}|${s.company}|${s.content || ''}`] = s;
     });
   });
   // セッション単位で差分をまとめる(R/S両方を1エントリに)
@@ -2849,7 +2849,7 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     const start = normTime((row[3] || '').trim());
     const company = (row[6] || '').trim();
     const content = (row[8] || '').trim();
-    const key = `${date}|${start}|${company}`;
+    const key = `${date}|${start}|${company}|${content}`;
     const s = schedMap[key];
     const currentR = (row[17] !== undefined ? row[17] : '').toString();
     const currentS = (row[18] !== undefined ? row[18] : '').toString();
