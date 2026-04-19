@@ -3099,7 +3099,7 @@ function renderExportBody() {
       const oldHtml = (d.old || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
       const newHtml = (d.neu || '').replace(/</g,'&lt;').replace(/\n/g,'<br>') || '<span style="color:var(--text3);">(空欄)</span>';
       const opacity = d.checked ? '1' : '0.35';
-      const dow1 = dowOfIso(d.date);
+      const dow1 = dowOfIso(d.dateStr);
       html += `<tr style="border-bottom:1px solid var(--border-light);opacity:${opacity};">
         <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(1, ${i}, this.checked)" aria-label="${d.day}日(${dow1})を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
         <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日(${dow1})</td>
