@@ -1026,7 +1026,11 @@ html { scroll-behavior: smooth; }
       <span style="font-size:18px">&#128101;</span>
       <span>シフト</span>
     </a>
-    <a class="side-nav-item side-nav-demo" href="task-board-demo.html" target="_blank" rel="noopener" title="デモ版（外部共有用・別タブ）">
+    <button class="side-nav-item" onclick="openShortcutHelpFromNav()" title="ショートカット一覧 (?)" style="background:none;border:none;font:inherit;text-align:left;margin-top:auto;border-top:1px solid var(--border);color:var(--text-secondary);">
+      <span style="font-size:18px">⌨️</span>
+      <span>ショートカット</span>
+    </button>
+    <a class="side-nav-item side-nav-demo" href="task-board-demo.html" target="_blank" rel="noopener" title="デモ版（外部共有用・別タブ）" style="margin-top:0;">
       <span style="font-size:18px">&#127916;</span>
       <span>デモ</span>
     </a>
@@ -4314,12 +4318,6 @@ window.DASHBOARD_SHORTCUTS = [
   modal.appendChild(panel);
   document.body.appendChild(modal);
   panel.querySelector('#shortcutHelpClose').onclick = hideHelp;
-  const helpBtn = document.createElement('button');
-  helpBtn.title = 'ショートカット一覧 (?)';
-  helpBtn.textContent = '⌨️';
-  helpBtn.style.cssText = 'position:fixed;bottom:20px;right:80px;width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:999;';
-  helpBtn.onclick = showHelp;
-  document.body.appendChild(helpBtn);
   function showHelp() {
     const body = document.getElementById('shortcutHelpBody');
     let html = '';
@@ -4335,6 +4333,7 @@ window.DASHBOARD_SHORTCUTS = [
     modal.style.display = 'flex';
   }
   function hideHelp() { modal.style.display = 'none'; }
+  window.openShortcutHelpFromNav = showHelp;
   document.addEventListener('keydown', e => {
     if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
     if (e.key === '?') { e.preventDefault(); if (modal.style.display === 'flex') hideHelp(); else showHelp(); }
