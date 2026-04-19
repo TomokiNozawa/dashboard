@@ -2847,6 +2847,7 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     if (!m) return;
     if (parseInt(m[1], 10) !== targetMonthNum) return;
     const start = normTime((row[3] || '').trim());
+    const end = normTime((row[4] || '').trim());
     const company = (row[6] || '').trim();
     const content = (row[8] || '').trim();
     const key = `${date}|${start}|${company}|${content}`;
@@ -2882,7 +2883,7 @@ function buildSheet2ExportData(sheetRows, targetMonthNum) {
     const sChanged = newS !== currentS;
     if (rChanged || sChanged) {
       diffs.push({
-        rowNum: sheetRowNum, dateStr: date, start, company, content,
+        rowNum: sheetRowNum, dateStr: date, start, end, company, content,
         location: (s && s.location) || '',
         rOld: currentR, rNew: newR, rChanged,
         sOld: currentS, sNew: newS, sChanged,
@@ -3159,9 +3160,10 @@ function renderExportBody() {
         ? `<span style="font-size:11px;color:var(--text2);margin-left:6px;">📍${(d.location||'').replace(/</g,'&lt;')}</span>`
         : '';
       const opacity = d.checked ? '1' : '0.35';
+      const timeRange = d.start && d.end ? `${d.start}-${d.end}` : (d.start || '');
       html += `<tr style="border-bottom:1px solid var(--border-light);opacity:${opacity};">
-        <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(2, ${i}, this.checked)" aria-label="${d.dateStr} ${d.start} ${d.company} を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
-        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${d.start || ''}</span></td>
+        <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(2, ${i}, this.checked)" aria-label="${d.dateStr} ${timeRange} ${d.company} を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
+        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.dateStr}<br><span style="font-weight:400;color:var(--text3);">${timeRange}</span></td>
         <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">
           <div>${(d.company||'').replace(/</g,'&lt;')}${locHtml}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px;">${(d.content||'').slice(0,40).replace(/</g,'&lt;')}</div>
