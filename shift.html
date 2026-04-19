@@ -1745,8 +1745,22 @@ function removeAssigned(schedIdx, tagIdx) {
 let suggestFilterDate = null;
 
 function toggleSuggestFilter(date) {
+  // 再描画前にスクロール位置を保存(クリック時に戻る問題の対処)
+  const left = document.querySelector('.suggest-left');
+  const right = document.querySelector('.suggest-right');
+  const leftScroll = left ? { top: left.scrollTop, left: left.scrollLeft } : null;
+  const rightScroll = right ? { top: right.scrollTop, left: right.scrollLeft } : null;
+
   suggestFilterDate = (suggestFilterDate === date) ? null : date;
   renderSuggestPanel();
+
+  // 再描画後に復元
+  requestAnimationFrame(() => {
+    const newLeft = document.querySelector('.suggest-left');
+    if (newLeft && leftScroll) { newLeft.scrollTop = leftScroll.top; newLeft.scrollLeft = leftScroll.left; }
+    const newRight = document.querySelector('.suggest-right');
+    if (newRight && rightScroll) { newRight.scrollTop = rightScroll.top; newRight.scrollLeft = rightScroll.left; }
+  });
 }
 
 function renderSuggestPanel() {
