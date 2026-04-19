@@ -2768,7 +2768,7 @@ function buildSheet1ExportData() {
       const prefix = isSingle ? '' : (CIRCLE_NUMS[i] || (i+1) + '.');
       let text;
       if (!s.instNeeded || s.instNeeded === 0) {
-        text = 'ー';
+        text = 'なし';
       } else if (!s.assigned || s.assigned.length === 0) {
         text = '';  // 未配置
       } else {
@@ -2776,7 +2776,7 @@ function buildSheet1ExportData() {
         const names = s.assigned
           .filter(n => ic[n] !== 'NG')
           .map(n => (ic[n] === 'OK') ? n : n + '？');
-        text = names.length > 0 ? names.join('+') : 'ー';
+        text = names.length > 0 ? names.join('+') : 'なし';
       }
       return prefix + text;
     });
