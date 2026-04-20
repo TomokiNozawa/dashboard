@@ -1046,18 +1046,21 @@ button.side-nav-item {
   }
 }
 
-/* FAB (Floating Action Button) - モバイル新規タスク */
+/* FAB (Floating Action Button) - モバイル新規タスク、mediaクエリで表示 */
 .mobile-fab {
-  display: none;
   position: fixed; bottom: calc(72px + env(safe-area-inset-bottom)); right: 16px;
   width: 56px; height: 56px; border-radius: 50%;
   background: var(--accent-blue); color: #fff;
   border: none; font-size: 28px; font-weight: 300; line-height: 1;
   box-shadow: 0 4px 16px rgba(90,173,255,0.4);
   z-index: 800; cursor: pointer;
+  display: none;
   align-items: center; justify-content: center;
 }
 .mobile-fab:active { transform: scale(0.95); }
+@media (max-width: 768px) {
+  .mobile-fab { display: flex !important; }
+}
 
 @media (max-width: 480px) {
   .kanban-column { min-width: 85vw; }
