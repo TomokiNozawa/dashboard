@@ -327,6 +327,11 @@ a:hover { text-decoration: underline; }
   .save-fab { bottom: calc(72px + env(safe-area-inset-bottom)) !important; right: 12px !important; padding: 10px 16px !important; font-size: 13px !important; }
   /* フローティングショートカット・Gコード案内トーストはモバイル不要 (キーボードなし) */
   #shortcutHelpBtn { display: none !important; }
+  /* property-card が画面幅からはみ出すので padding と gap を縮小 */
+  .property-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+  .property-card { padding: 14px !important; }
+  .filter-bar { padding: 10px 12px !important; }
+  .filter-bar select, .filter-bar input { font-size: 12px; }
 }
 @media (min-width: 1500px) {
   .property-grid { grid-template-columns: repeat(3, 1fr); }

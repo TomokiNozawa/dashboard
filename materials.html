@@ -263,6 +263,33 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .mobile-bottom-nav { display: flex; }
   /* 保存FABをボトムナビ上に退避 */
   .save-fab { bottom: calc(72px + env(safe-area-inset-bottom)) !important; right: 12px !important; padding: 10px 16px !important; font-size: 13px !important; }
+  /* ── テーブル → カードビュー(7列が収まらないため) ── */
+  .table-wrap { overflow: visible !important; box-shadow: none !important; border: none !important; background: transparent !important; }
+  .data-table { border-collapse: separate; border-spacing: 0 8px; }
+  .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; }
+  .data-table thead { display: none; }
+  .data-table tr {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--card);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .data-table tr.row-done { opacity: 0.65; }
+  .data-table td { padding: 2px 0 !important; border: none !important; text-align: left !important; line-height: 1.5; }
+  /* 列ごとの役割 */
+  .data-table td:nth-child(1) { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }  /* 企業名 */
+  .data-table td:nth-child(2) { font-size: 12px; color: var(--text2); }                                         /* 研修内容 */
+  .data-table td:nth-child(3), .data-table td:nth-child(4) {
+    display: inline-block !important; width: auto !important; margin-right: 12px;
+    font-size: 12px; color: var(--text2);                                                                       /* Day, 日程 */
+  }
+  .data-table td:nth-child(5), .data-table td:nth-child(6), .data-table td:nth-child(7) {
+    display: inline-block !important; width: auto !important; margin-right: 8px; margin-top: 6px;              /* フォーム/作成/送付 */
+  }
+  .data-table td:nth-child(6)::before { content: '作成: '; font-size: 11px; color: var(--text3); margin-right: 4px; }
+  .data-table td:nth-child(7)::before { content: '送付: '; font-size: 11px; color: var(--text3); margin-right: 4px; }
+  .data-table .badge { font-size: 12px; padding: 3px 10px; }
 }
 </style>
 </head>
