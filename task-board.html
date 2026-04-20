@@ -4389,9 +4389,17 @@ async function syncFromSheet(silent = false) {
         const val = (row[colIdx] || '').trim();
         if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
       }
+      // instructor (講師配置): R列(17)=赤井 + S列(18)=ｻﾎﾟ の両方が確定値(空欄でなく「？」を含まない)なら完了
+      const akaiVal = (row[17] || '').trim();
+      const sapoVal = (row[18] || '').trim();
+      const isConfirmed = (v) => v && !v.includes('？') && !v.includes('?');
+      if (isConfirmed(akaiVal) && isConfirmed(sapoVal)) {
+        addDone(perDayDone, company, dateIso, 'instructor');
+      }
     }
 
     const perDayStepTypes = new Set(Object.values(SYNC_COLS_PER_DAY));
+    perDayStepTypes.add('instructor');
     const perTermStepTypes = new Set([
       ...Object.values(SYNC_COLS_PER_TERM_FIRST),
       ...Object.values(SYNC_COLS_PER_TERM_LAST),
