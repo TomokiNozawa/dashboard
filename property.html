@@ -293,8 +293,27 @@ a:hover { text-decoration: underline; }
 }
 
 /* Responsive */
+/* ── Mobile Bottom Nav ── */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--card, #161b22); border-top: 1px solid var(--border, #30363d);
+  height: 56px; z-index: 900;
+  padding-bottom: env(safe-area-inset-bottom);
+  justify-content: space-around; align-items: stretch;
+}
+.mobile-bottom-nav .mbn-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; color: var(--text3, #6e7681); text-decoration: none; font-size: 10px; font-weight: 600;
+  transition: color 0.15s;
+}
+.mobile-bottom-nav .mbn-item:active { color: var(--text, #e6edf3); }
+.mobile-bottom-nav .mbn-item.active { color: var(--blue, #58a6ff); }
+.mobile-bottom-nav .mbn-icon { font-size: 20px; line-height: 1; }
+.mobile-bottom-nav .mbn-label { font-size: 10px; }
+
 @media (max-width: 768px) {
-  .container { padding: 16px 12px 100px; }
+  .container { padding: 16px 12px calc(72px + env(safe-area-inset-bottom)); }
   .page-header h1 { font-size: 18px; }
   .summary { grid-template-columns: repeat(2, 1fr); }
   .summary-val { font-size: 22px; }
@@ -302,6 +321,8 @@ a:hover { text-decoration: underline; }
   .filter-bar { gap: 12px; padding: 12px 14px; }
   .filter-count { margin-left: 0; width: 100%; text-align: center; }
   .property-rent-total { font-size: 18px; }
+  .mobile-bottom-nav { display: flex; }
+  .compare-bar { bottom: calc(56px + env(safe-area-inset-bottom)); }
 }
 @media (min-width: 1500px) {
   .property-grid { grid-template-columns: repeat(3, 1fr); }
@@ -387,6 +408,14 @@ a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
+
+<nav class="mobile-bottom-nav">
+  <a class="mbn-item" href="index.html"><span class="mbn-icon">&#128202;</span><span class="mbn-label">Noza</span></a>
+  <a class="mbn-item" href="task-board.html"><span class="mbn-icon">&#9745;</span><span class="mbn-label">タスク</span></a>
+  <a class="mbn-item" href="materials.html"><span class="mbn-icon">&#128230;</span><span class="mbn-label">教材</span></a>
+  <a class="mbn-item" href="shift.html"><span class="mbn-icon">&#128101;</span><span class="mbn-label">シフト</span></a>
+  <a class="mbn-item active" href="property.html"><span class="mbn-icon">&#127968;</span><span class="mbn-label">物件</span></a>
+</nav>
 
 <!-- Login -->
 <div class="login-overlay" id="loginOverlay" style="display:none;">

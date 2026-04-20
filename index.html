@@ -90,9 +90,33 @@ body {
 .side-nav-item span:last-child { opacity: 0; transition: opacity 0.15s; }
 .side-nav:hover .side-nav-item span:last-child { opacity: 1; }
 
+/* ── Mobile Bottom Nav ── */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: #161b22; border-top: 1px solid #30363d;
+  height: 56px; z-index: 900;
+  padding-bottom: env(safe-area-inset-bottom);
+  justify-content: space-around; align-items: stretch;
+}
+.mobile-bottom-nav .mbn-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; color: #6e7681; text-decoration: none; font-size: 10px; font-weight: 600;
+  transition: color 0.15s;
+}
+.mobile-bottom-nav .mbn-item:hover,
+.mobile-bottom-nav .mbn-item:active { color: #e6edf3; }
+.mobile-bottom-nav .mbn-item.active { color: #58a6ff; }
+.mobile-bottom-nav .mbn-icon { font-size: 20px; line-height: 1; }
+.mobile-bottom-nav .mbn-label { font-size: 10px; }
+body.light .mobile-bottom-nav { background: #fff; border-top-color: #d8dde4; }
+body.light .mobile-bottom-nav .mbn-item { color: #8b95a5; }
+body.light .mobile-bottom-nav .mbn-item.active { color: #5aadff; }
+
 @media (max-width: 768px) {
   .side-nav { display: none; }
-  body { padding-left: 0; }
+  body { padding-left: 0; padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+  .mobile-bottom-nav { display: flex; }
 }
 </style>
 </head>
@@ -114,6 +138,24 @@ body {
   <a class="side-nav-item" href="shift.html" title="シフト管理">
     <span style="font-size:18px">&#128101;</span>
     <span>シフト</span>
+  </a>
+</nav>
+
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+  <a class="mbn-item active" href="index.html" data-page="index">
+    <span class="mbn-icon">&#128202;</span><span class="mbn-label">Noza</span>
+  </a>
+  <a class="mbn-item" href="task-board.html" data-page="task">
+    <span class="mbn-icon">&#9745;</span><span class="mbn-label">タスク</span>
+  </a>
+  <a class="mbn-item" href="materials.html" data-page="materials">
+    <span class="mbn-icon">&#128230;</span><span class="mbn-label">教材</span>
+  </a>
+  <a class="mbn-item" href="shift.html" data-page="shift">
+    <span class="mbn-icon">&#128101;</span><span class="mbn-label">シフト</span>
+  </a>
+  <a class="mbn-item" href="property.html" data-page="property">
+    <span class="mbn-icon">&#127968;</span><span class="mbn-label">物件</span>
   </a>
 </nav>
 
@@ -172,6 +214,14 @@ async function decryptAndShow(password) {
   document.head.appendChild(s);
   document.body.prepend(nav);
   document.body.style.paddingLeft = '56px';
+  // ── Mobile bottom nav (max-width 768px) ──
+  var mbn = document.createElement('nav');
+  mbn.id = 'mobileBottomNav'; mbn.className = 'mobile-bottom-nav';
+  mbn.innerHTML = '<a class="mbn-item active" href="index.html"><span class="mbn-icon">\\ud83d\\udcca</span><span class="mbn-label">Noza</span></a><a class="mbn-item" href="task-board.html"><span class="mbn-icon">\\u2611</span><span class="mbn-label">\\u30bf\\u30b9\\u30af</span></a><a class="mbn-item" href="materials.html"><span class="mbn-icon">\\ud83d\\udce6</span><span class="mbn-label">\\u6559\\u6750</span></a><a class="mbn-item" href="shift.html"><span class="mbn-icon">\\ud83d\\udc65</span><span class="mbn-label">\\u30b7\\u30d5\\u30c8</span></a><a class="mbn-item" href="property.html"><span class="mbn-icon">\\ud83c\\udfe0</span><span class="mbn-label">\\u7269\\u4ef6</span></a>';
+  var ms = document.createElement('style');
+  ms.textContent = '.mobile-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;background:#161b22;border-top:1px solid #30363d;height:56px;z-index:900;padding-bottom:env(safe-area-inset-bottom);justify-content:space-around;align-items:stretch}.mobile-bottom-nav .mbn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#6e7681;text-decoration:none;font-size:10px;font-weight:600;transition:color .15s}.mobile-bottom-nav .mbn-item:hover,.mobile-bottom-nav .mbn-item:active{color:#e6edf3}.mobile-bottom-nav .mbn-item.active{color:#58a6ff}.mobile-bottom-nav .mbn-icon{font-size:20px;line-height:1}.mobile-bottom-nav .mbn-label{font-size:10px}body.light .mobile-bottom-nav{background:#fff;border-top-color:#d8dde4}body.light .mobile-bottom-nav .mbn-item{color:#8b95a5}body.light .mobile-bottom-nav .mbn-item.active{color:#5aadff}@media(max-width:768px){.mobile-bottom-nav{display:flex}body{padding-left:0!important;padding-bottom:calc(56px + env(safe-area-inset-bottom))!important}}';
+  document.head.appendChild(ms);
+  document.body.appendChild(mbn);
   var saved = localStorage.getItem('noza_theme');
   if (saved === 'light') document.body.classList.add('light');
   var tb = document.createElement('button');

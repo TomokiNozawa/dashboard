@@ -959,21 +959,49 @@ button.side-nav-item {
 }
 
 /* ── Responsive ── */
+/* ── Mobile Bottom Nav (全dashboard共通) ── */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--bg-column, #161b22); border-top: 1px solid var(--border, #30363d);
+  height: 56px; z-index: 900;
+  padding-bottom: env(safe-area-inset-bottom);
+  justify-content: space-around; align-items: stretch;
+}
+.mobile-bottom-nav .mbn-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; color: var(--text-muted, #6e7681); text-decoration: none; font-size: 10px; font-weight: 600;
+  transition: color 0.15s;
+}
+.mobile-bottom-nav .mbn-item:active { color: var(--text-primary, #e6edf3); }
+.mobile-bottom-nav .mbn-item.active { color: var(--accent-blue, #58a6ff); }
+.mobile-bottom-nav .mbn-icon { font-size: 20px; line-height: 1; }
+.mobile-bottom-nav .mbn-label { font-size: 10px; }
+
 @media (max-width: 768px) {
   .app { padding-left: 0; }
   .side-nav { display: none; }
+  .mobile-bottom-nav { display: flex; }
+  body { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
   .topbar { padding: 8px 12px; flex-wrap: wrap; }
   .topbar-subtitle { display: none; }
   .topbar-divider { display: none; }
   .topbar-btn .kbd { display: none; }
   .topbar-btn span.label-text { display: none; }
-  .summary-bar { padding: 8px 12px; gap: 6px; }
-  .summary-card { padding: 6px 12px; }
+  /* サマリーカード: 横スクロール化 (6枚あるので全部は画面に入らない) */
+  .summary-bar { padding: 8px 12px; gap: 6px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
+  .summary-bar::-webkit-scrollbar { height: 4px; }
+  .summary-card { padding: 6px 12px; flex-shrink: 0; scroll-snap-align: start; min-width: 90px; }
   .summary-value { font-size: 16px; }
-  .board-container { padding: 10px 12px; gap: 10px; }
-  .kanban-column { min-width: 260px; }
+  .board-container { padding: 10px 12px; gap: 10px; flex-direction: column; }
+  /* カンバン: 1カラム表示 (現在の状態フィルタに応じて1列だけ表示) */
+  .kanban-column { min-width: 0; width: 100%; }
+  .kanban-column.mobile-hidden { display: none; }
+  .mobile-kanban-tabs { display: flex; gap: 4px; padding: 8px 12px 0; border-bottom: 1px solid var(--border-light); }
+  .mobile-kanban-tab { flex: 1; padding: 8px 6px; font-size: 12px; font-weight: 600; text-align: center; background: transparent; border: 1px solid var(--border); border-radius: 6px 6px 0 0; cursor: pointer; color: var(--text-muted); }
+  .mobile-kanban-tab.active { background: var(--bg-column); color: var(--text-primary); border-color: var(--accent-blue); border-bottom-color: var(--bg-column); }
   .filter-bar { padding: 8px 12px; }
-  .modal { padding: 20px; }
+  .modal, .step-popup { padding: 16px !important; max-width: calc(100vw - 16px) !important; width: calc(100vw - 16px) !important; }
   .form-row { grid-template-columns: 1fr; }
   .tab-bar { padding: 0 12px; }
   .tab-item { padding: 8px 12px; font-size: 11px; }
@@ -984,12 +1012,52 @@ button.side-nav-item {
   .cal-task-dot { font-size: 8px; }
   .stats-grid { grid-template-columns: 1fr; }
   .stats-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .todo-card-grid { grid-template-columns: 1fr; }
-  .todo-card-body { display: none; }
+  /* やること一覧: カードを縦長化、タイトル表示、タップターゲット拡大 */
+  .todo-card-grid { grid-template-columns: 1fr; gap: 6px; }
+  .todo-card { padding: 10px 12px; min-height: 56px; align-items: center; flex-wrap: wrap; }
+  .todo-card-body { display: block !important; flex: 1 1 100%; margin-top: 4px; order: 10; }
+  .todo-card-title { font-size: 12px; line-height: 1.35; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .todo-card-check { min-width: 28px; min-height: 28px; font-size: 14px; }
+  .todo-card .task-star { min-width: 32px; min-height: 32px; font-size: 18px; padding: 0; }
+  .todo-card-company { max-width: 45%; font-size: 13px; }
+  .todo-card-right { order: 5; margin-left: auto; }
   .company-list { grid-template-columns: 1fr; }
   .company-phase-badges { display: none; }
   .company-pipeline { display: none; }
+  /* FAB (新規タスク) */
+  .mobile-fab { display: flex; }
 }
+
+/* モバイル: フィルタ・検索をボトムシート化 */
+@media (max-width: 768px) {
+  #filterPopup .step-popup,
+  #searchOverlay .search-box {
+    position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
+    top: auto !important; transform: none !important;
+    width: 100% !important; max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 85vh !important;
+    margin-bottom: calc(56px + env(safe-area-inset-bottom)) !important;
+  }
+  #filterPopup.step-popup-overlay,
+  #searchOverlay.search-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+}
+
+/* FAB (Floating Action Button) - モバイル新規タスク */
+.mobile-fab {
+  display: none;
+  position: fixed; bottom: calc(72px + env(safe-area-inset-bottom)); right: 16px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--accent-blue); color: #fff;
+  border: none; font-size: 28px; font-weight: 300; line-height: 1;
+  box-shadow: 0 4px 16px rgba(90,173,255,0.4);
+  z-index: 800; cursor: pointer;
+  align-items: center; justify-content: center;
+}
+.mobile-fab:active { transform: scale(0.95); }
 
 @media (max-width: 480px) {
   .kanban-column { min-width: 85vw; }
@@ -1057,6 +1125,15 @@ html { scroll-behavior: smooth; }
         <span>デモ</span>
       </a>
     </div>
+  </nav>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mobile-bottom-nav">
+    <a class="mbn-item" href="index.html"><span class="mbn-icon">&#128202;</span><span class="mbn-label">Noza</span></a>
+    <a class="mbn-item active" href="task-board.html"><span class="mbn-icon">&#9745;</span><span class="mbn-label">タスク</span></a>
+    <a class="mbn-item" href="materials.html"><span class="mbn-icon">&#128230;</span><span class="mbn-label">教材</span></a>
+    <a class="mbn-item" href="shift.html"><span class="mbn-icon">&#128101;</span><span class="mbn-label">シフト</span></a>
+    <a class="mbn-item" href="property.html"><span class="mbn-icon">&#127968;</span><span class="mbn-label">物件</span></a>
   </nav>
 
   <!-- Top Bar -->
@@ -1149,6 +1226,12 @@ html { scroll-behavior: smooth; }
 
   <!-- Kanban Board -->
   <div class="view-container active" id="view-kanban">
+  <!-- モバイル用ステータスタブ切替(3カラム表示不可のため1列モード) -->
+  <div class="mobile-kanban-tabs" id="mobileKanbanTabs" style="display:none">
+    <button class="mobile-kanban-tab active" data-mstatus="todo" onclick="setMobileKanbanTab('todo')">未着手 <span id="mtabCountTodo">0</span></button>
+    <button class="mobile-kanban-tab" data-mstatus="in_progress" onclick="setMobileKanbanTab('in_progress')">進行中 <span id="mtabCountInProgress">0</span></button>
+    <button class="mobile-kanban-tab" data-mstatus="done" onclick="setMobileKanbanTab('done')">完了 <span id="mtabCountDone">0</span></button>
+  </div>
   <div class="board-container" id="boardContainer">
     <div class="kanban-column" data-status="todo">
       <div class="column-header todo">
@@ -1176,6 +1259,9 @@ html { scroll-behavior: smooth; }
     </div>
   </div>
   </div>
+
+  <!-- Mobile FAB (新規タスク追加) -->
+  <button class="mobile-fab" onclick="openNewTask()" title="新規タスク" aria-label="新規タスク">+</button>
 
   <!-- Timeline View → ToDo View -->
   <div class="view-container" id="view-timeline">
@@ -1748,6 +1834,10 @@ function renderBoard() {
     const tasks = columns[status];
 
     document.getElementById(countId).textContent = tasks.length;
+    // モバイルタブのカウントも同期
+    const mcid = status === 'todo' ? 'mtabCountTodo' : status === 'in_progress' ? 'mtabCountInProgress' : 'mtabCountDone';
+    const mcEl = document.getElementById(mcid);
+    if (mcEl) mcEl.textContent = tasks.length;
 
     let html = '';
     tasks.forEach(t => {
@@ -1765,6 +1855,34 @@ function renderBoard() {
   // Init drag & drop once (event delegation)
   initDragDrop();
 }
+
+// ── Mobile Kanban Tab (1カラム表示切替) ──
+let mobileKanbanStatus = 'todo';
+function setMobileKanbanTab(status) {
+  mobileKanbanStatus = status;
+  document.querySelectorAll('.mobile-kanban-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mstatus === status);
+  });
+  document.querySelectorAll('.kanban-column').forEach(col => {
+    col.classList.toggle('mobile-hidden', col.dataset.status !== status);
+  });
+}
+// viewport width を見てモバイル時のみタブ表示、初期ステータス反映
+function updateMobileKanbanDisplay() {
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const tabs = document.getElementById('mobileKanbanTabs');
+  if (!tabs) return;
+  tabs.style.display = isMobile ? 'flex' : 'none';
+  document.querySelectorAll('.kanban-column').forEach(col => {
+    if (isMobile) {
+      col.classList.toggle('mobile-hidden', col.dataset.status !== mobileKanbanStatus);
+    } else {
+      col.classList.remove('mobile-hidden');
+    }
+  });
+}
+window.addEventListener('resize', updateMobileKanbanDisplay);
+document.addEventListener('DOMContentLoaded', updateMobileKanbanDisplay);
 
 function renderStepBadge(t) {
   const info = getStepInfo(t);
