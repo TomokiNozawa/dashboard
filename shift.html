@@ -539,44 +539,61 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .tabs { overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap !important; white-space: nowrap; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
   .tabs::-webkit-scrollbar { height: 3px; }
   .tab { flex-shrink: 0 !important; scroll-snap-align: start; }
-  /* ── スケジュール表をカード化 (14列が収まらない) ── */
-  .schedule-table { border-collapse: separate; border-spacing: 0 8px; }
-  .schedule-table, .schedule-table tbody, .schedule-table tr, .schedule-table td { display: block; width: 100%; }
-  .schedule-table thead { display: none; }
+  /* ── スケジュール表をカード化 (14列を flex re-order + 視覚的軽量化) ── */
+  .schedule-table { border-collapse: separate; border-spacing: 0 6px; }
+  .schedule-table, .schedule-table tbody { display: block; width: 100%; }
+  .schedule-table thead, .schedule-table tfoot { display: none; }
   .schedule-table tr {
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
-    background: var(--card);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+    border: none !important;
+    border-bottom: 1px solid rgba(127,127,127,0.12) !important;
+    border-radius: 0 !important;
+    padding: 10px 2px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    width: 100%;
   }
-  .schedule-table td { padding: 1px 0 !important; border: none !important; text-align: left !important; line-height: 1.5; }
+  .schedule-table td { padding: 0 !important; border: none !important; text-align: left !important; line-height: 1.4; font-size: 12px; }
   /* 列: 1日付 2時間 3顧客 4内容 5場所 6人数 7主担当 8講師 9分類 10必要数 11配置済 12インストラクター 13確認状況 14過不足 */
-  .schedule-table td:nth-child(1) { font-weight: 700; display: inline-block !important; width: auto !important; margin-right: 10px; font-size: 14px; } /* 日付 */
-  .schedule-table td:nth-child(2) { display: inline-block !important; width: auto !important; color: var(--text2); font-size: 13px; } /* 時間 */
-  .schedule-table td:nth-child(9) { float: right; display: inline-block !important; width: auto !important; font-size: 11px; } /* 分類 */
-  .schedule-table td:nth-child(3) { clear: both; font-size: 14px; font-weight: 600; margin-top: 4px !important; } /* 顧客 */
-  .schedule-table td:nth-child(4) { color: var(--text2); font-size: 12px; } /* 内容 */
-  .schedule-table td:nth-child(5), .schedule-table td:nth-child(6) {
-    display: inline-block !important; width: auto !important; margin-right: 10px; font-size: 12px; color: var(--text3); margin-top: 4px !important;
+  /* Row1: 日付 · 時間 · 場所 | 分類 · 確定 · 過不足 */
+  .schedule-table td:nth-child(1) { order: 1; font-weight: 700; font-size: 13px; }
+  .schedule-table td:nth-child(2) { order: 2; color: var(--text2); font-size: 13px; }
+  .schedule-table td:nth-child(5) { order: 3; color: var(--text3); }
+  .schedule-table td:nth-child(5):not(:empty)::before { content: '📍'; margin-right: 2px; }
+  .schedule-table td:nth-child(9) { order: 4; margin-left: auto; }
+  .schedule-table td:nth-child(13) { order: 5; font-size: 11px; }
+  .schedule-table td:nth-child(14) { order: 6; font-size: 11px; font-weight: 600; min-width: 38px; text-align: right !important; }
+  /* Row2: 顧客(大きく) */
+  .schedule-table td:nth-child(3) { order: 10; width: 100%; font-size: 14px; font-weight: 600; margin-top: 2px; }
+  /* Row3: 内容 */
+  .schedule-table td:nth-child(4) { order: 11; width: 100%; color: var(--text2); }
+  /* Row4: 人数 · 講師 */
+  .schedule-table td:nth-child(6):not(:empty) { order: 20; color: var(--text3); }
+  .schedule-table td:nth-child(6):not(:empty)::before { content: '👥'; margin-right: 2px; }
+  .schedule-table td:nth-child(8):not(:empty) { order: 21; color: var(--text2); }
+  .schedule-table td:nth-child(8):not(:empty)::before { content: '講: '; color: var(--text3); font-size: 11px; margin-right: 2px; }
+  /* Row5: 必要/配置 (サイズ統一) */
+  .schedule-table td:nth-child(10), .schedule-table td:nth-child(11) {
+    order: 30; display: inline-flex !important; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--text2); min-width: 64px;
   }
-  .schedule-table td:nth-child(5):not(:empty)::before { content: '📍'; margin-right: 3px; }
-  .schedule-table td:nth-child(6):not(:empty)::before { content: '👥'; margin-right: 3px; }
-  .schedule-table td:nth-child(7), .schedule-table td:nth-child(8) {
-    display: inline-block !important; width: auto !important; font-size: 12px; margin-right: 10px; margin-top: 2px !important;
+  .schedule-table td:nth-child(10)::before { content: '必要'; color: var(--text3); font-size: 11px; margin-right: 2px; }
+  .schedule-table td:nth-child(11)::before { content: '配置'; color: var(--text3); font-size: 11px; margin-right: 2px; }
+  .schedule-table td:nth-child(10) { order: 30; margin-top: 2px; }
+  .schedule-table td:nth-child(11) { order: 31; margin-top: 2px; }
+  .schedule-table td:nth-child(10) .editable-inst-needed {
+    width: 40px !important; padding: 2px 4px !important; font-size: 12px !important;
+    border: 1px solid rgba(127,127,127,0.2); background: transparent; color: inherit;
+    border-radius: 4px; text-align: center;
   }
-  .schedule-table td:nth-child(7):not(:empty)::before { content: '主: '; color: var(--text3); font-size: 11px; }
-  .schedule-table td:nth-child(8):not(:empty)::before { content: '講: '; color: var(--text3); font-size: 11px; }
-  .schedule-table td:nth-child(10), .schedule-table td:nth-child(11), .schedule-table td:nth-child(14) {
-    display: inline-block !important; width: auto !important; font-size: 12px; margin-right: 10px; margin-top: 4px !important;
+  /* 主担当(7) は非表示 */
+  .schedule-table td:nth-child(7) { display: none !important; }
+  /* インストラクター一覧(12) はrow5末尾に追加、視覚軽く */
+  .schedule-table td:nth-child(12):not(:empty) {
+    order: 40; width: 100%; font-size: 11px; color: var(--text3); margin-top: 2px;
   }
-  .schedule-table td:nth-child(10):not(:empty)::before { content: '必要: '; color: var(--text3); font-size: 11px; }
-  .schedule-table td:nth-child(11):not(:empty)::before { content: '配置: '; color: var(--text3); font-size: 11px; }
-  .schedule-table td:nth-child(14):not(:empty)::before { content: '過不足: '; color: var(--text3); font-size: 11px; }
-  /* インストラクター + 確認状況はカード末尾に大きめで */
-  .schedule-table td:nth-child(12), .schedule-table td:nth-child(13) {
-    display: block !important; width: 100% !important; font-size: 12px; margin-top: 4px !important;
-  }
+  .schedule-table td:nth-child(12):not(:empty)::before { content: '['; color: var(--text3); }
+  .schedule-table td:nth-child(12):not(:empty)::after { content: ']'; color: var(--text3); }
   /* ── 他タブのテーブルは横スクロール ── */
   #tab-avail-content, #tab-contact-content, #tab-placement-content, #tab-suggest-content {
     overflow-x: auto; -webkit-overflow-scrolling: touch;

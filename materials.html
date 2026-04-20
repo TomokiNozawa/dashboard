@@ -160,6 +160,16 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .save-badge { background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 10px; font-size: 11px; }
 
 /* Reload */
+.pending-filter-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; font-size: 12px; color: var(--text2);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer; user-select: none;
+  margin-right: 6px;
+}
+.pending-filter-label input { accent-color: var(--blue); cursor: pointer; }
+.pending-filter-label:hover { border-color: var(--blue); color: var(--text); }
+
 .reload-btn {
   padding: 8px 16px;
   background: linear-gradient(135deg, #1f6feb, #58a6ff);
@@ -361,6 +371,10 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
       <h1>教材準備状況</h1>
       <div class="header-right">
         <span class="sub" id="lastEditInfo"></span>
+        <label class="pending-filter-label" title="作成/送付に未完了があるDayだけ表示">
+          <input type="checkbox" id="filterPending" onchange="togglePendingFilter()">
+          <span>未対応のみ</span>
+        </label>
         <button class="reload-btn" onclick="reloadData()">再読込</button>
       </div>
     </div>
@@ -1131,6 +1145,14 @@ function renderSummary() {
   sentEl.style.color = sentDays === totalDays ? 'var(--green)' : sentDays >= totalDays / 2 ? 'var(--yellow)' : 'var(--red)';
 }
 
+let filterPendingOnly = false;
+
+function togglePendingFilter() {
+  const el = document.getElementById('filterPending');
+  filterPendingOnly = !!(el && el.checked);
+  renderTable();
+}
+
 function renderTable() {
   const tbody = document.getElementById('tableBody');
 
@@ -1141,6 +1163,17 @@ function renderTable() {
       rows.push({ t, idx, d });
     });
   });
+
+  // 未対応のみフィルタ: 作成 OR 送付が未(=falsy)のDayだけ表示
+  if (filterPendingOnly) {
+    const sent0 = rows.filter(r => {
+      const created = r.t.created[String(r.d.n)];
+      const daySent = getSentObj(r.t)[String(r.d.n)];
+      return !(created && daySent);
+    });
+    rows.length = 0;
+    rows.push(...sent0);
+  }
 
   // Sort
   rows.sort((a, b) => {

@@ -364,11 +364,13 @@ a:hover { text-decoration: underline; }
 .compare-btn-go:hover { opacity: 0.9; }
 .compare-btn-go:disabled { opacity: 0.5; cursor: not-allowed; }
 .property-card .compare-check {
-  position: absolute; top: 8px; right: 8px; width: 22px; height: 22px;
+  position: absolute; top: 10px; left: 10px; width: 22px; height: 22px;
   border: 2px solid var(--border); border-radius: 4px; background: var(--bg);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   font-size: 14px; color: transparent; transition: all 0.15s;
+  z-index: 2;
 }
+.property-card .property-name { padding-left: 32px; }
 .property-card .compare-check:hover { border-color: var(--purple); }
 .property-card .compare-check.selected {
   background: var(--purple); border-color: var(--purple); color: white;
