@@ -390,6 +390,17 @@ button.side-nav-item {
 .status-btn.active.todo { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.08); }
 .status-btn.active.in_progress { border-color: var(--accent-yellow); color: var(--accent-yellow); background: rgba(232,184,64,0.08); }
 .status-btn.active.done { border-color: var(--accent-green); color: var(--accent-green); background: rgba(66,199,96,0.08); }
+.sv-btn {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 8px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+  font-family: var(--font); color: var(--text-secondary); cursor: pointer;
+  transition: all var(--transition); outline: none;
+}
+.sv-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.sv-btn.active { border-width: 2px; font-weight: 600; }
+.sv-btn.active[data-val="済"] { border-color: var(--accent-green); color: var(--accent-green); background: rgba(66,199,96,0.08); }
+.sv-btn.active[data-val="ー"] { border-color: #9ca3af; color: #d1d5db; background: rgba(156,163,175,0.1); }
 .status-dot-btn { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
 /* ── Field Number Badge ── */
@@ -568,6 +579,8 @@ button.side-nav-item {
 .task-action-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(90,173,255,0.08); }
 .task-action-btn.progress:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); background: rgba(232,184,64,0.08); }
 .task-action-btn.done:hover { border-color: var(--accent-green); color: var(--accent-green); background: rgba(66,199,96,0.08); }
+.task-action-btn.skip { color: var(--text-muted); }
+.task-action-btn.skip:hover { border-color: #9ca3af; color: #d1d5db; background: rgba(156,163,175,0.1); }
 
 /* ── Add Task Placeholder ── */
 .add-task-placeholder {
@@ -1395,6 +1408,18 @@ html { scroll-behavior: smooth; }
           </button>
         </div>
       </div>
+      <div class="form-group" id="sheetValueGroup" style="display:none">
+        <label class="form-label"><span class="field-num">7b</span>スプシ書込値 <span style="font-size:10px;color:var(--text-muted);font-weight:normal">（完了時にスプシへ書く値）</span></label>
+        <input type="hidden" id="taskSheetValue" value="済">
+        <div class="status-toggle">
+          <button type="button" class="sv-btn active" data-val="済" onclick="setSheetValueBtn('済')">
+            <span class="status-dot-btn" style="background:var(--accent-green)"></span>済（完了）
+          </button>
+          <button type="button" class="sv-btn" data-val="ー" onclick="setSheetValueBtn('ー')">
+            <span class="status-dot-btn" style="background:#9ca3af"></span>ー（不要）
+          </button>
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label"><span class="field-num">8</span>重要度</label>
         <input type="hidden" id="taskImportant" value="false">
@@ -1914,7 +1939,8 @@ function renderTaskCard(t) {
       <div class="task-card-actions" onclick="event.stopPropagation()">
         ${t.status !== 'todo' ? `<button class="task-action-btn" onclick="moveTask('${t._id}','todo')" title="未着手に戻す">&#9664; 未着手</button>` : ''}
         ${t.status !== 'in_progress' ? `<button class="task-action-btn progress" onclick="moveTask('${t._id}','in_progress')" title="進行中へ">進行中</button>` : ''}
-        ${t.status !== 'done' ? `<button class="task-action-btn done" onclick="moveTask('${t._id}','done')" title="完了へ">&#10003; 完了</button>` : ''}
+        ${t.status !== 'done' ? `<button class="task-action-btn done" onclick="moveTask('${t._id}','done','済')" title="完了 (スプシに「済」)">&#10003; 完了</button>` : ''}
+        ${t.status !== 'done' && STEP_TO_SHEET_COL[getStepType(t)] ? `<button class="task-action-btn skip" onclick="moveTask('${t._id}','done','ー')" title="不要として完了 (スプシに「ー」)">ー 不要</button>` : ''}
         ${(() => {
           if (t.status === 'done') return '';
           const paired = findPairedMaterialTask(t);
@@ -2233,6 +2259,7 @@ function openNewTask(status) {
   document.getElementById('taskForm').reset();
   document.getElementById('taskId').value = '';
   document.getElementById('taskStepType').value = 'other';
+  setSheetValueBtn('済');
   setStatusBtn(status || 'todo');
   setTrainingTypeFromValue('');
   setDateValue('taskDueDate', 'taskDueDatePicker', toDateStr(new Date()));
@@ -2262,6 +2289,7 @@ function openEditTask(id) {
   document.getElementById('taskStepType').value = getStepType(t);
   setDateValue('taskDueDate', 'taskDueDatePicker', t.dueDate || '');
   setDateValue('taskTrainingDate', 'taskTrainingDatePicker', t.trainingDate || '');
+  setSheetValueBtn('済');
   setStatusBtn(t.status || 'todo');
   // 重要度
   const imp = !!t.important;
@@ -2302,6 +2330,8 @@ function saveTask(e) {
   const wasNotDone = !allTasks[id] || allTasks[id].status !== 'done';
   const nowDone = data.status === 'done';
 
+  const sheetValue = document.getElementById('taskSheetValue')?.value || '済';
+
   if (id) {
     // Update — 編集前の値を取って、undoで戻せるようにする
     const prevSnapshot = allTasks[id] ? { ...allTasks[id] } : null;
@@ -2310,7 +2340,7 @@ function saveTask(e) {
       showToast('タスクを更新しました', 'success');
       closeTaskModal();
       if (nowDone && wasNotDone) {
-        writeBackToSheet({ ...allTasks[id], ...data }).catch(e => console.warn('Sheets sync error:', e));
+        writeBackToSheet({ ...allTasks[id], ...data }, sheetValue).catch(e => console.warn('Sheets sync error:', e));
       }
     });
   } else {
@@ -2322,24 +2352,25 @@ function saveTask(e) {
       showToast('タスクを作成しました', 'success');
       closeTaskModal();
       if (nowDone) {
-        writeBackToSheet(data).catch(e => console.warn('Sheets sync error:', e));
+        writeBackToSheet(data, sheetValue).catch(e => console.warn('Sheets sync error:', e));
       }
     });
   }
   return false;
 }
 
-function moveTask(id, newStatus) {
+function moveTask(id, newStatus, sheetValue = '済') {
   if (!db) return;
   const prev = allTasks[id];
   if (prev) pushUndo('status_change', id, { status: prev.status, title: prev.title });
   const updates = { status: newStatus, updatedAt: firebase.database.ServerValue.TIMESTAMP };
   if (newStatus === 'done') updates.completedAt = firebase.database.ServerValue.TIMESTAMP;
   db.ref('tasks/' + id).update(updates).then(() => {
-    showToast(`「${STATUS_LABELS[newStatus]}」に移動しました`, 'success');
+    const labelSuffix = (newStatus === 'done' && sheetValue === 'ー') ? '（ー/不要）' : '';
+    showToast(`「${STATUS_LABELS[newStatus]}${labelSuffix}」に移動しました`, 'success');
     // Write back to spushi when marking as done
     if (newStatus === 'done' && allTasks[id]) {
-      writeBackToSheet(allTasks[id]).catch(e => console.warn('Sheets sync error:', e));
+      writeBackToSheet(allTasks[id], sheetValue).catch(e => console.warn('Sheets sync error:', e));
     }
   });
 }
@@ -2929,6 +2960,7 @@ function updateStepTypeDisplay() {
 
 function onStepTypeChange() {
   const st = document.getElementById('taskStepType').value;
+  updateSheetValueGroupVisibility();
   const titleEl = document.getElementById('taskTitle');
   if (st !== 'other') {
     const info = STEP_TYPES[st];
@@ -3160,6 +3192,21 @@ function setTrainingTypeFromValue(val) {
 function setStatusBtn(val) {
   document.getElementById('taskStatus').value = val;
   document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.val === val));
+  updateSheetValueGroupVisibility();
+}
+
+function updateSheetValueGroupVisibility() {
+  const group = document.getElementById('sheetValueGroup');
+  if (!group) return;
+  const status = document.getElementById('taskStatus')?.value || 'todo';
+  const stepType = document.getElementById('taskStepType')?.value || '';
+  const hasSheetCol = !!STEP_TO_SHEET_COL[stepType];
+  group.style.display = (status === 'done' && hasSheetCol) ? '' : 'none';
+}
+
+function setSheetValueBtn(val) {
+  document.getElementById('taskSheetValue').value = val;
+  document.querySelectorAll('.sv-btn').forEach(b => b.classList.toggle('active', b.dataset.val === val));
 }
 
 function formatDateWithDow(isoDate) {
@@ -4186,8 +4233,8 @@ function sheetsParseDate(dateStr, fy) {
   return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
-async function writeBackToSheet(task) {
-  // When a task is completed, write "済" to the corresponding spushi column
+async function writeBackToSheet(task, sheetValue = '済') {
+  // When a task is completed, write the given value (default "済", or "ー" for skipped) to the corresponding spushi column
   const stepType = getStepType(task);
   const colLetter = STEP_TO_SHEET_COL[stepType];
   if (!colLetter) return; // No corresponding column
@@ -4237,12 +4284,12 @@ async function writeBackToSheet(task) {
   const perTermTypes = ['premtg_schedule', 'roster_send', 'invoice', 'mid_schedule', 'final_schedule'];
   const rowsToUpdate = perTermTypes.includes(stepType) ? [matchRows[0]] : matchRows;
 
-  // Write "済" to the column
+  // Write value (済 or ー) to the column
   const writeBody = {
     valueInputOption: 'RAW',
     data: rowsToUpdate.map(row => ({
       range: `${sheetName}!${colLetter}${row}`,
-      values: [['済']]
+      values: [[sheetValue]]
     }))
   };
 
@@ -4252,7 +4299,7 @@ async function writeBackToSheet(task) {
   );
 
   if (writeResp.ok) {
-    showToast(`スプシ同期: ${colLetter}列に「済」を書き込みました`, 'success');
+    showToast(`スプシ同期: ${colLetter}列に「${sheetValue}」を書き込みました`, 'success');
   } else {
     console.error('Sheets write failed:', writeResp.status);
     showToast('スプシ同期に失敗しました', 'error');
