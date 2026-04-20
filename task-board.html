@@ -1024,9 +1024,17 @@ button.side-nav-item {
   .todo-card .step-badge { order: 3; }
   .todo-card .task-auto-badge, .todo-card .task-manual-badge { order: 4; }
   .todo-card-right { order: 5; margin-left: auto; }
-  .todo-card-check { order: 6; min-width: 36px; min-height: 36px; font-size: 14px; margin-left: 4px; }
+  /* 完了チェック: モバイルでは常時✓表示(hover無いため) */
+  .todo-card-check {
+    order: 6; min-width: 32px; min-height: 32px; width: 32px; height: 32px;
+    font-size: 16px; margin-left: 4px;
+    color: var(--text-muted); border-color: var(--border);
+  }
+  .todo-card-check:active { background: var(--accent-green); color: #fff; border-color: var(--accent-green); }
   .todo-card-body { order: 10; display: block !important; flex: 1 1 100%; margin-top: 2px; }
   .todo-card-title { font-size: 12px; line-height: 1.35; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* カード末尾がボトムナビに隠れないよう余白 */
+  .board-container, .timeline-view, #view-company, #view-stats { padding-bottom: 24px; }
   .company-list { grid-template-columns: 1fr; }
   .company-phase-badges { display: none; }
   .company-pipeline { display: none; }
