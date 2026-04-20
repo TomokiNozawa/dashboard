@@ -327,9 +327,12 @@ a:hover { text-decoration: underline; }
   .save-fab { bottom: calc(72px + env(safe-area-inset-bottom)) !important; right: 12px !important; padding: 10px 16px !important; font-size: 13px !important; }
   /* フローティングショートカット・Gコード案内トーストはモバイル不要 (キーボードなし) */
   #shortcutHelpBtn { display: none !important; }
-  /* property-card が画面幅からはみ出すので padding と gap を縮小 */
-  .property-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
-  .property-card { padding: 14px !important; }
+  /* property-card が画面幅からはみ出すので padding/gap 縮小 + min-width:0 でgridに縮小許可 */
+  .property-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 10px !important; }
+  .property-card { padding: 14px !important; min-width: 0 !important; }
+  .property-media { flex-wrap: wrap; }
+  .property-floorplan { width: 96px !important; height: 72px !important; }
+  .property-thumbs img, .property-thumbs .img-more { width: 44px !important; height: 32px !important; }
   .filter-bar { padding: 10px 12px !important; }
   .filter-bar select, .filter-bar input { font-size: 12px; }
 }
