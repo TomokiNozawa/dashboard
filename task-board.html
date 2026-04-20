@@ -4346,15 +4346,16 @@ async function syncFromSheet(silent = false) {
     };
     // per_term: 最初のDayの行の値がターム全体の状態を表す (sync_tasks.pyと同じ読み方)
     //   値 "設定済"/"済"/"ー"/"-" で完了扱い (中間/最終の set_col は "設定済" がある)
+    //   NOTE: 最終報告(AG)は最終Day行で判定する(cleanup_sheet.pyが最終Day以外に「ー」書込するため)
     const SYNC_COLS_PER_TERM_FIRST = {
       21: 'premtg_schedule',  // V: 事前mtg
       23: 'roster_send',      // X: 名簿送付
       30: 'mid_schedule',     // AE: 中間報告設定
-      32: 'final_schedule',   // AG: 最終報告設定
     };
-    // 請求書は last row の AD列で判定 (sync_tasks.py: term_after_last_day)
+    // 最終Day行で判定する列
     const SYNC_COLS_PER_TERM_LAST = {
-      29: 'invoice',          // AD: 請求書送付
+      29: 'invoice',          // AD: 請求書送付 (term_after_last_day)
+      32: 'final_schedule',   // AG: 最終報告設定 (最終Day行を見る)
     };
 
     const DONE_VALUES = new Set(['済', 'ー', '-', '設定済', '実施無し', 'なし']);
@@ -4370,24 +4371,72 @@ async function syncFromSheet(silent = false) {
       map.get(k).add(st);
     };
 
+    // ── ターム認識 (sync_tasks.pyと同じ 60日ウィンドウ) ──
+    const TERM_WINDOW_DAYS = 60;
+    const seriesOf = (content) => {
+      const m = String(content || '').match(/(.+?)Day\d+/);
+      return m ? m[1] : (content || '');
+    };
+
+    // 全行をパース
+    const parsedRows = [];
     for (let i = SHEETS_HEADER_ROW + 1; i < rows.length; i++) {
       const row = rows[i];
       const dateStr = (row[SHEETS_COL_DATE] || '').trim();
       const dateIso = sheetsParseDate(dateStr, fy);
       const company = (row[SHEETS_COL_COMPANY] || '').trim();
+      const content = (row[SHEETS_COL_CONTENT] || '').trim();
       if (!dateIso || !company) continue;
+      parsedRows.push({ row, dateIso, company, content, series: seriesOf(content) });
+    }
+
+    // (company, series) でグルーピング + 60日ウィンドウでターム分割
+    const groupMap = new Map();
+    for (const p of parsedRows) {
+      const gk = `${p.company}__${p.series}`;
+      if (!groupMap.has(gk)) groupMap.set(gk, []);
+      groupMap.get(gk).push(p);
+    }
+    const terms = [];
+    for (const list of groupMap.values()) {
+      const sorted = list.slice().sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+      let current = [sorted[0]];
+      for (let i = 1; i < sorted.length; i++) {
+        const diff = (new Date(sorted[i].dateIso + 'T00:00:00') - new Date(current[current.length - 1].dateIso + 'T00:00:00')) / 86400000;
+        if (diff <= TERM_WINDOW_DAYS) current.push(sorted[i]);
+        else { terms.push(current); current = [sorted[i]]; }
+      }
+      terms.push(current);
+    }
+    // タームの最初/最後の行を (company, dateIso) で引けるようにマップ化
+    const firstKeys = new Set(); const lastKeys = new Set();
+    for (const t of terms) {
+      firstKeys.add(`${t[0].company}__${t[0].dateIso}`);
+      lastKeys.add(`${t[t.length - 1].company}__${t[t.length - 1].dateIso}`);
+    }
+
+    // per_day (行単位) + per_term (first/last行限定)
+    for (const p of parsedRows) {
+      const { row, dateIso, company } = p;
+      const k = `${company}__${dateIso}`;
 
       for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_DAY)) {
         const val = (row[colIdx] || '').trim();
         if (DONE_VALUES.has(val)) addDone(perDayDone, company, dateIso, stepType);
       }
-      for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_FIRST)) {
-        const val = (row[colIdx] || '').trim();
-        if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
+      // first行限定
+      if (firstKeys.has(k)) {
+        for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_FIRST)) {
+          const val = (row[colIdx] || '').trim();
+          if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
+        }
       }
-      for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_LAST)) {
-        const val = (row[colIdx] || '').trim();
-        if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
+      // last行限定
+      if (lastKeys.has(k)) {
+        for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_LAST)) {
+          const val = (row[colIdx] || '').trim();
+          if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
+        }
       }
       // instructor (講師配置): R列(17)=赤井 + S列(18)=ｻﾎﾟ の両方が確定値(空欄でなく「？」を含まない)なら完了
       const akaiVal = (row[17] || '').trim();
