@@ -261,6 +261,8 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .side-nav { display: none; }
   .container { padding-left: 12px; }
   .mobile-bottom-nav { display: flex; }
+  /* 保存FABをボトムナビ上に退避 */
+  .save-fab { bottom: calc(72px + env(safe-area-inset-bottom)) !important; right: 12px !important; padding: 10px 16px !important; font-size: 13px !important; }
 }
 </style>
 </head>

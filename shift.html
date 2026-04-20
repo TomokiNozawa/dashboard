@@ -530,6 +530,11 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .container { padding-left: 12px; }
   .mobile-bottom-nav { display: flex; }
   .modal, .export-modal-panel { max-width: calc(100vw - 16px) !important; width: calc(100vw - 16px) !important; }
+  /* 保存FABをボトムナビ上に退避 */
+  .save-fab { bottom: calc(72px + env(safe-area-inset-bottom)) !important; right: 12px !important; padding: 10px 16px !important; font-size: 13px !important; }
+  /* 「スプシ書き出し」ボタンをアイコン中心に絞る */
+  .export-btn .export-btn-label { display: none; }
+  .export-btn { padding: 6px 10px !important; margin-left: 8px !important; }
 }
 </style>
 </head>
@@ -1014,7 +1019,7 @@ function renderApp() {
       <h1 style="display:flex;align-items:center;gap:8px;">
         <select id="monthSelector" onchange="switchMonth(this.value)" style="font-size:inherit;font-weight:inherit;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;cursor:pointer;">${monthOptionsHtml}</select>
         シフト管理
-        <button onclick="openExportModal()" title="スプシ①備考列へ書き出し" style="margin-left:12px;padding:5px 12px;font-size:13px;font-weight:500;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;">📤 スプシ書き出し</button>
+        <button class="export-btn" onclick="openExportModal()" title="スプシ①備考列へ書き出し" style="margin-left:12px;padding:5px 12px;font-size:13px;font-weight:500;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;"><span>📤</span><span class="export-btn-label"> スプシ書き出し</span></button>
       </h1>
       <div class="header-right">
         <div class="sub" style="display:grid;grid-template-columns:auto auto;gap:0 8px;font-variant-numeric:tabular-nums;font-family:'Inter',monospace;">

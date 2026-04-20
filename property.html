@@ -323,6 +323,10 @@ a:hover { text-decoration: underline; }
   .property-rent-total { font-size: 18px; }
   .mobile-bottom-nav { display: flex; }
   .compare-bar { bottom: calc(56px + env(safe-area-inset-bottom)); }
+  /* 保存FABをボトムナビ上に退避 */
+  .save-fab { bottom: calc(72px + env(safe-area-inset-bottom)) !important; right: 12px !important; padding: 10px 16px !important; font-size: 13px !important; }
+  /* フローティングショートカット・Gコード案内トーストはモバイル不要 (キーボードなし) */
+  #shortcutHelpBtn { display: none !important; }
 }
 @media (min-width: 1500px) {
   .property-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1389,6 +1393,7 @@ window.DASHBOARD_SHORTCUTS = [
   document.body.appendChild(modal);
   panel.querySelector('#shortcutHelpClose').onclick = hideHelp;
   const helpBtn = document.createElement('button');
+  helpBtn.id = 'shortcutHelpBtn';
   helpBtn.title = 'ショートカット一覧 (?)';
   helpBtn.textContent = '⌨️';
   helpBtn.style.cssText = 'position:fixed;bottom:20px;right:80px;width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:999;';
