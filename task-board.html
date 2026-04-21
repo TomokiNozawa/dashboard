@@ -4621,8 +4621,31 @@ async function applySyncDiff() {
 // ============================================================
 (function(){
   const MODAL_SEL = '[id$="Modal"].active, [id$="Overlay"].active, [id$="Popup"].active, [id$="Suggest"].active, #exportModal, #shortcutHelpModal[style*="flex"]';
+  let wasOpen = false;
   function update() {
-    document.body.classList.toggle('modal-open', !!document.querySelector(MODAL_SEL));
+    const active = document.querySelector(MODAL_SEL);
+    const isOpen = !!active;
+    document.body.classList.toggle('modal-open', isOpen);
+    // モーダル open 直後: フォーカスが外にあれば内側へ移す
+    //   capture phase の keydown リスナーが Enter/Space/矢印を「背景扱い」でブロックするため、
+    //   モーダルを開いた時点で activeElement をモーダル内に入れておかないと
+    //   モーダル側のキーハンドラ(applySyncDiff 等) にキーが届かない。
+    if (isOpen && !wasOpen && active && !active.contains(document.activeElement)) {
+      const firstFocusable = active.querySelector(
+        'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      setTimeout(() => {
+        // ガード: 既存の show関数内の setTimeout(100) で意図したフォーカスが当たっていれば上書きしない
+        if (active.contains(document.activeElement)) return;
+        if (firstFocusable) {
+          firstFocusable.focus();
+        } else {
+          if (!active.hasAttribute('tabindex')) active.setAttribute('tabindex', '-1');
+          active.focus();
+        }
+      }, 10);
+    }
+    wasOpen = isOpen;
   }
   const obs = new MutationObserver(update);
   obs.observe(document.body, { attributes:true, subtree:true, attributeFilter:['class','style'] });
