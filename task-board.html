@@ -4422,7 +4422,11 @@ async function syncFromSheet(silent = false) {
 
       for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_DAY)) {
         const val = (row[colIdx] || '').trim();
-        if (DONE_VALUES.has(val)) addDone(perDayDone, company, dateIso, stepType);
+        if (DONE_VALUES.has(val)) {
+          addDone(perDayDone, company, dateIso, stepType);
+          // 送付済=作成も完了(sync_tasks.py L449-453と同じ連動)
+          if (stepType === 'material_send') addDone(perDayDone, company, dateIso, 'material_create');
+        }
       }
       // first行限定
       if (firstKeys.has(k)) {
@@ -4449,6 +4453,7 @@ async function syncFromSheet(silent = false) {
 
     const perDayStepTypes = new Set(Object.values(SYNC_COLS_PER_DAY));
     perDayStepTypes.add('instructor');
+    perDayStepTypes.add('material_create');
     const perTermStepTypes = new Set([
       ...Object.values(SYNC_COLS_PER_TERM_FIRST),
       ...Object.values(SYNC_COLS_PER_TERM_LAST),
