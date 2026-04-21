@@ -4361,8 +4361,9 @@ async function syncFromSheet(silent = false) {
     const DONE_VALUES = new Set(['済', 'ー', '-', '設定済', '実施無し', 'なし']);
     // (company, date) → set(stepType)  per_day用
     const perDayDone = new Map();
-    // (company, date) → set(stepType)  per_term用 (first/last 両方を同じバケツに)
-    const perTermDone = new Map();
+    // (company, series, firstDateIso) → set(stepType)  per_term用
+    // タームの first行/last行 を集約して1エントリにする。タスクの company+trainingType+trainingDate で一致判定
+    const termDoneByKey = new Map();
 
     const keyOf = (c, d) => `${c}__${d}`;
     const addDone = (map, c, d, st) => {
@@ -4408,17 +4409,9 @@ async function syncFromSheet(silent = false) {
       }
       terms.push(current);
     }
-    // タームの最初/最後の行を (company, dateIso) で引けるようにマップ化
-    const firstKeys = new Set(); const lastKeys = new Set();
-    for (const t of terms) {
-      firstKeys.add(`${t[0].company}__${t[0].dateIso}`);
-      lastKeys.add(`${t[t.length - 1].company}__${t[t.length - 1].dateIso}`);
-    }
-
-    // per_day (行単位) + per_term (first/last行限定)
+    // per_day (行単位): 各行の列を見てperDayDoneに追加
     for (const p of parsedRows) {
       const { row, dateIso, company } = p;
-      const k = `${company}__${dateIso}`;
 
       for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_DAY)) {
         const val = (row[colIdx] || '').trim();
@@ -4428,26 +4421,34 @@ async function syncFromSheet(silent = false) {
           if (stepType === 'material_send') addDone(perDayDone, company, dateIso, 'material_create');
         }
       }
-      // first行限定
-      if (firstKeys.has(k)) {
-        for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_FIRST)) {
-          const val = (row[colIdx] || '').trim();
-          if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
-        }
-      }
-      // last行限定
-      if (lastKeys.has(k)) {
-        for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_LAST)) {
-          const val = (row[colIdx] || '').trim();
-          if (DONE_VALUES.has(val)) addDone(perTermDone, company, dateIso, stepType);
-        }
-      }
       // instructor (講師配置): R列(17)=赤井 + S列(18)=ｻﾎﾟ の両方が確定値(空欄でなく「？」を含まない)なら完了
       const akaiVal = (row[17] || '').trim();
       const sapoVal = (row[18] || '').trim();
       const isConfirmed = (v) => v && !v.includes('？') && !v.includes('?');
       if (isConfirmed(akaiVal) && isConfirmed(sapoVal)) {
         addDone(perDayDone, company, dateIso, 'instructor');
+      }
+    }
+
+    // per_term: 各タームの first行/last行 から step 状態を集約
+    // key = company__series__firstDateIso (per_termタスクの trainingDate = タームfirstDay)
+    for (const t of terms) {
+      const termCompany = t[0].company;
+      const termSeries = t[0].series;
+      const termFirstDate = t[0].dateIso;
+      const termFirstRow = t[0].row;
+      const termLastRow = t[t.length - 1].row;
+      const set = new Set();
+      for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_FIRST)) {
+        const val = (termFirstRow[colIdx] || '').trim();
+        if (DONE_VALUES.has(val)) set.add(stepType);
+      }
+      for (const [colIdx, stepType] of Object.entries(SYNC_COLS_PER_TERM_LAST)) {
+        const val = (termLastRow[colIdx] || '').trim();
+        if (DONE_VALUES.has(val)) set.add(stepType);
+      }
+      if (set.size > 0) {
+        termDoneByKey.set(`${termCompany}__${termSeries}__${termFirstDate}`, set);
       }
     }
 
@@ -4474,12 +4475,14 @@ async function syncFromSheet(silent = false) {
           if (dt === task.trainingDate && sheetsCompanyMatch(co, task.company)) { match = true; break; }
         }
       } else if (perTermStepTypes.has(st)) {
-        // per_term: 同じ会社のどれかの行で「済」があればマッチ (trainingDate完全一致でなくてよい)
-        //   理由: ターム=同一企業×シリーズ×60日グループ の first/last 行で済判定
-        //   厳密なターム範囲判定は行わず「同じ企業でその列に済」があれば完了とみなす
-        for (const [k, set] of perTermDone) {
+        // per_term: company + trainingType(series) + trainingDate(タームfirstDay) で照合
+        //   sync_tasks.py の build_per_term_task と同じタームを指す
+        //   複数タームが同一企業で並走しても、タームごとに独立して判定される
+        for (const [kk, set] of termDoneByKey) {
           if (!set.has(st)) continue;
-          const [co] = k.split('__');
+          const [co, ser, fd] = kk.split('__');
+          if (fd !== task.trainingDate) continue;
+          if (ser !== task.trainingType) continue;
           if (sheetsCompanyMatch(co, task.company)) { match = true; break; }
         }
       }
