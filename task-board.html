@@ -1682,16 +1682,24 @@ function initApp() {
     firebase.initializeApp(config);
     db = firebase.database();
 
-    // Anonymous auth
-    firebase.auth().signInAnonymously().then(() => {
+    // Email/Password auth using NozaBoard shared dashboard password
+    const pw = sessionStorage.getItem('dk_pass') || localStorage.getItem('dk_pass');
+    if (!pw) {
+      alert('NozaBoardでログインしてください');
+      location.href = 'index.html';
+      return;
+    }
+    firebase.auth().signInWithEmailAndPassword('dashboard@prism-gacha.internal', pw).then(() => {
       document.getElementById('app').classList.add('active');
       setSyncStatus('connected', 'リアルタイム同期中');
       migrateTaskData().then(() => { listenTasks(); startAutoSync(); });
     }).catch(err => {
       console.error('Auth error:', err);
       setSyncStatus('error', '認証エラー');
-      // Still show app with local fallback
-      document.getElementById('app').classList.add('active');
+      sessionStorage.removeItem('dk_pass');
+      localStorage.removeItem('dk_pass');
+      alert('認証エラー(' + err.code + ')。NozaBoardで再ログインしてください。');
+      location.href = 'index.html';
     });
   } catch (e) {
     console.error('Firebase config error:', e);

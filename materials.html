@@ -302,6 +302,8 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table .badge { font-size: 12px; padding: 3px 10px; }
 }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -457,6 +459,36 @@ const SHEETS_COL_CONTENT = 8;
 const SHEETS_COL_MATERIAL_SEND = 25; // Z column
 
 const FIREBASE_DB_URL = 'https://task-board-fbf1e-default-rtdb.asia-southeast1.firebasedatabase.app';
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBFSjOheMb_epwOXCjviAA_FLQFPNiED6g",
+  authDomain: "task-board-fbf1e.firebaseapp.com",
+  databaseURL: FIREBASE_DB_URL,
+  projectId: "task-board-fbf1e",
+  storageBucket: "task-board-fbf1e.firebasestorage.app",
+  messagingSenderId: "174442724697",
+  appId: "1:174442724697:web:06ac83b275780717c06048"
+};
+const DASHBOARD_EMAIL = 'dashboard@prism-gacha.internal';
+let firebaseInitialized = false;
+
+function ensureFirebase() {
+  if (!firebaseInitialized) {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    firebaseInitialized = true;
+  }
+}
+
+async function signInFirebase(password) {
+  ensureFirebase();
+  await firebase.auth().signInWithEmailAndPassword(DASHBOARD_EMAIL, password);
+}
+
+async function getFirebaseAuthToken() {
+  ensureFirebase();
+  const user = firebase.auth().currentUser;
+  if (!user) return null;
+  return await user.getIdToken();
+}
 
 let pat = null;
 let sheetsCreds = null; // { refresh_token, client_id, client_secret, token_uri }
@@ -489,6 +521,7 @@ async function init() {
       try {
         pat = await decryptPAT(storedPass);
         try { sheetsCreds = JSON.parse(await decryptFile(storedPass, 'encrypted-sheets.json')); } catch(e) { console.warn('Sheets creds not available:', e); }
+        await signInFirebase(storedPass);
         localStorage.setItem('dk_ts', Date.now().toString());
         showApp();
         return;
@@ -526,6 +559,7 @@ async function doLogin() {
   try {
     pat = await decryptPAT(password);
     try { sheetsCreds = JSON.parse(await decryptFile(password, 'encrypted-sheets.json')); } catch(e) { console.warn('Sheets creds not available:', e); }
+    await signInFirebase(password);
     localStorage.setItem('dk_pass', password);
     localStorage.setItem('dk_ts', Date.now().toString());
     showApp();
@@ -709,7 +743,8 @@ async function syncTaskBoard(sentUpdates) {
   if (!sentUpdates.length) return 0;
 
   // Fetch all tasks from Firebase
-  const resp = await fetch(`${FIREBASE_DB_URL}/tasks.json`);
+  const idToken = await getFirebaseAuthToken();
+  const resp = await fetch(`${FIREBASE_DB_URL}/tasks.json?auth=${idToken}`);
   if (!resp.ok) throw new Error(`Firebase read error: ${resp.status}`);
   const allTasks = await resp.json();
   if (!allTasks) return 0;
@@ -737,7 +772,7 @@ async function syncTaskBoard(sentUpdates) {
 
   if (updated > 0) {
     // Use multi-path update
-    const patchResp = await fetch(`${FIREBASE_DB_URL}/.json`, {
+    const patchResp = await fetch(`${FIREBASE_DB_URL}/.json?auth=${idToken}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patchOps),
@@ -749,7 +784,8 @@ async function syncTaskBoard(sentUpdates) {
 
 async function readTaskBoardDoneStatus() {
   // Fetch material_create and material_send tasks from Firebase
-  const resp = await fetch(`${FIREBASE_DB_URL}/tasks.json`);
+  const idToken = await getFirebaseAuthToken();
+  const resp = await fetch(`${FIREBASE_DB_URL}/tasks.json?auth=${idToken}`);
   if (!resp.ok) throw new Error(`Firebase read error: ${resp.status}`);
   const allTasks = await resp.json();
   if (!allTasks) return [];
