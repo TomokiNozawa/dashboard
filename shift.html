@@ -2255,6 +2255,7 @@ document.addEventListener('keydown', function(e) {
       return;
     }
     document.getElementById('modalOverlay').classList.remove('active');
+    updateModalOpenState();  // body.modal-open 除去忘れバグ修正 (2026-04-26): Escで閉じた時にスクロール不可になっていた
   }
   // Alt + Left/Right: switch tabs
   if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
