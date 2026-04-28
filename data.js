@@ -31,6 +31,7 @@ window.DASHBOARD_DATA = {
     { id: 9, title: "Camp Dashboard", status: "completed", notes: "全機能公開済み", details: "5タブ(概要/検討事項/タスク/タイムライン/記録)+記録サブタブ5種。Slack連携(スタンプ→GPT-4o-mini解析→自動登録)。Ctrl+Kクイック検索、Alt+数字タブ切替。ダーク/ライト切替。Cloudflare Workers+Firebase。リアルタイムプレゼンス。URL: camp-dashboard。" },
     { id: 10, title: "aritomo-memo", status: "completed", notes: "デプロイ済み", details: "3タブ(カレンダー/リスト/行きたいところ)+メモタブ。記念日ハードコード。スワイプ操作(完了/削除)。PCホバー操作。カレンダースワイプ月移動。NozaBoard風ダークUI+薄ピンクライト。Firebase Email/Password Auth。GitHub Pages公開。" },
     { id: 11, title: "自分専用CLIエディター開発", status: "pending", notes: "VS Code代替・理想の画面設計", details: "VS Codeの代替として自分の理想の画面設計でCLIエディターを開発。GitHub連携必須。良いものが作れたら2端末で使えるようにする（npm/GitHub Releases等で配布）。" },
+    { id: 12, title: "未返信メール再push", status: "pending", notes: "Claudeが下書き作成→Slack DMで送信依頼", details: "自分から送った依頼メールに対して相手から返信がないケースをClaudeが定期チェック。送信日からの経過日数・依頼内容の緊急度を踏まえて再pushメールの下書きを自動作成し、Slack DMで野沢に『この案件、再push下書き作りました。送って良いですか？』と送信依頼リマインド。顧客数が多いため手動管理が困難な課題への対応。GitHub Actions定期実行を想定。要件詳細はユースケース提案フェーズで詰める。" },
   ],
   skills: [
     { name: "事前mtg作成", desc: "研修の事前ミーティングpptxを自動生成", invocable: true, details: "企業名と事前mtg日付を指定するだけで、テンプレートコピーからデータ転記まで一気通貫で実行。WebSearchで本社住所取得、build_cal.pyで報告会候補日算出も含む。" },
