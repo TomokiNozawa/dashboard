@@ -953,18 +953,26 @@ function applySavedTheme() {
 // ============================================================
 // データ取得
 // ============================================================
-const DATA_BASE = 'https://raw.githubusercontent.com/TomokiNozawa/dashboard-data/main/';
+const API_BASE = 'https://api.github.com';
+const DATA_REPO = 'TomokiNozawa/dashboard-data';
 async function fetchPrivateJson(path) {
-  const password = localStorage.getItem('dk_pass');
-  if (!password) throw new Error('未認証');
-  // dashboard-data リポは private、 PAT で認証して raw 取得
-  const url = DATA_BASE + path;
-  const r = await fetch(url, { headers: { 'Authorization': 'token ' + pat, 'Accept': 'application/vnd.github.v3.raw' } });
+  if (!pat) throw new Error('未認証');
+  // shift.html と同じ Contents API 経由 (private repo + PAT)
+  const url = `${API_BASE}/repos/${DATA_REPO}/contents/${path}?t=${Date.now()}`;
+  const r = await fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + pat, 'Accept': 'application/vnd.github+json' },
+    cache: 'no-store',
+  });
   if (!r.ok) {
-    if (r.status === 404) return null;  // ファイルなし
-    throw new Error('fetch failed: ' + r.status);
+    if (r.status === 404) return null;
+    throw new Error('API ' + r.status);
   }
-  return r.json();
+  const j = await r.json();
+  const binary = atob(j.content.replace(/\n/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const text = new TextDecoder('utf-8').decode(bytes);
+  return JSON.parse(text);
 }
 async function fetchLocalJson(path) {
   const r = await fetch(path);
