@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>占い | NozaBoard</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117; --card: #161b22; --card-hover: #1c2129;
+  --border: #30363d; --border-light: #21262d;
+  --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+  --blue: #58a6ff; --green: #3fb950; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; --orange: #f0883e;
+  --radius: 8px;
+}
+.light {
+  --bg: #f5f6f8; --card: #ffffff; --card-hover: #f0f2f5;
+  --border: #d8dde4; --border-light: #e8ecf0;
+  --text: #1a1d23; --text2: #5a6270; --text3: #8b95a5;
+}
+/* theme-toggle は side-nav 内に統合 (side-nav-item と同じスタイル継承) */
+.theme-toggle { display: none; }
+
+/* Scrollbar */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+body.modal-open { overflow: hidden; }  /* モーダル表示中は背景スクロール禁止 */
+
+/* Login */
+.login-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; justify-content: center; align-items: center;
+}
+.login-container {
+  text-align: center; padding: 48px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  max-width: 400px; width: 90%;
+}
+.login-container h1 {
+  font-size: 20px; font-weight: 700; margin-bottom: 8px;
+  background: linear-gradient(135deg, #e6edf3, #58a6ff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.login-container p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.login-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+}
+.login-input:focus { border-color: var(--blue); }
+.login-btn {
+  width: 100%; padding: 12px; margin-top: 16px;
+  background: linear-gradient(135deg, #238636, #3fb950);
+  border: none; border-radius: 8px; color: white;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+}
+.login-btn:hover { opacity: 0.9; }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-error { color: var(--red); font-size: 13px; margin-top: 12px; display: none; }
+.login-loading { color: var(--text2); font-size: 13px; margin-top: 12px; display: none; }
+
+/* ── Side Nav ── */
+.side-nav {
+  position: fixed; top: 0; left: 0; width: 56px; height: 100vh;
+  background: var(--card); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 0; z-index: 200; overflow: hidden;
+  transition: width 0.2s ease;
+}
+.side-nav:hover { width: 140px; }
+.side-nav-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 16px; color: var(--text3); text-decoration: none;
+  font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden;
+  border-radius: 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.side-nav-item:hover { background: var(--card-hover); color: var(--text); }
+.side-nav-item span:first-child, .side-nav-item svg {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; flex-shrink: 0;
+}
+.side-nav-item.active { color: var(--blue); background: rgba(88,166,255,0.08); border-right: 2px solid var(--blue); }
+.side-nav-item span:last-child { opacity: 0; transition: opacity 0.15s; }
+.side-nav:hover .side-nav-item span:last-child { opacity: 1; }
+button.side-nav-item {
+  background: none; border: none; font-family: inherit; font-size: 11px; font-weight: 600;
+  text-align: left; cursor: pointer; color: var(--text3);
+}
+.side-nav-bottom { margin-top: auto; border-top: 1px solid var(--border-light); width: 100%; padding-top: 4px; }
+
+/* Main App */
+.container { max-width: 1500px; margin: 0 auto; padding: 24px 20px 100px; padding-left: 76px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Header */
+.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+.page-header h1 { font-size: 22px; font-weight: 700; }
+.page-header .header-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.page-header .header-right .action-bar { margin-top: 4px; }
+.page-header .sub { font-size: 12px; color: var(--text3); white-space: nowrap; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border-light); overflow-x: auto; }
+.tab {
+  padding: 10px 18px; font-size: 13px; font-weight: 500;
+  color: var(--text2); background: none; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; white-space: nowrap; transition: all 0.2s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Summary Cards */
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 32px; }
+.summary-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+.summary-val { font-size: 28px; font-weight: 700; }
+.summary-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* Section */
+.section { margin-top: 28px; }
+.section h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border-light); }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); text-align: center; }
+.data-table th { background: var(--card); color: var(--text2); font-weight: 600; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+.data-table td { background: var(--bg); }
+.data-table tbody tr:hover td { background: var(--card); }
+.data-table .text-left { text-align: left; }
+.data-table .text-right { text-align: right; }
+.data-table tfoot td { background: var(--card); font-weight: 600; }
+
+.row-muted td { opacity: 0.45; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge-a { background: rgba(248,81,73,0.15); color: var(--red); }
+.badge-b { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.badge-none { background: rgba(110,118,129,0.15); color: var(--text3); }
+
+.deficit { color: var(--red); font-weight: 700; }
+.surplus { color: var(--green); font-weight: 600; }
+.balanced { color: var(--text3); }
+
+/* Availability Matrix */
+.avail-table th, .avail-table td { padding: 8px 6px; min-width: 56px; }
+.avail-table th.date-header { font-size: 11px; padding: 10px 4px; white-space: nowrap; }
+.avail-cell {
+  min-width: 48px; padding: 0 6px; height: 36px; border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; user-select: none; transition: all 0.15s;
+  margin: 0 auto; white-space: nowrap;
+}
+.avail-cell:hover { transform: scale(1.15); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.avail-full { background: rgba(63,185,80,0.25); color: var(--green); }
+.avail-full-ok { background: rgba(63,185,80,0.25); color: var(--green); }
+.avail-full-ng { background: rgba(63,185,80,0.12); color: var(--green); outline: 1px dashed rgba(210,153,34,0.7); outline-offset: -2px; }
+.avail-am { background: rgba(88,166,255,0.25); color: var(--blue); }
+.avail-pm { background: rgba(188,140,255,0.25); color: var(--purple); }
+.avail-hold { background: rgba(210,153,34,0.25); color: var(--yellow); }
+.avail-ng { background: rgba(248,81,73,0.25); color: var(--red); }
+.avail-pending { background: rgba(139,148,158,0.18); color: var(--text2); border: 1px dashed rgba(139,148,158,0.5); }
+.avail-empty { background: rgba(110,118,129,0.08); color: var(--text3); }
+.avail-partial { background: rgba(63,185,80,0.15); color: var(--green); outline: 1px solid rgba(63,185,80,0.45); outline-offset: -2px; }
+.avail-cond { background: rgba(255,140,40,0.18); color: var(--orange); outline: 1px dashed rgba(255,140,40,0.6); outline-offset: -2px; }
+.avail-warn { background: rgba(210,153,34,0.18); color: var(--yellow); outline: 1px dashed rgba(210,153,34,0.6); outline-offset: -2px; }
+.avail-cell .avail-sub { display:block; font-size:9px; font-weight:500; opacity:0.85; line-height:1.1; margin-top:1px; letter-spacing:0; }
+.avail-name-cell { text-align: left !important; white-space: nowrap; font-weight: 500; font-size: 13px; position: sticky; left: 0; z-index: 1; padding: 10px 14px !important; min-width: 120px; }
+.avail-group-header { background: var(--border-light) !important; }
+.avail-group-header td { font-size: 12px; font-weight: 600; color: var(--text2); padding: 6px 14px !important; letter-spacing: 0.05em; }
+.avail-table tbody tr:nth-child(even) td:not(.avail-name-cell) { background: rgba(255,255,255,0.015); }
+.avail-table tbody tr:hover td { background: rgba(88,166,255,0.06) !important; }
+.avail-table tbody tr:hover .avail-name-cell { background: rgba(88,166,255,0.1) !important; }
+
+/* Contact table */
+.contact-check { width: 18px; height: 18px; cursor: pointer; accent-color: var(--green); }
+.editable-note {
+  background: transparent; border: 1px solid transparent; border-radius: 4px;
+  color: var(--text2); font-size: 12px; padding: 4px 8px; width: 100%; min-width: 120px;
+  outline: none; font-family: inherit;
+}
+.editable-note:hover { border-color: var(--border); }
+.editable-note:focus { border-color: var(--blue); background: var(--bg); color: var(--text); }
+
+/* Calendar - Sunday start with narrow weekends */
+.calendar-grid { display: grid; grid-template-columns: 0.3fr 1fr 1fr 1fr 1fr 1fr 0.3fr; gap: 4px; }
+.calendar-header { text-align: center; font-size: 12px; font-weight: 600; color: var(--text2); padding: 8px 4px; }
+.calendar-header-sun { color: var(--red); }
+.calendar-header-sat { color: var(--blue); }
+.calendar-cell {
+  background: var(--card); border: 1px solid var(--border-light); border-radius: var(--radius);
+  padding: 6px; min-height: 100px; font-size: 11px; position: relative; transition: all 0.2s; overflow-y: auto;
+}
+.calendar-cell:hover { border-color: var(--border); }
+.calendar-cell.empty { background: transparent; border-color: transparent; }
+.calendar-day { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.calendar-event { padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+.cal-green { background: rgba(63,185,80,0.15); color: var(--green); }
+.cal-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.cal-red { background: rgba(248,81,73,0.15); color: var(--red); }
+.cal-gray { background: rgba(110,118,129,0.1); color: var(--text3); }
+.calendar-month-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.calendar-month-nav button { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text2); padding: 6px 12px; cursor: pointer; font-size: 13px; }
+.calendar-month-nav button:hover { background: var(--card-hover); color: var(--text); }
+.calendar-month-nav span { font-size: 16px; font-weight: 600; }
+
+/* Timeline view (Google Calendar style) */
+.timeline-wrap { position: relative; margin-left: 50px; }
+.timeline { position: relative; border-left: 1px solid var(--border-light); }
+.timeline-hour { position: relative; height: 60px; border-bottom: 1px solid var(--border-light); }
+.timeline-hour-label { position: absolute; left: -50px; top: -8px; font-size: 11px; color: var(--text3); width: 44px; text-align: right; }
+.timeline-events { position: absolute; top: 0; left: 4px; right: 0; bottom: 0; }
+.timeline-event {
+  position: absolute; border-radius: 6px; padding: 6px 10px;
+  font-size: 11px; overflow-y: auto; cursor: pointer;
+  border-left: 3px solid; z-index: 1; transition: opacity 0.15s;
+  min-height: 28px;
+}
+.timeline-event:hover { opacity: 0.85; }
+.timeline-event-title { font-weight: 600; font-size: 12px; }
+.timeline-event-sub { font-size: 10px; opacity: 0.8; }
+.timeline-event-status { font-size: 10px; font-weight: 600; margin-top: 2px; }
+.timeline-event-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.timeline-event-tag { background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 500; }
+.tl-green { background: rgba(63,185,80,0.15); border-color: var(--green); color: var(--green); }
+.tl-yellow { background: rgba(210,153,34,0.15); border-color: var(--yellow); color: var(--yellow); }
+.tl-red { background: rgba(248,81,73,0.15); border-color: var(--red); color: var(--red); }
+.tl-gray { background: rgba(110,118,129,0.1); border-color: var(--text3); color: var(--text3); }
+
+/* Suggestion - Split Layout */
+.suggest-split { display: flex; gap: 16px; }
+.suggest-left { flex: 0 0 55%; max-height: calc(100vh - 200px); overflow: auto; }
+.suggest-right { flex: 1; max-height: calc(100vh - 200px); overflow: auto; }
+@media (max-width: 1024px) {
+  .suggest-split { flex-direction: column; }
+  .suggest-left, .suggest-right { flex: none; max-height: none; }
+}
+.suggest-status-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.suggest-stat { padding: 6px 14px; border-radius: var(--radius); font-size: 13px; font-weight: 600; }
+.suggest-stat.ok { background: rgba(63,185,80,0.15); color: var(--green); }
+.suggest-stat.warn { background: rgba(240,136,62,0.15); color: var(--orange); }
+.suggest-stat.ng { background: rgba(248,81,73,0.15); color: var(--red); }
+.suggest-mini-matrix { border-collapse: collapse; font-size: 11px; width: 100%; }
+.suggest-mini-matrix th, .suggest-mini-matrix td { padding: 3px 6px; text-align: center; border: 1px solid var(--border); white-space: nowrap; }
+.suggest-mini-matrix th { background: var(--card); position: sticky; top: 0; z-index: 2; font-size: 10px; }
+.suggest-mini-matrix .avail-name-cell { text-align: left; position: sticky; left: 0; background: var(--bg); z-index: 1; min-width: 60px; font-weight: 500; }
+.suggest-mini-matrix .assigned-mark { background: rgba(88,166,255,0.25); color: var(--blue); font-weight: 700; }
+.suggest-mini-matrix .teacher-mark { background: rgba(188,140,255,0.25); color: var(--purple); font-weight: 700; }
+.suggestion-list { display: flex; flex-direction: column; gap: 8px; }
+.suggestion-item {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.suggestion-info { flex: 1; }
+.suggestion-date { font-weight: 600; font-size: 14px; }
+.suggestion-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.suggestion-names { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.suggestion-name { background: rgba(88,166,255,0.12); color: var(--blue); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.suggestion-current { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.suggestion-current-name { background: rgba(139,148,165,0.15); color: var(--text2); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.suggestion-teacher-name { background: rgba(188,140,255,0.15); color: var(--purple); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.apply-btn { padding: 6px 14px; background: var(--green); color: #fff; border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.apply-btn:hover { opacity: 0.85; }
+.generate-btn { padding: 10px 20px; background: linear-gradient(135deg, #1f6feb, #58a6ff); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 12px; }
+.generate-btn:hover { opacity: 0.9; }
+
+/* History */
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; }
+.history-date { font-size: 13px; font-weight: 600; }
+.history-msg { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.history-author { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* Save Button */
+.save-fab {
+  position: fixed; bottom: 24px; right: 24px; z-index: 100;
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #238636, #3fb950);
+  border: none; border-radius: 12px;
+  color: white; font-size: 14px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(63,185,80,0.3);
+  transition: all 0.2s;
+}
+.save-fab:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(63,185,80,0.4); }
+.save-fab:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.save-badge {
+  background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 10px;
+  font-size: 11px;
+}
+
+/* Action buttons bar */
+.action-bar {
+  display: flex; gap: 10px; align-items: center; margin-left: auto;
+}
+.reload-fab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #1f6feb, #58a6ff);
+  border: none; border-radius: 12px;
+  color: white; font-size: 13px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 4px 16px rgba(88,166,255,0.3);
+  transition: all 0.2s;
+}
+.reload-fab:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(88,166,255,0.4); }
+.reload-fab:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Toast */
+.toast {
+  position: fixed; top: 70px; right: 24px; z-index: 200;
+  padding: 12px 20px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 500;
+  transform: translateX(120%); transition: transform 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.toast.show { transform: translateX(0); }
+.toast-success { background: #238636; color: white; }
+.toast-error { background: var(--red); color: white; }
+
+/* Legend */
+.legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--text2); flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+
+/* Loading screen */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes loadPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+@keyframes loadSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+@keyframes loadFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+.load-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 70vh; gap: 24px;
+  animation: loadFadeIn 0.5s ease;
+}
+.load-logo {
+  font-size: 32px; font-weight: 700; letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--text), var(--blue));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.load-sub { font-size: 13px; color: var(--text3); letter-spacing: 0.05em; }
+.load-bar-wrap {
+  width: 200px; height: 3px; background: var(--border-light); border-radius: 2px;
+  overflow: hidden; position: relative;
+}
+.load-bar-fill {
+  position: absolute; top: 0; left: 0; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+  border-radius: 2px; animation: loadSlide 1.2s ease-in-out infinite;
+}
+.load-status {
+  font-size: 12px; color: var(--text3); animation: loadPulse 1.5s ease infinite;
+}
+.load-dots { display: flex; gap: 6px; margin-top: 4px; }
+.load-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--blue);
+  animation: loadPulse 1.2s ease infinite;
+}
+.load-dot:nth-child(2) { animation-delay: 0.2s; }
+.load-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Sortable column headers */
+.data-table th.sortable { cursor: pointer; user-select: none; }
+.data-table th.sortable:hover { color: var(--blue); }
+.sort-arrow { font-size: 10px; margin-left: 3px; }
+
+/* Editable instNeeded */
+.editable-inst-needed {
+  background: transparent; border: 1px solid transparent; border-radius: 4px;
+  color: var(--text); font-size: 13px; padding: 2px 6px; width: 50px;
+  text-align: center; outline: none; font-family: inherit;
+}
+.editable-inst-needed:hover { border-color: var(--border); }
+.editable-inst-needed:focus { border-color: var(--blue); background: var(--bg); }
+
+/* Assignment UI */
+.assign-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.assign-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(88,166,255,0.12); color: var(--blue);
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+}
+.assign-tag .remove-tag {
+  cursor: pointer; font-size: 13px; color: var(--red); margin-left: 2px;
+  font-weight: 700; line-height: 1;
+}
+.assign-tag .remove-tag:hover { color: #ff6b6b; }
+.assign-add-btn {
+  background: rgba(63,185,80,0.15); color: var(--green); border: 1px dashed var(--green);
+  border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;
+  font-weight: 500;
+}
+.assign-add-btn:hover { background: rgba(63,185,80,0.25); }
+.assign-dropdown {
+  position: absolute; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  z-index: 50; max-height: 200px; overflow-y: auto; min-width: 140px;
+}
+.assign-dropdown-item {
+  padding: 6px 12px; font-size: 12px; cursor: pointer; color: var(--text);
+}
+.assign-dropdown-item:hover { background: var(--card-hover); }
+
+/* Teacher column */
+.teacher-names { font-size: 11px; color: var(--purple); white-space: nowrap; }
+
+/* Modal */
+.modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center; backdrop-filter:blur(4px); }
+.modal-overlay.active { display:flex; }
+.modal { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:32px; max-width:700px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 16px 48px rgba(0,0,0,0.5); }
+.modal-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+.modal-title { font-size:18px; font-weight:700; }
+.modal-close { background:none; border:none; color:var(--text3); font-size:24px; cursor:pointer; padding:4px 8px; border-radius:var(--radius); }
+.modal-close:hover { color:var(--text); background:var(--border-light); }
+.modal-body { font-size:14px; color:var(--text2); line-height:1.8; }
+.modal-body .detail-row { display:flex; gap:12px; padding:8px 0; border-bottom:1px solid var(--border-light); }
+.modal-body .detail-label { color:var(--text3); min-width:100px; font-weight:500; flex-shrink:0; }
+.modal-body .detail-value { color:var(--text); flex:1; }
+.modal-body .avail-list-item { display:flex; align-items:center; gap:8px; padding:3px 0; }
+.modal-body .avail-list-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* Modal editable inputs */
+.modal-input {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 13px; padding: 4px 8px; width: 100%;
+  outline: none; font-family: inherit; transition: border-color 0.2s;
+}
+.modal-input:focus { border-color: var(--blue); }
+.modal-input-number {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-size: 13px; padding: 4px 8px; width: 70px;
+  outline: none; font-family: inherit; text-align: center; transition: border-color 0.2s;
+}
+.modal-input-number:focus { border-color: var(--blue); }
+.modal-checkbox {
+  width: 18px; height: 18px; cursor: pointer; accent-color: var(--green);
+  vertical-align: middle;
+}
+.modal-avail-status {
+  cursor: pointer; padding: 2px 10px; border-radius: 4px; font-size: 12px;
+  font-weight: 600; user-select: none; display: inline-block; min-width: 40px;
+  text-align: center; transition: all 0.15s;
+}
+.modal-avail-status:hover { transform: scale(1.1); }
+.modal-assign-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.modal-assign-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(88,166,255,0.12); color: var(--blue);
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+}
+.modal-assign-tag .modal-remove-tag {
+  cursor: pointer; font-size: 13px; color: var(--red); margin-left: 2px;
+  font-weight: 700; line-height: 1;
+}
+.modal-assign-tag .modal-remove-tag:hover { color: #ff6b6b; }
+.modal-add-btn {
+  background: rgba(63,185,80,0.15); color: var(--green); border: 1px dashed var(--green);
+  border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; font-weight: 500;
+}
+.modal-add-btn:hover { background: rgba(63,185,80,0.25); }
+.modal-dropdown {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  z-index: 1100; max-height: 240px; overflow-y: auto; min-width: 100%;
+  margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; padding: 8px;
+}
+.modal-dropdown-item {
+  padding: 6px 14px; font-size: 12px; cursor: pointer; color: var(--text);
+  background: var(--card); border: 1px solid var(--border); border-radius: 6px;
+  transition: all 0.15s; font-weight: 500;
+}
+.modal-dropdown-item:hover { background: rgba(88,166,255,0.15); border-color: var(--blue); color: var(--blue); }
+.modal-avail-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.modal-avail-date { min-width: 100px; color: var(--text); font-size: 13px; }
+.modal-inst-available {
+  padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--border); transition: all 0.15s;
+}
+.modal-inst-available:hover { border-color: var(--blue); background: rgba(88,166,255,0.1); }
+.modal-inst-available.is-assigned { border-color: var(--green); background: rgba(63,185,80,0.15); }
+
+/* Clickable rows */
+.data-table tbody tr.clickable-row { cursor: pointer; }
+.data-table tbody tr.clickable-row:hover td { background: var(--card-hover); }
+.avail-name-cell.clickable-name { cursor: pointer; }
+.avail-name-cell.clickable-name:hover { color: var(--blue); text-decoration: underline; }
+.calendar-cell.clickable-day { cursor: pointer; }
+.calendar-cell.clickable-day:hover { border-color: var(--blue); background: var(--card-hover); }
+
+/* ── Mobile Bottom Nav ── */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--card, #161b22); border-top: 1px solid var(--border, #30363d);
+  height: 56px; z-index: 10000;
+  padding-bottom: env(safe-area-inset-bottom);
+  justify-content: space-around; align-items: stretch;
+}
+.mobile-bottom-nav .mbn-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; color: var(--text3, #6e7681); text-decoration: none; font-size: 10px; font-weight: 600;
+  transition: color 0.15s;
+}
+.mobile-bottom-nav .mbn-item:active { color: var(--text, #e6edf3); }
+.mobile-bottom-nav .mbn-item.active { color: var(--blue, #58a6ff); }
+.mobile-bottom-nav .mbn-icon { font-size: 20px; line-height: 1; }
+.mobile-bottom-nav .mbn-label { font-size: 10px; }
+
+@media (max-width: 768px) {
+  .container { padding: 16px 12px calc(72px + env(safe-area-inset-bottom)); }
+  .page-header h1 { font-size: 18px; }
+  .summary { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .summary-card { padding: 10px; }
+  .summary-val { font-size: 22px; }
+  .tabs { gap: 0; }
+  .tab { padding: 8px 12px; font-size: 12px; }
+  .data-table { font-size: 11px; }
+  .data-table th, .data-table td { padding: 6px 6px; }
+  .calendar-cell { min-height: 60px; padding: 4px; }
+  .side-nav { display: none; }
+  .container { padding-left: 12px; }
+  .mobile-bottom-nav { display: flex; }
+  .modal, .export-modal-panel { max-width: calc(100vw - 16px) !important; width: calc(100vw - 16px) !important; }
+  /* 保存FABをボトムナビ上に退避 */
+  .save-fab { bottom: calc(72px + env(safe-area-inset-bottom)) !important; right: 12px !important; padding: 10px 16px !important; font-size: 13px !important; }
+  /* 「スプシ書き出し」ボタンをアイコン中心に絞る */
+  .export-btn .export-btn-label { display: none; }
+  .export-btn { padding: 6px 10px !important; margin-left: 8px !important; }
+  /* ── タブ: 横スクロール化 (7タブ入りきらない) ── */
+  .tabs { overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap !important; white-space: nowrap; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .tabs::-webkit-scrollbar { height: 3px; }
+  .tab { flex-shrink: 0 !important; scroll-snap-align: start; }
+  /* ── スケジュール表をカード化 (14列を flex re-order + 視覚的軽量化) ── */
+  .schedule-table { border-collapse: separate; border-spacing: 0 6px; }
+  .schedule-table, .schedule-table tbody { display: block; width: 100%; }
+  .schedule-table thead, .schedule-table tfoot { display: none; }
+  .schedule-table tr {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+    border: none !important;
+    border-bottom: 1px solid rgba(127,127,127,0.12) !important;
+    border-radius: 0 !important;
+    padding: 10px 2px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    width: 100%;
+  }
+  .schedule-table td { padding: 0 !important; border: none !important; text-align: left !important; line-height: 1.4; font-size: 12px; }
+  /* 列: 1日付 2時間 3顧客 4内容 5場所 6人数 7主担当 8講師 9分類 10必要数 11配置済 12インストラクター 13確認状況 14過不足 */
+  /* Row1: 日付 · 時間 · 場所 | 分類 · 確定 · 過不足 */
+  .schedule-table td:nth-child(1) { order: 1; font-weight: 700; font-size: 13px; }
+  .schedule-table td:nth-child(2) { order: 2; color: var(--text2); font-size: 13px; }
+  .schedule-table td:nth-child(5) { order: 3; color: var(--text3); }
+  .schedule-table td:nth-child(5):not(:empty)::before { content: '📍'; margin-right: 2px; }
+  .schedule-table td:nth-child(9) { order: 4; margin-left: auto; }
+  .schedule-table td:nth-child(13) { order: 5; font-size: 11px; }
+  .schedule-table td:nth-child(14) { order: 6; font-size: 11px; font-weight: 600; min-width: 38px; text-align: right !important; }
+  /* Row2: 顧客(大きく) */
+  .schedule-table td:nth-child(3) { order: 10; width: 100%; font-size: 14px; font-weight: 600; margin-top: 2px; }
+  /* Row3: 内容 */
+  .schedule-table td:nth-child(4) { order: 11; width: 100%; color: var(--text2); }
+  /* Row4: 人数 · 講師 */
+  .schedule-table td:nth-child(6):not(:empty) { order: 20; color: var(--text3); }
+  .schedule-table td:nth-child(6):not(:empty)::before { content: '👥'; margin-right: 2px; }
+  .schedule-table td:nth-child(8):not(:empty) { order: 21; color: var(--text2); }
+  .schedule-table td:nth-child(8):not(:empty)::before { content: '講: '; color: var(--text3); font-size: 11px; margin-right: 2px; }
+  /* Row5: 必要/配置 (サイズ統一) */
+  .schedule-table td:nth-child(10), .schedule-table td:nth-child(11) {
+    order: 30; display: inline-flex !important; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--text2); min-width: 64px;
+  }
+  .schedule-table td:nth-child(10)::before { content: '必要'; color: var(--text3); font-size: 11px; margin-right: 2px; }
+  .schedule-table td:nth-child(11)::before { content: '配置'; color: var(--text3); font-size: 11px; margin-right: 2px; }
+  .schedule-table td:nth-child(10) { order: 30; margin-top: 2px; }
+  .schedule-table td:nth-child(11) { order: 31; margin-top: 2px; }
+  .schedule-table td:nth-child(10) .editable-inst-needed {
+    width: 40px !important; padding: 2px 4px !important; font-size: 12px !important;
+    border: 1px solid rgba(127,127,127,0.2); background: transparent; color: inherit;
+    border-radius: 4px; text-align: center;
+  }
+  /* 主担当(7) は非表示 */
+  .schedule-table td:nth-child(7) { display: none !important; }
+  /* インストラクター一覧(12) はrow5末尾に追加、視覚軽く */
+  .schedule-table td:nth-child(12):not(:empty) {
+    order: 40; width: 100%; font-size: 11px; color: var(--text3); margin-top: 2px;
+  }
+  .schedule-table td:nth-child(12):not(:empty)::before { content: '['; color: var(--text3); }
+  .schedule-table td:nth-child(12):not(:empty)::after { content: ']'; color: var(--text3); }
+  /* ── 他タブのテーブルは横スクロール ── */
+  #tab-avail-content, #tab-contact-content, #tab-placement-content, #tab-suggest-content {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .avail-table, .contact-table, .placement-table { min-width: 600px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="side-nav" id="sideNav">
+  <a class="side-nav-item" href="index.html" title="NozaBoard">
+    <svg viewBox="0 0 100 100" width="22" height="22"><defs><linearGradient id="sng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5aadff"/><stop offset="100%" stop-color="#b88cff"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(#sng)"/><text x="50" y="68" text-anchor="middle" fill="#fff" font-family="Inter,sans-serif" font-weight="700" font-size="52">N</text></svg>
+    <span>NozaBoard</span>
+  </a>
+  <a class="side-nav-item" href="task-board.html" title="タスクボード">
+    <span style="font-size:18px">&#9745;</span>
+    <span>タスク</span>
+  </a>
+  <a class="side-nav-item" href="materials.html" title="教材作成">
+    <span style="font-size:18px">&#128230;</span>
+    <span>教材</span>
+  </a>
+  <a class="side-nav-item" href="shift.html" title="シフト管理">
+    <span style="font-size:18px">&#128101;</span>
+    <span>シフト</span>
+  </a>
+  <a class="side-nav-item" href="property.html" title="物件探し">
+    <span style="font-size:18px">&#127968;</span>
+    <span>物件</span>
+  </a>
+  <a class="side-nav-item active" href="uranai.html" title="占い">
+    <span style="font-size:18px">&#128302;</span>
+    <span>占い</span>
+  </a>
+  <div class="side-nav-bottom">
+    <button class="side-nav-item" id="themeNavBtn" onclick="toggleTheme()" title="テーマ切替 (T)">
+      <span style="font-size:16px" id="themeNavIcon">&#9681;</span>
+      <span>テーマ</span>
+    </button>
+  </div>
+</nav>
+
+<nav class="mobile-bottom-nav">
+  <a class="mbn-item" href="index.html"><span class="mbn-icon">&#128202;</span><span class="mbn-label">Noza</span></a>
+  <a class="mbn-item" href="task-board.html"><span class="mbn-icon">&#9745;</span><span class="mbn-label">タスク</span></a>
+  <a class="mbn-item" href="materials.html"><span class="mbn-icon">&#128230;</span><span class="mbn-label">教材</span></a>
+  <a class="mbn-item" href="shift.html"><span class="mbn-icon">&#128101;</span><span class="mbn-label">シフト</span></a>
+  <a class="mbn-item active" href="uranai.html"><span class="mbn-icon">&#128302;</span><span class="mbn-label">占い</span></a>
+</nav>
+
+<!-- Login Overlay -->
+<div class="login-overlay" id="loginOverlay" style="display:none;">
+  <div class="login-container">
+    <h1>NozaBoard</h1>
+    <p>占い - パスワードを入力してください</p>
+    <input type="password" class="login-input" id="loginPassword" placeholder="パスワードを入力" autofocus>
+    <button class="login-btn" id="loginBtn">ログイン</button>
+    <div class="login-error" id="loginError">パスワードが正しくありません</div>
+    <div class="login-loading" id="loginLoading">認証中...</div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div class="container" id="app" style="display:none;">
+  <div class="load-screen" id="loadingScreen">
+    <div class="load-logo">NozaBoard</div>
+    <div class="load-sub">占い 一元管理</div>
+    <div class="load-bar-wrap"><div class="load-bar-fill"></div></div>
+    <div class="load-status">プロフィールを読み込み中</div>
+    <div class="load-dots"><div class="load-dot"></div><div class="load-dot"></div><div class="load-dot"></div></div>
+  </div>
+</div>
+
+<!-- Modal overlay (shared) -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeUranaiModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modalTitle">タイトル</h3>
+      <button class="modal-close" onclick="closeUranaiModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- 占い用 共通 CSS 追記 -->
+<style>
+/* ── Daily Cards Grid ── */
+.uranai-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
+.uranai-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; display: flex; flex-direction: column; gap: 8px;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.uranai-card:hover { transform: translateY(-2px); border-color: var(--blue); }
+.uc-head { display: flex; align-items: center; gap: 8px; }
+.uc-icon { font-size: 22px; line-height: 1; }
+.uc-title { font-size: 14px; font-weight: 700; flex: 1; }
+.uc-stars { font-size: 13px; color: var(--yellow); letter-spacing: 1px; }
+.uc-sub { font-size: 11px; color: var(--text3); }
+.uc-body { font-size: 13px; color: var(--text); line-height: 1.5; }
+.uc-foot { font-size: 11px; color: var(--text3); padding-top: 4px; border-top: 1px solid var(--border-light); }
+
+/* ── 固定情報 タブ ── */
+.profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.profile-item {
+  background: var(--card); border: 1px solid var(--border-light); border-radius: var(--radius); padding: 14px;
+}
+.profile-item-title { font-size: 12px; color: var(--text3); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.profile-item-value { font-size: 14px; font-weight: 600; }
+.profile-item-detail { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
+
+/* ── 軸別ビュー ── */
+.axis-row { display: grid; grid-template-columns: 80px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-light); align-items: start; }
+.axis-row:last-child { border-bottom: none; }
+.axis-label { font-size: 13px; font-weight: 600; color: var(--text2); padding-top: 2px; }
+.axis-items { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.axis-item { display: flex; gap: 8px; align-items: baseline; }
+.axis-item-name { color: var(--text3); min-width: 100px; font-size: 12px; }
+.axis-item-stars { color: var(--yellow); font-size: 12px; min-width: 70px; }
+.axis-item-text { color: var(--text); flex: 1; }
+
+/* ── タロット ── */
+.tarot-card-display {
+  background: linear-gradient(135deg, var(--card) 0%, var(--card-hover) 100%);
+  border: 2px solid var(--purple);
+  border-radius: 12px; padding: 24px; text-align: center;
+  max-width: 320px; margin: 0 auto;
+}
+.tarot-icon { font-size: 56px; margin-bottom: 8px; }
+.tarot-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.tarot-en { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+.tarot-orientation { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; margin-bottom: 12px; }
+.tarot-orientation.upright { background: rgba(63,185,80,0.15); color: var(--green); }
+.tarot-orientation.reversed { background: rgba(248,81,73,0.15); color: var(--red); }
+.tarot-meaning { font-size: 13px; line-height: 1.7; color: var(--text); padding: 10px 0; border-top: 1px solid var(--border-light); }
+
+/* ── 易経 卦 ── */
+.eki-display { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; text-align: center; }
+.eki-symbols { font-size: 36px; line-height: 1.3; margin-bottom: 6px; letter-spacing: 4px; }
+.eki-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.eki-judge { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
+.eki-advice { font-size: 14px; color: var(--text); padding: 8px 0; border-top: 1px solid var(--border-light); }
+
+/* ── 風水 方位 ── */
+.fusui-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-width: 280px; margin: 0 auto; }
+.fusui-cell {
+  aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--card); border: 1px solid var(--border-light); border-radius: 6px;
+  font-size: 11px; color: var(--text2); padding: 4px;
+}
+.fusui-cell.kichi { background: rgba(63,185,80,0.18); border-color: var(--green); color: var(--green); font-weight: 700; }
+.fusui-cell.kyou  { background: rgba(248,81,73,0.18); border-color: var(--red); color: var(--red); }
+.fusui-cell.center{ background: rgba(210,153,34,0.2); border-color: var(--yellow); color: var(--yellow); font-weight: 700; }
+.fusui-cell.honmei{ outline: 2px dashed var(--blue); outline-offset: -3px; }
+.fusui-cell-dir { font-size: 14px; font-weight: 700; }
+.fusui-cell-name { font-size: 9px; line-height: 1.2; margin-top: 2px; }
+
+/* ── プロフィール入力モーダル ── */
+.form-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+.form-row label { min-width: 100px; font-size: 13px; color: var(--text2); }
+.form-row input, .form-row select {
+  flex: 1; padding: 8px 10px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none;
+}
+.form-row input:focus, .form-row select:focus { border-color: var(--blue); }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+
+/* ── スター表示 ── */
+.stars { color: var(--yellow); }
+.stars-empty { color: var(--text3); opacity: 0.4; }
+
+/* ── 履歴ヒートマップ ── */
+.history-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-width: 480px; }
+.history-cell { aspect-ratio: 1; border-radius: 4px; background: var(--card); border: 1px solid var(--border-light); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text3); }
+.history-cell[data-stars="1"] { background: rgba(248,81,73,0.15); color: var(--red); }
+.history-cell[data-stars="2"] { background: rgba(240,136,62,0.15); color: var(--orange); }
+.history-cell[data-stars="3"] { background: rgba(210,153,34,0.18); color: var(--yellow); }
+.history-cell[data-stars="4"] { background: rgba(88,166,255,0.18); color: var(--blue); }
+.history-cell[data-stars="5"] { background: rgba(63,185,80,0.22); color: var(--green); font-weight: 700; }
+
+/* ── タロット引きボタン ── */
+.tarot-draw-btn {
+  display: inline-block; padding: 10px 18px;
+  background: linear-gradient(135deg, var(--purple), var(--blue));
+  color: white; border: none; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 600; transition: opacity 0.15s;
+}
+.tarot-draw-btn:hover { opacity: 0.9; }
+
+/* ── モーダルスタイル (CLAUDE.md 準拠) ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.6);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+.modal-content {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  width: min(560px, calc(100vw - 40px)); max-height: calc(100vh - 80px);
+  display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.modal-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--border-light);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.modal-header h3 { font-size: 15px; font-weight: 700; }
+.modal-close {
+  background: none; border: none; color: var(--text2); font-size: 24px;
+  cursor: pointer; line-height: 1; padding: 0 4px; min-width: 44px; min-height: 44px;
+}
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 18px; overflow-y: auto; flex: 1; }
+
+/* mobile bottom nav */
+.mobile-bottom-nav { display: none; }
+@media (max-width: 768px) {
+  .side-nav { display: none; }
+  .container { padding: 16px 12px 80px; padding-left: 12px; }
+  .mobile-bottom-nav {
+    display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card); border-top: 1px solid var(--border); z-index: 200;
+    padding: 6px 4px env(safe-area-inset-bottom, 6px);
+  }
+  .mbn-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 6px 2px; color: var(--text3); text-decoration: none;
+    font-size: 10px; min-height: 56px;
+  }
+  .mbn-item.active { color: var(--blue); }
+  .mbn-icon { font-size: 20px; }
+  .mbn-label { font-size: 10px; }
+  .uranai-cards { grid-template-columns: 1fr; }
+}
+
+/* ── ロード画面 ── */
+.load-screen { padding: 40px 20px; text-align: center; }
+.load-logo {
+  font-size: 24px; font-weight: 700; margin-bottom: 4px;
+  background: linear-gradient(135deg, #58a6ff, #bc8cff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.load-sub { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+.load-bar-wrap { width: 200px; height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; margin: 0 auto 12px; }
+.load-bar-fill { height: 100%; background: var(--blue); animation: loadbar 1.5s ease-in-out infinite; }
+@keyframes loadbar { 0% { width: 0; } 50% { width: 80%; } 100% { width: 100%; } }
+.load-status { font-size: 12px; color: var(--text3); margin-bottom: 8px; }
+.load-dots { display: flex; gap: 4px; justify-content: center; }
+.load-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); animation: loaddot 1.4s ease-in-out infinite both; }
+.load-dot:nth-child(2) { animation-delay: 0.16s; }
+.load-dot:nth-child(3) { animation-delay: 0.32s; }
+@keyframes loaddot { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+</style>
+
+<script src="uranai/js/uranai-calc.js"></script>
+<script src="uranai/js/uranai-tarot.js"></script>
+<script src="uranai/js/uranai-eki.js"></script>
+<script src="uranai/js/uranai-fusui.js"></script>
+<script>
+// ============================================================
+// 占い 一元管理 - uranai.html メインスクリプト
+// ============================================================
+'use strict';
+
+let appData = {
+  profile: null, kakusuu: null, doubutsu: null, tarotCards: null,
+  daily: null,         // 今日の運勢 (Claude API 生成)
+  computed: null,      // computeAll() 結果
+  tarot: null,         // 今日のタロット
+  eki: null,           // 今日の卦
+  fusui: null,         // 今日の方位
+};
+let pat = null;  // decryptPAT 結果 (= 認証成功フラグとしてのみ使用)
+
+// ============================================================
+// 認証 (shift.html と共通の encrypted-pat.json で パスワード検証)
+// ============================================================
+async function decryptPAT(password) {
+  const resp = await fetch('encrypted-pat.json');
+  const payload = await resp.json();
+  const salt = Uint8Array.from(atob(payload.salt), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+  const encData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-CBC', length: 256 }, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, key, encData);
+  const decoded = new TextDecoder().decode(decrypted);
+  const token = decoded.replace(/[\x00-\x1f]/g, '').trim();
+  if (!token || token.length < 10) throw new Error('Invalid');
+  return token;
+}
+
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  const pwInput = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
+  pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  loginBtn.addEventListener('click', doLogin);
+  setTimeout(() => pwInput.focus(), 100);
+}
+
+async function doLogin() {
+  const password = document.getElementById('loginPassword').value;
+  if (!password) return;
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  const loadEl = document.getElementById('loginLoading');
+  btn.disabled = true; errEl.style.display = 'none'; loadEl.style.display = 'block';
+  try {
+    pat = await decryptPAT(password);
+    localStorage.setItem('dk_pass', password);
+    localStorage.setItem('dk_ts', Date.now().toString());
+    showApp();
+  } catch (e) {
+    errEl.style.display = 'block'; loadEl.style.display = 'none'; btn.disabled = false;
+    document.getElementById('loginPassword').select();
+  }
+}
+
+async function tryAutoLogin() {
+  const stored = localStorage.getItem('dk_pass');
+  const ts = parseInt(localStorage.getItem('dk_ts') || '0');
+  if (stored && Date.now() - ts < 7 * 24 * 3600 * 1000) {
+    try { pat = await decryptPAT(stored); return true; } catch (e) {}
+  }
+  return false;
+}
+
+function showApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadAllData();
+}
+
+// ============================================================
+// テーマ切替
+// ============================================================
+window.toggleTheme = function() {
+  document.body.classList.toggle('light');
+  localStorage.setItem('dk_theme', document.body.classList.contains('light') ? 'light' : 'dark');
+  const icon = document.getElementById('themeNavIcon');
+  if (icon) icon.innerHTML = document.body.classList.contains('light') ? '&#9728;' : '&#9681;';
+};
+function applySavedTheme() {
+  if (localStorage.getItem('dk_theme') === 'light') document.body.classList.add('light');
+  const icon = document.getElementById('themeNavIcon');
+  if (icon) icon.innerHTML = document.body.classList.contains('light') ? '&#9728;' : '&#9681;';
+}
+
+// ============================================================
+// データ取得
+// ============================================================
+const DATA_BASE = 'https://raw.githubusercontent.com/TomokiNozawa/dashboard-data/main/';
+async function fetchPrivateJson(path) {
+  const password = localStorage.getItem('dk_pass');
+  if (!password) throw new Error('未認証');
+  // dashboard-data リポは private、 PAT で認証して raw 取得
+  const url = DATA_BASE + path;
+  const r = await fetch(url, { headers: { 'Authorization': 'token ' + pat, 'Accept': 'application/vnd.github.v3.raw' } });
+  if (!r.ok) {
+    if (r.status === 404) return null;  // ファイルなし
+    throw new Error('fetch failed: ' + r.status);
+  }
+  return r.json();
+}
+async function fetchLocalJson(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error('local fetch failed: ' + path);
+  return r.json();
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+async function loadAllData() {
+  try {
+    const [profileJson, kakusuuJson, doubutsuJson, tarotJson] = await Promise.all([
+      fetchPrivateJson('uranai-profile.json').catch(e => { console.warn(e); return null; }),
+      fetchLocalJson('uranai/data/kakusuu.json'),
+      fetchLocalJson('uranai/data/doubutsu-table.json'),
+      fetchLocalJson('uranai/data/tarot-cards.json'),
+    ]);
+    appData.profile = profileJson && profileJson.profile ? profileJson.profile : null;
+    appData.kakusuu = kakusuuJson;
+    appData.doubutsu = doubutsuJson;
+    appData.tarotCards = tarotJson;
+    UranaiCalc.setKakusuuData(kakusuuJson);
+    UranaiCalc.setDoubutsuData(doubutsuJson);
+    UranaiTarot.setCardsData(tarotJson);
+
+    // 今日の daily 取得 (失敗時は null = fallback 表示)
+    try {
+      appData.daily = await fetchPrivateJson('uranai-daily/' + todayStr() + '.json');
+    } catch (e) {
+      appData.daily = null;
+    }
+
+    // profile があれば 計算
+    if (appData.profile) {
+      appData.computed = UranaiCalc.computeAll(appData.profile);
+      const uid = `${appData.profile.birthYear}-${appData.profile.birthMonth}-${appData.profile.birthDay}`;
+      appData.tarot = UranaiTarot.drawDaily(todayStr(), uid);
+      appData.eki = UranaiEki.drawDailyGua(todayStr(), uid);
+      appData.fusui = UranaiFusui.getDailyHoui(appData.computed.kyuusei.idx, todayStr());
+    }
+    renderApp();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('app').innerHTML = `<div style="padding:40px;text-align:center;color:var(--red);">データ読み込みエラー: ${e.message}</div>`;
+  }
+}
+
+// ============================================================
+// レンダリング
+// ============================================================
+let currentTab = 'today';
+function setTab(t) {
+  currentTab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + t));
+  if (t === 'today')  renderToday();
+  if (t === 'axis')   renderAxis();
+  if (t === 'static') renderStatic();
+  if (t === 'history')renderHistory();
+  if (t === 'settings') renderSettings();
+}
+window.setUranaiTab = setTab;
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function starsHtml(n) {
+  n = Math.max(0, Math.min(5, parseInt(n, 10) || 0));
+  return '<span class="stars">' + '★'.repeat(n) + '</span><span class="stars-empty">' + '☆'.repeat(5 - n) + '</span>';
+}
+
+function renderApp() {
+  const today = new Date();
+  const dowJa = ['日','月','火','水','木','金','土'][today.getDay()];
+  const dateStr = `${today.getMonth()+1}/${today.getDate()}(${dowJa})`;
+  const profile = appData.profile;
+  const computed = appData.computed;
+  const overall = appData.daily?.overall?.stars ?? (computed ? 3 : 0);
+
+  document.getElementById('app').innerHTML = `
+    <div class="page-header">
+      <h1>🔮 占い</h1>
+      <div class="header-right">
+        <span class="sub">${dateStr}</span>
+        <span class="sub">総合 ${starsHtml(overall)}</span>
+      </div>
+    </div>
+    ${profile ? '' : `
+      <div class="summary-card" style="grid-column:1/-1;text-align:left;background:rgba(210,153,34,0.1);border-color:var(--yellow);">
+        プロフィールが未登録です。 <button class="tarot-draw-btn" style="margin-left:8px;" onclick="openProfileEditor()">登録する</button>
+      </div>
+    `}
+    <div class="tabs">
+      <button class="tab ${currentTab==='today'?'active':''}"    data-tab="today"    onclick="setUranaiTab('today')">今日</button>
+      <button class="tab ${currentTab==='axis'?'active':''}"     data-tab="axis"     onclick="setUranaiTab('axis')">軸別</button>
+      <button class="tab ${currentTab==='static'?'active':''}"   data-tab="static"   onclick="setUranaiTab('static')">固定情報</button>
+      <button class="tab ${currentTab==='history'?'active':''}"  data-tab="history"  onclick="setUranaiTab('history')">履歴</button>
+      <button class="tab ${currentTab==='settings'?'active':''}" data-tab="settings" onclick="setUranaiTab('settings')">設定</button>
+    </div>
+    <div class="tab-panel ${currentTab==='today'?'active':''}"    id="panel-today"></div>
+    <div class="tab-panel ${currentTab==='axis'?'active':''}"     id="panel-axis"></div>
+    <div class="tab-panel ${currentTab==='static'?'active':''}"   id="panel-static"></div>
+    <div class="tab-panel ${currentTab==='history'?'active':''}"  id="panel-history"></div>
+    <div class="tab-panel ${currentTab==='settings'?'active':''}" id="panel-settings"></div>
+  `;
+  setTab(currentTab);
+}
+
+// ── 今日タブ ──
+function renderToday() {
+  const panel = document.getElementById('panel-today');
+  if (!panel) return;
+  if (!appData.computed) {
+    panel.innerHTML = '<p style="color:var(--text2);padding:20px;">プロフィールを登録すると 占い結果が表示されます。</p>';
+    return;
+  }
+  const c = appData.computed;
+  const daily = appData.daily || {};
+  const byKind = daily.byKind || {};
+
+  const cards = [];
+  // 西洋星座
+  cards.push({
+    icon: c.seiza.icon,
+    title: c.seiza.name + ' (' + c.seiza.element + ')',
+    sub: '西洋星座',
+    stars: byKind.seiza?.stars ?? 3,
+    body: byKind.seiza?.text || '本日の星座運勢 (生成待ち)',
+  });
+  // 干支
+  cards.push({
+    icon: '🐲',
+    title: c.eto.doubutsu + '年 (' + c.eto.char + ')',
+    sub: '干支',
+    stars: byKind.eto?.stars ?? 3,
+    body: byKind.eto?.text || '本日の干支運勢 (生成待ち)',
+  });
+  // 九星
+  cards.push({
+    icon: '⭐',
+    title: c.kyuusei.name,
+    sub: '九星気学 (' + c.kyuusei.elem + ')',
+    stars: byKind.kyuusei?.stars ?? 3,
+    body: byKind.kyuusei?.text || '本日の九星運勢 (生成待ち)',
+  });
+  // 数秘
+  cards.push({
+    icon: '🔢',
+    title: 'ライフパス ' + c.suuhi.lifepath,
+    sub: '数秘術',
+    stars: byKind.suuhi?.stars ?? 3,
+    body: byKind.suuhi?.text || (c.lifepathText || '本日の数秘運勢 (生成待ち)'),
+  });
+  // 動物占い
+  cards.push({
+    icon: '🐎',
+    title: c.doubutsu.name + ' (' + c.doubutsu.color + ')',
+    sub: '動物占い · ' + (c.doubutsu.tag || ''),
+    stars: byKind.doubutsu?.stars ?? 3,
+    body: byKind.doubutsu?.text || '本日の動物占い (生成待ち)',
+  });
+  // 四柱推命
+  const sh = c.shichuu;
+  cards.push({
+    icon: '📿',
+    title: sh.日.name + ' (日主)',
+    sub: '四柱推命 · 年' + sh.年.name + ' 月' + sh.月.name + ' 時' + sh.時.name,
+    stars: byKind.shichuu?.stars ?? 3,
+    body: byKind.shichuu?.text || '本日の四柱推命運勢 (生成待ち)',
+  });
+  // 血液型
+  if (appData.profile.bloodType) {
+    cards.push({
+      icon: '🩸',
+      title: appData.profile.bloodType + '型',
+      sub: '血液型占い',
+      stars: byKind.ketsueki?.stars ?? 3,
+      body: byKind.ketsueki?.text || '本日の血液型運勢 (生成待ち)',
+    });
+  } else {
+    cards.push({
+      icon: '🩸',
+      title: '血液型 未登録',
+      sub: '入力すると 血液型占いが追加されます',
+      stars: 0,
+      body: '<button class="tarot-draw-btn" onclick="openProfileEditor()">入力する</button>',
+    });
+  }
+  // 姓名判断
+  const sm = c.seimei.school === 'old' ? c.seimei.old : c.seimei.new;
+  cards.push({
+    icon: '🎴',
+    title: '姓名判断 (' + (c.seimei.school === 'old' ? '旧字' : '新字') + ')',
+    sub: '天' + sm.天格 + ' 人' + sm.人格 + ' 地' + sm.地格 + ' 外' + sm.外格 + ' 総' + sm.総格,
+    stars: byKind.seimei?.stars ?? 3,
+    body: '人格 ' + sm.人格 + '画: ' + UranaiCalc.seimeiLuck(sm.人格) + ' / 総格 ' + sm.総格 + '画: ' + UranaiCalc.seimeiLuck(sm.総格),
+  });
+
+  let cardsHtml = '<div class="uranai-cards">';
+  cards.forEach(c => {
+    cardsHtml += `<div class="uranai-card">
+      <div class="uc-head">
+        <span class="uc-icon">${c.icon}</span>
+        <span class="uc-title">${escapeHtml(c.title)}</span>
+        <span class="uc-stars">${starsHtml(c.stars)}</span>
+      </div>
+      <div class="uc-sub">${escapeHtml(c.sub)}</div>
+      <div class="uc-body">${c.body}</div>
+    </div>`;
+  });
+  cardsHtml += '</div>';
+
+  // タロット
+  const t = appData.tarot;
+  const tarotHtml = t ? `
+    <div class="section"><h2>🔮 今日の タロット</h2>
+      <div class="tarot-card-display">
+        <div class="tarot-icon">${t.icon || '🃏'}</div>
+        <div class="tarot-name">${escapeHtml(t.name)}</div>
+        <div class="tarot-en">${escapeHtml(t.en || '')}</div>
+        <span class="tarot-orientation ${t.isReversed?'reversed':'upright'}">${t.orientation}</span>
+        <div class="tarot-meaning">${escapeHtml(t.meaning)}</div>
+      </div>
+    </div>` : '';
+
+  // 易経
+  const e = appData.eki;
+  const ekiHtml = e ? `
+    <div class="section"><h2>☯ 今日の 易</h2>
+      <div class="eki-display">
+        <div class="eki-symbols">${e.upperSym}<br>${e.lowerSym}</div>
+        <div class="eki-name">第${e.id}卦 ${escapeHtml(e.name)}</div>
+        <div class="eki-judge">${escapeHtml(e.upperMean)}/${escapeHtml(e.lowerMean)} · ${escapeHtml(e.judge)}</div>
+        <div class="eki-advice">${escapeHtml(e.advice)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;">変爻: 第${e.movingLine}爻</div>
+      </div>
+    </div>` : '';
+
+  // 風水
+  const f = appData.fusui;
+  const fusuiHtml = f ? renderFusui(f) : '';
+
+  panel.innerHTML = cardsHtml + tarotHtml + ekiHtml + fusuiHtml;
+}
+
+function renderFusui(f) {
+  const grid = [
+    ['西北','北','東北'],
+    ['西','中央','東'],
+    ['西南','南','東南'],
+  ];
+  const honmeiPos = f.honmeiPos;
+  const cells = grid.flat().map(dir => {
+    let cls = '';
+    if (dir === '中央') cls = 'center';
+    else if (f.kichiHoui.includes(dir)) cls = 'kichi';
+    else if (f.kyouHoui.includes(dir)) cls = 'kyou';
+    const honmei = dir === honmeiPos ? ' honmei' : '';
+    return `<div class="fusui-cell ${cls}${honmei}"><span class="fusui-cell-dir">${dir}</span></div>`;
+  }).join('');
+  return `<div class="section"><h2>🧭 今日の 方位</h2>
+    <p style="color:var(--text2);font-size:12px;margin-bottom:10px;">日盤主: ${f.nichibanshu} (${f.nichibanshuPos}方位) / 本日の相性: ${f.relation}</p>
+    <div class="fusui-grid">${cells}</div>
+    <p style="color:var(--text3);font-size:11px;margin-top:10px;text-align:center;">緑=吉方位 / 赤=凶方位 / 黄=中央 (五黄殺) / 青枠=あなたの本命星</p>
+  </div>`;
+}
+
+// ── 軸別タブ ──
+function renderAxis() {
+  const panel = document.getElementById('panel-axis');
+  if (!panel) return;
+  if (!appData.computed) { panel.innerHTML = '<p style="color:var(--text2);padding:20px;">プロフィール未登録</p>'; return; }
+  const daily = appData.daily || {};
+  const axes = [
+    { key: 'overall', label: '総合', icon: '⭐' },
+    { key: 'love',    label: '恋愛', icon: '💕' },
+    { key: 'money',   label: '金運', icon: '💰' },
+    { key: 'work',    label: '仕事', icon: '💼' },
+    { key: 'health',  label: '健康', icon: '🌿' },
+  ];
+  let html = '<div class="section">';
+  axes.forEach(a => {
+    const items = [];
+    // overall は サマリ、 それ以外は 各占い種別から該当 axis を抽出
+    if (daily.byKind) {
+      ['seiza', 'eto', 'kyuusei', 'doubutsu', 'shichuu'].forEach(kind => {
+        const k = daily.byKind[kind];
+        if (k && k.axes && k.axes[a.key]) {
+          items.push({ name: _kindLabel(kind), stars: k.axes[a.key].stars, text: k.axes[a.key].text });
+        }
+      });
+    }
+    if (a.key === 'overall' && daily.overall) {
+      items.unshift({ name: '総合', stars: daily.overall.stars, text: daily.overall.text });
+    } else if (daily[a.key]) {
+      items.unshift({ name: 'まとめ', stars: daily[a.key].stars, text: daily[a.key].text });
+    }
+    html += `<div class="axis-row">
+      <div class="axis-label">${a.icon} ${a.label}</div>
+      <div class="axis-items">`;
+    if (items.length === 0) {
+      html += `<div class="axis-item-text" style="color:var(--text3);">本日分の生成を待っています</div>`;
+    } else {
+      items.forEach(it => {
+        html += `<div class="axis-item">
+          <span class="axis-item-name">${escapeHtml(it.name)}</span>
+          <span class="axis-item-stars">${starsHtml(it.stars)}</span>
+          <span class="axis-item-text">${escapeHtml(it.text || '')}</span>
+        </div>`;
+      });
+    }
+    html += `</div></div>`;
+  });
+  // ラッキー
+  const lucky = daily.lucky || {};
+  html += `<div class="axis-row">
+    <div class="axis-label">🍀 ラッキー</div>
+    <div class="axis-items" style="flex-direction:row;gap:14px;flex-wrap:wrap;">
+      <span>色: <strong>${escapeHtml(lucky.color || '-')}</strong></span>
+      <span>アイテム: <strong>${escapeHtml(lucky.item || '-')}</strong></span>
+      <span>方位: <strong>${escapeHtml(lucky.direction || '-')}</strong></span>
+      <span>数: <strong>${escapeHtml(String(lucky.number ?? '-'))}</strong></span>
+    </div>
+  </div>`;
+  html += '</div>';
+  panel.innerHTML = html;
+}
+function _kindLabel(k) {
+  return { seiza:'西洋星座', eto:'干支', kyuusei:'九星', doubutsu:'動物占い', shichuu:'四柱推命', ketsueki:'血液型' }[k] || k;
+}
+
+// ── 固定情報タブ ──
+function renderStatic() {
+  const panel = document.getElementById('panel-static');
+  if (!panel) return;
+  if (!appData.computed) {
+    panel.innerHTML = `<div style="padding:20px;text-align:center;"><p style="color:var(--text2);margin-bottom:12px;">プロフィールが未登録です</p>
+      <button class="tarot-draw-btn" onclick="openProfileEditor()">プロフィールを登録する</button></div>`;
+    return;
+  }
+  const p = appData.profile;
+  const c = appData.computed;
+  const sm = c.seimei;
+  const fmtKakusuu = (g) => `天${g.天格} 人${g.人格} 地${g.地格} 外${g.外格} 総${g.総格}`;
+  const luckyArr = (g) => `人格: ${UranaiCalc.seimeiLuck(g.人格)} / 総格: ${UranaiCalc.seimeiLuck(g.総格)}`;
+  const missing = sm.new.missing.concat(sm.old.missing).filter((v,i,a) => a.indexOf(v) === i);
+
+  panel.innerHTML = `
+    <div class="section"><h2>🆔 プロフィール</h2>
+      <div class="profile-grid">
+        <div class="profile-item">
+          <div class="profile-item-title">氏名</div>
+          <div class="profile-item-value">${escapeHtml(p.lastKanji)} ${escapeHtml(p.firstKanji)}</div>
+          <div class="profile-item-detail">${escapeHtml(p.lastKana)} ${escapeHtml(p.firstKana)} · ${p.gender === 'M' ? '男性' : p.gender === 'F' ? '女性' : 'その他'}</div>
+        </div>
+        <div class="profile-item">
+          <div class="profile-item-title">生年月日</div>
+          <div class="profile-item-value">${p.birthYear}/${p.birthMonth}/${p.birthDay}</div>
+          <div class="profile-item-detail">${String(p.birthHour).padStart(2,'0')}:${String(p.birthMinute).padStart(2,'0')} 出生 / ${escapeHtml(p.birthPlace || '')}</div>
+        </div>
+        <div class="profile-item">
+          <div class="profile-item-title">血液型 / MBTI</div>
+          <div class="profile-item-value">${p.bloodType ? p.bloodType + '型' : '未入力'}${p.rhFactor ? ' Rh' + p.rhFactor : ''}</div>
+          <div class="profile-item-detail">MBTI: ${escapeHtml(p.mbti || '未入力')}</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;text-align:right;"><button class="tarot-draw-btn" onclick="openProfileEditor()">編集</button></div>
+    </div>
+
+    <div class="section"><h2>♋ 西洋星座</h2>
+      <div class="profile-item">
+        <div class="profile-item-value">${c.seiza.icon} ${c.seiza.name}</div>
+        <div class="profile-item-detail">エレメント: ${c.seiza.element} / 期間: ${c.seiza.from.join('/')}〜${c.seiza.to.join('/')}</div>
+      </div>
+    </div>
+
+    <div class="section"><h2>📿 四柱推命 命式</h2>
+      <div class="profile-grid">
+        <div class="profile-item"><div class="profile-item-title">年柱</div><div class="profile-item-value">${c.shichuu.年.name}</div><div class="profile-item-detail">${c.shichuu.年.doubutsu || ''}年</div></div>
+        <div class="profile-item"><div class="profile-item-title">月柱</div><div class="profile-item-value">${c.shichuu.月.name}</div></div>
+        <div class="profile-item"><div class="profile-item-title">日柱 (日主)</div><div class="profile-item-value">${c.shichuu.日.name}</div></div>
+        <div class="profile-item"><div class="profile-item-title">時柱</div><div class="profile-item-value">${c.shichuu.時.name}</div></div>
+      </div>
+      <div class="profile-item-detail" style="margin-top:8px;">五行: ${c.shichuu.五行.join(' · ')}</div>
+    </div>
+
+    <div class="section"><h2>🎴 姓名判断 五格</h2>
+      <div class="profile-grid">
+        <div class="profile-item">
+          <div class="profile-item-title">新字 (沢=7画 等)</div>
+          <div class="profile-item-value">${fmtKakusuu(sm.new)}</div>
+          <div class="profile-item-detail">${luckyArr(sm.new)}</div>
+        </div>
+        <div class="profile-item">
+          <div class="profile-item-title">旧字 (澤=17画 等、 熊崎式)</div>
+          <div class="profile-item-value">${fmtKakusuu(sm.old)}</div>
+          <div class="profile-item-detail">${luckyArr(sm.old)}</div>
+        </div>
+      </div>
+      ${missing.length ? `<div class="profile-item-detail" style="margin-top:8px;color:var(--orange);">画数未登録の漢字: ${missing.map(escapeHtml).join(' / ')} (uranai/data/kakusuu.json に追記してください)</div>` : ''}
+    </div>
+
+    <div class="section"><h2>🔢 数秘術</h2>
+      <div class="profile-item">
+        <div class="profile-item-value">ライフパス ${c.suuhi.lifepath} ${[11,22,33].includes(c.suuhi.lifepath) ? '(マスターナンバー)' : ''}</div>
+        <div class="profile-item-detail">${escapeHtml(c.lifepathText)} / 誕生日数: ${c.suuhi.birthday} / 全桁合計: ${c.suuhi.totalSum}</div>
+      </div>
+    </div>
+
+    <div class="section"><h2>🐎 動物占い (個性心理學)</h2>
+      <div class="profile-item">
+        <div class="profile-item-value">No.${c.doubutsu.num} ${escapeHtml(c.doubutsu.name)} (${escapeHtml(c.doubutsu.color)})</div>
+        <div class="profile-item-detail">${escapeHtml(c.doubutsu.tag || '')}</div>
+      </div>
+    </div>
+
+    <div class="section"><h2>⭐ 九星気学</h2>
+      <div class="profile-item">
+        <div class="profile-item-value">${escapeHtml(c.kyuusei.name)}</div>
+        <div class="profile-item-detail">五行: ${escapeHtml(c.kyuusei.elem)}</div>
+      </div>
+    </div>
+
+    <div class="section"><h2>🐉 干支</h2>
+      <div class="profile-item">
+        <div class="profile-item-value">${escapeHtml(c.eto.doubutsu)}年 (${escapeHtml(c.eto.char)})</div>
+      </div>
+    </div>
+  `;
+}
+
+// ── 履歴タブ ──
+function renderHistory() {
+  const panel = document.getElementById('panel-history');
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="section"><h2>📊 30日 ヒートマップ</h2>
+      <p style="color:var(--text2);font-size:12px;margin-bottom:14px;">cron が稼働すると 毎朝の総合運勢が ★1-5 で蓄積されます (Phase 2 で実装、 現在は本日分のみ表示)</p>
+      <div class="history-cal" id="historyCal"></div>
+    </div>
+  `;
+  const cal = document.getElementById('historyCal');
+  const today = new Date();
+  const cells = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const md = `${d.getMonth()+1}/${d.getDate()}`;
+    let stars = 0;
+    if (i === 0 && appData.daily?.overall?.stars) stars = appData.daily.overall.stars;
+    cells.push(`<div class="history-cell" data-stars="${stars}">${md}</div>`);
+  }
+  cal.innerHTML = cells.join('');
+}
+
+// ── 設定タブ ──
+function renderSettings() {
+  const panel = document.getElementById('panel-settings');
+  if (!panel) return;
+  const p = appData.profile || {};
+  panel.innerHTML = `
+    <div class="section"><h2>⚙ 設定</h2>
+      <div class="profile-item">
+        <div class="profile-item-title">姓名判断 流派</div>
+        <div class="profile-item-detail">現在: ${p.kakusuuSchool === 'old' ? '旧字 (熊崎式)' : '新字'}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button class="tarot-draw-btn" onclick="setKakusuuSchool('new')">新字に設定</button>
+          <button class="tarot-draw-btn" onclick="setKakusuuSchool('old')">旧字に設定</button>
+        </div>
+      </div>
+      <div class="profile-item" style="margin-top:10px;">
+        <div class="profile-item-title">プロフィール</div>
+        <div style="margin-top:8px;"><button class="tarot-draw-btn" onclick="openProfileEditor()">編集する</button></div>
+      </div>
+      <div class="profile-item" style="margin-top:10px;">
+        <div class="profile-item-title">ログアウト</div>
+        <div style="margin-top:8px;"><button class="tarot-draw-btn" style="background:linear-gradient(135deg,var(--red),var(--orange));" onclick="logout()">ログアウト</button></div>
+      </div>
+    </div>
+  `;
+}
+
+window.setKakusuuSchool = function(s) {
+  if (!appData.profile) return;
+  appData.profile.kakusuuSchool = s;
+  appData.computed = UranaiCalc.computeAll(appData.profile);
+  renderApp();
+  // 注: 本格反映には uranai-profile.json への 書き戻しが必要 (現状は セッション内のみ)
+};
+window.logout = function() {
+  localStorage.removeItem('dk_pass');
+  localStorage.removeItem('dk_ts');
+  location.reload();
+};
+
+// ============================================================
+// モーダル (CLAUDE.md 3点セット: Esc / Tab トラップ / scroll lock)
+// ============================================================
+let _modalLastFocused = null;
+function openUranaiModal(title, bodyHtml) {
+  _modalLastFocused = document.activeElement;
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('modalOverlay').classList.add('show');
+  document.body.classList.add('modal-open');
+  document.addEventListener('keydown', _modalKeydown, true);
+  setTimeout(() => {
+    const first = document.querySelector('#modalBody input, #modalBody button, #modalBody select');
+    if (first) first.focus();
+  }, 50);
+}
+window.closeUranaiModal = function(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('modalOverlay').classList.remove('show');
+  document.body.classList.remove('modal-open');
+  document.removeEventListener('keydown', _modalKeydown, true);
+  if (_modalLastFocused) _modalLastFocused.focus();
+};
+function _modalKeydown(e) {
+  if (e.key === 'Escape') { e.preventDefault(); closeUranaiModal(); return; }
+  if (e.key === 'Tab') {
+    const focusables = document.querySelectorAll('#modalBody input, #modalBody button, #modalBody select, #modalBody textarea, #modalBody [tabindex]:not([tabindex="-1"])');
+    if (focusables.length === 0) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+}
+
+// ── プロフィール編集モーダル ──
+window.openProfileEditor = function() {
+  const p = appData.profile || {};
+  const body = `
+    <form id="profileForm" onsubmit="event.preventDefault(); saveProfile();">
+      <div class="form-row"><label>氏 (漢字)</label><input id="pf_last" value="${escapeHtml(p.lastKanji || '')}"></div>
+      <div class="form-row"><label>名 (漢字)</label><input id="pf_first" value="${escapeHtml(p.firstKanji || '')}"></div>
+      <div class="form-row"><label>氏 (かな)</label><input id="pf_lastKana" value="${escapeHtml(p.lastKana || '')}"></div>
+      <div class="form-row"><label>名 (かな)</label><input id="pf_firstKana" value="${escapeHtml(p.firstKana || '')}"></div>
+      <div class="form-row"><label>生年月日</label>
+        <div class="form-grid-2" style="flex:1;">
+          <input type="number" id="pf_year" placeholder="年 (西暦)" value="${p.birthYear || ''}">
+          <div class="form-grid-2">
+            <input type="number" id="pf_month" placeholder="月" value="${p.birthMonth || ''}">
+            <input type="number" id="pf_day" placeholder="日" value="${p.birthDay || ''}">
+          </div>
+        </div>
+      </div>
+      <div class="form-row"><label>出生時刻</label>
+        <div class="form-grid-2" style="flex:1;">
+          <input type="number" id="pf_hour" placeholder="時 (0-23)" value="${p.birthHour ?? ''}">
+          <input type="number" id="pf_min" placeholder="分 (0-59)" value="${p.birthMinute ?? ''}">
+        </div>
+      </div>
+      <div class="form-row"><label>出生地</label><input id="pf_place" value="${escapeHtml(p.birthPlace || '')}"></div>
+      <div class="form-row"><label>性別</label>
+        <select id="pf_gender">
+          <option value="M" ${p.gender === 'M' ? 'selected' : ''}>男性</option>
+          <option value="F" ${p.gender === 'F' ? 'selected' : ''}>女性</option>
+          <option value="X" ${p.gender === 'X' ? 'selected' : ''}>その他</option>
+        </select>
+      </div>
+      <div class="form-row"><label>血液型</label>
+        <select id="pf_blood">
+          <option value="" ${!p.bloodType ? 'selected' : ''}>未入力</option>
+          <option value="A" ${p.bloodType === 'A' ? 'selected' : ''}>A</option>
+          <option value="B" ${p.bloodType === 'B' ? 'selected' : ''}>B</option>
+          <option value="O" ${p.bloodType === 'O' ? 'selected' : ''}>O</option>
+          <option value="AB" ${p.bloodType === 'AB' ? 'selected' : ''}>AB</option>
+        </select>
+      </div>
+      <div class="form-row"><label>MBTI (任意)</label><input id="pf_mbti" value="${escapeHtml(p.mbti || '')}" placeholder="例: INFJ"></div>
+      <div class="form-row"><label>姓名 流派</label>
+        <select id="pf_school">
+          <option value="new" ${p.kakusuuSchool !== 'old' ? 'selected' : ''}>新字</option>
+          <option value="old" ${p.kakusuuSchool === 'old' ? 'selected' : ''}>旧字 (熊崎式)</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="tarot-draw-btn" style="background:var(--card-hover);color:var(--text);" onclick="closeUranaiModal()">キャンセル</button>
+        <button type="submit" class="tarot-draw-btn">保存 (Alt+S)</button>
+      </div>
+      <p style="color:var(--text3);font-size:11px;margin-top:8px;">※ 編集内容は セッション内即反映、 永続保存は dashboard-data リポジトリの uranai-profile.json を 手動編集して commit してください。</p>
+    </form>
+  `;
+  openUranaiModal('プロフィール編集', body);
+};
+window.saveProfile = function() {
+  const get = id => document.getElementById(id).value;
+  const newP = {
+    lastKanji: get('pf_last'),
+    firstKanji: get('pf_first'),
+    lastKana: get('pf_lastKana'),
+    firstKana: get('pf_firstKana'),
+    birthYear: parseInt(get('pf_year'), 10) || 0,
+    birthMonth: parseInt(get('pf_month'), 10) || 0,
+    birthDay: parseInt(get('pf_day'), 10) || 0,
+    birthHour: parseInt(get('pf_hour'), 10) || 0,
+    birthMinute: parseInt(get('pf_min'), 10) || 0,
+    birthPlace: get('pf_place'),
+    gender: get('pf_gender'),
+    bloodType: get('pf_blood') || null,
+    mbti: get('pf_mbti') || null,
+    kakusuuSchool: get('pf_school'),
+  };
+  appData.profile = Object.assign({}, appData.profile || {}, newP);
+  appData.computed = UranaiCalc.computeAll(appData.profile);
+  const uid = `${appData.profile.birthYear}-${appData.profile.birthMonth}-${appData.profile.birthDay}`;
+  appData.tarot = UranaiTarot.drawDaily(todayStr(), uid);
+  appData.eki = UranaiEki.drawDailyGua(todayStr(), uid);
+  appData.fusui = UranaiFusui.getDailyHoui(appData.computed.kyuusei.idx, todayStr());
+  closeUranaiModal();
+  renderApp();
+};
+
+// ============================================================
+// Init
+// ============================================================
+window.addEventListener('DOMContentLoaded', async () => {
+  applySavedTheme();
+  // Alt+S で 保存
+  document.addEventListener('keydown', e => {
+    if (e.altKey && (e.key === 's' || e.key === 'S')) {
+      const form = document.getElementById('profileForm');
+      if (form) { e.preventDefault(); saveProfile(); }
+    }
+  });
+  const ok = await tryAutoLogin();
+  if (ok) showApp();
+  else showLogin();
+});
+</script>
+</body>
+</html>
