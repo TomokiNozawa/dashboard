@@ -219,13 +219,16 @@ const UranaiCalc = (function() {
   let DOUBUTSU_TABLE = null;
   function setDoubutsuData(data) { DOUBUTSU_TABLE = data; }
   function getDoubutsu(y, m, d) {
-    // 個性心理學 計算: 西暦下2桁 + 生月生日 から 運命数を算出
-    // 簡易計算: 1900/1/1 を起点 + 19 のオフセット
-    // ※正確な算出は弦本將裕氏の「動物占い」 算式に従う必要、 ここでは近似
+    // 個性心理學 (弦本式) 公式算式: (Excel シリアル値 + 8) mod 60 + 1
+    // Excel シリアル値 は 1900/1/1=1 起点、 ただし 1900/2/29 を存在しない閏日として
+    // カウントするバグがあるため 1900/3/1 以降は (1900/1/1からの通算日 + 2)
     const date = new Date(Date.UTC(y, m - 1, d));
     const epoch = Date.UTC(1900, 0, 1);
     const days = Math.floor((date.getTime() - epoch) / 86400000);
-    const num = ((days + 19) % 60 + 60) % 60 + 1;
+    let excelSerial = days + 1;
+    if (date.getTime() >= Date.UTC(1900, 2, 1)) excelSerial += 1;  // 1900/3/1 以降は +1 (Excel 1900/2/29 バグ補正)
+    const rem = ((excelSerial + 8) % 60 + 60) % 60;
+    const num = rem === 0 ? 60 : rem;
     const entry = DOUBUTSU_TABLE ? DOUBUTSU_TABLE[String(num)] : null;
     return entry ? Object.assign({ num }, entry) : { num, name: '?', color: '?', tag: '?' };
   }

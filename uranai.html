@@ -685,6 +685,38 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 <!-- 占い用 共通 CSS 追記 -->
 <style>
+/* ── 今日タブ 全体サマリブロック ── */
+.summary-block {
+  background: linear-gradient(135deg, var(--card) 0%, var(--card-hover) 100%);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px 20px; margin-top: 8px;
+}
+.summary-main { margin-bottom: 14px; }
+.summary-main-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+.summary-main-label { font-size: 14px; font-weight: 700; color: var(--text2); }
+.summary-main-stars { font-size: 16px; letter-spacing: 1px; }
+.summary-main-text { font-size: 14px; line-height: 1.65; color: var(--text); }
+.summary-axes {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px; padding: 12px 0; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);
+}
+.summary-axis { display: flex; flex-direction: column; gap: 4px; }
+.summary-axis-label { font-size: 12px; color: var(--text2); font-weight: 600; }
+.summary-axis-stars { font-size: 12px; letter-spacing: 1px; }
+.summary-axis-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+.summary-lucky {
+  display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  padding-top: 12px; font-size: 12px; color: var(--text2);
+}
+.summary-lucky > span:first-child { font-weight: 600; color: var(--text); }
+.summary-lucky strong { color: var(--green); margin-left: 2px; }
+@media (max-width: 768px) {
+  .summary-block { padding: 14px 14px; }
+  .summary-axes { grid-template-columns: 1fr; gap: 8px; }
+  .summary-axis { flex-direction: row; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .summary-axis-label { min-width: 60px; }
+}
+
 /* ── Daily Cards Grid ── */
 .uranai-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
 .uranai-card {
@@ -1174,7 +1206,46 @@ function renderToday() {
     body: '人格 ' + sm.人格 + '画: ' + UranaiCalc.seimeiLuck(sm.人格) + ' / 総格 ' + sm.総格 + '画: ' + UranaiCalc.seimeiLuck(sm.総格),
   });
 
-  let cardsHtml = '<div class="uranai-cards">';
+  // ── 全体サマリ ブロック (今日タブ最上部) ──
+  const dailyForSummary = appData.daily || {};
+  const overall = dailyForSummary.overall || { stars: 3, text: '本日のサマリは生成待ちです。 GitHub Actions cron (毎朝07:00 JST) で 自動更新されます。' };
+  const axes = [
+    { key: 'love',   label: '恋愛', icon: '💕' },
+    { key: 'money',  label: '金運', icon: '💰' },
+    { key: 'work',   label: '仕事', icon: '💼' },
+    { key: 'health', label: '健康', icon: '🌿' },
+  ];
+  const axisHtml = axes.map(a => {
+    const ax = dailyForSummary[a.key] || {};
+    return `<div class="summary-axis">
+      <div class="summary-axis-label">${a.icon} ${a.label}</div>
+      <div class="summary-axis-stars">${starsHtml(ax.stars ?? 0)}</div>
+      <div class="summary-axis-text">${escapeHtml(ax.text || '生成待ち')}</div>
+    </div>`;
+  }).join('');
+  const lucky = dailyForSummary.lucky || {};
+  const luckyHtml = (lucky.color || lucky.item || lucky.direction || lucky.number) ? `
+    <div class="summary-lucky">
+      <span>🍀 ラッキー</span>
+      ${lucky.color ? `<span>色: <strong>${escapeHtml(lucky.color)}</strong></span>` : ''}
+      ${lucky.item ? `<span>アイテム: <strong>${escapeHtml(lucky.item)}</strong></span>` : ''}
+      ${lucky.direction ? `<span>方位: <strong>${escapeHtml(lucky.direction)}</strong></span>` : ''}
+      ${lucky.number != null ? `<span>数: <strong>${escapeHtml(String(lucky.number))}</strong></span>` : ''}
+    </div>` : '';
+  const summaryHtml = `
+    <div class="summary-block">
+      <div class="summary-main">
+        <div class="summary-main-head">
+          <span class="summary-main-label">⭐ 今日の総合運</span>
+          <span class="summary-main-stars">${starsHtml(overall.stars ?? 3)}</span>
+        </div>
+        <div class="summary-main-text">${escapeHtml(overall.text)}</div>
+      </div>
+      <div class="summary-axes">${axisHtml}</div>
+      ${luckyHtml}
+    </div>`;
+
+  let cardsHtml = '<h2 style="font-size:14px;margin-top:24px;margin-bottom:12px;color:var(--text2);">📚 占い別の本日コメント</h2><div class="uranai-cards">';
   cards.forEach(c => {
     cardsHtml += `<div class="uranai-card">
       <div class="uc-head">
@@ -1218,7 +1289,7 @@ function renderToday() {
   const f = appData.fusui;
   const fusuiHtml = f ? renderFusui(f) : '';
 
-  panel.innerHTML = cardsHtml + tarotHtml + ekiHtml + fusuiHtml;
+  panel.innerHTML = summaryHtml + cardsHtml + tarotHtml + ekiHtml + fusuiHtml;
 }
 
 function renderFusui(f) {
