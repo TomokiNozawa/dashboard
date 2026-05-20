@@ -173,6 +173,10 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .avail-ng { background: rgba(248,81,73,0.25); color: var(--red); }
 .avail-pending { background: rgba(139,148,158,0.18); color: var(--text2); border: 1px dashed rgba(139,148,158,0.5); }
 .avail-empty { background: rgba(110,118,129,0.08); color: var(--text3); }
+.avail-partial { background: rgba(63,185,80,0.15); color: var(--green); outline: 1px solid rgba(63,185,80,0.45); outline-offset: -2px; }
+.avail-cond { background: rgba(255,140,40,0.18); color: var(--orange); outline: 1px dashed rgba(255,140,40,0.6); outline-offset: -2px; }
+.avail-warn { background: rgba(210,153,34,0.18); color: var(--yellow); outline: 1px dashed rgba(210,153,34,0.6); outline-offset: -2px; }
+.avail-cell .avail-sub { display:block; font-size:9px; font-weight:500; opacity:0.85; line-height:1.1; margin-top:1px; letter-spacing:0; }
 .avail-name-cell { text-align: left !important; white-space: nowrap; font-weight: 500; font-size: 13px; position: sticky; left: 0; z-index: 1; padding: 10px 14px !important; min-width: 120px; }
 .avail-group-header { background: var(--border-light) !important; }
 .avail-group-header td { font-size: 12px; font-weight: 600; color: var(--text2); padding: 6px 14px !important; letter-spacing: 0.05em; }
@@ -1366,8 +1370,153 @@ function updateInstNeeded(idx, val) {
 const AVAIL_STATES = ['', '全日(出張OK)', '全日(出張NG)', 'AM', 'PM', '保留', 'NG', '未回答'];
 const AVAIL_LABELS = { '': '', '全日': '全日', '全日(出張OK)': '出張OK', '全日(出張NG)': '出張NG', 'AM': 'AM', 'PM': 'PM', '保留': '保留', 'NG': 'NG', '未回答': '未回答' };
 const AVAIL_CLASSES = { '': 'avail-empty', '全日': 'avail-full', '全日(出張OK)': 'avail-full-ok', '全日(出張NG)': 'avail-full-ng', 'AM': 'avail-am', 'PM': 'avail-pm', '保留': 'avail-hold', 'NG': 'avail-ng', '未回答': 'avail-pending' };
-// 「全日」系の判定ヘルパー (出張OK/NG両方を受ける)。既存「全日」値(4月データ等)も包含
-const isFullDay = v => v === '全日' || v === '全日(出張OK)' || v === '全日(出張NG)';
+// ─── Availability 共通レイヤ (v1.5.0 object availability 対応) ───
+// scripts/shift_parse_avail.py の parse_availability() と対をなす。
+// shift-data.json の availability[date] は string (旧 enum) or object (拡張型) のどちらでも来る。
+function normalizeAvail(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'object') return v;
+  if (v === 'NG') return { kind: 'NG' };
+  if (v === '未回答') return { kind: '未回答' };
+  if (v === '保留') return { kind: '保留' };
+  if (v === 'AM') return { kind: 'AM', travelOK: true };
+  if (v === 'PM') return { kind: 'PM', travelOK: true };
+  if (v === '全日') return { kind: '全日', travelOK: true };
+  if (v === '全日(出張OK)') return { kind: '全日', travelOK: true };
+  if (v === '全日(出張NG)') return { kind: '全日', travelOK: false };
+  return { kind: '不明', raw: v };
+}
+function availKind(v)      { const a = normalizeAvail(v); return a ? a.kind : null; }
+function availRaw(v)       { if (v == null) return ''; if (typeof v === 'object') return v.raw || v.note || ''; return ''; }
+function availNote(v)      { const a = normalizeAvail(v); return (a && a.note) || ''; }
+const isFullDay = v => availKind(v) === '全日';
+function isOnsiteLocation(loc) {
+  if (!loc) return true;
+  const s = String(loc);
+  return !(s.includes('ｵﾝﾗｲﾝ') || s.includes('オンライン'));
+}
+function timeStrToMin(t) {
+  if (!t) return 0;
+  const parts = String(t).split(':');
+  return (parseInt(parts[0],10) || 0) * 60 + (parseInt(parts[1]||'0',10) || 0);
+}
+function sessionIsAM(s) { return (parseInt((s.end||'').split(':')[0],10) || 0) <= 13; }
+function sessionIsPM(s) { return (parseInt((s.start||'').split(':')[0],10) || 0) >= 12; }
+// 同日内 session採番 (start昇順, _col tiebreaker, 1-indexed)。schedule 配列にキャッシュ保持
+function getSessionIndex(schedule, s) {
+  if (!schedule._sessionIdxCache) {
+    const cache = new Map();
+    const byDate = {};
+    schedule.forEach((x, i) => {
+      const k = x.date;
+      if (!byDate[k]) byDate[k] = [];
+      byDate[k].push({ idx: i, start: x.start || '', _col: x._col || 0 });
+    });
+    Object.keys(byDate).forEach(k => {
+      byDate[k].sort((a,b) => (a.start||'').localeCompare(b.start||'') || a._col - b._col);
+      byDate[k].forEach((e, n) => cache.set(e.idx, n + 1));
+    });
+    Object.defineProperty(schedule, '_sessionIdxCache', { value: cache, enumerable: false, configurable: true });
+  }
+  const i = schedule.indexOf(s);
+  return schedule._sessionIdxCache.get(i) || 1;
+}
+function invalidateSessionIndexCache() {
+  if (shiftData && shiftData.schedule && shiftData.schedule._sessionIdxCache) {
+    delete shiftData.schedule._sessionIdxCache;
+  }
+}
+// 配置候補判定 (object availability 完全対応)
+function isCandidateAvail(inst, s, schedule) {
+  let a = normalizeAvail(inst.availability && inst.availability[s.date]);
+  if (!a) return false;
+  if (a.kind === 'NG' || a.kind === '未回答' || a.kind === '不明') return false;
+  if (a.kind === '部分OK' || a.kind === '条件付き') {
+    const sIdx = getSessionIndex(schedule, s);
+    const ses = a.sessions || {};
+    const v2 = ses[String(sIdx)] || ses['_default'] || 'NG';
+    if (v2 === 'NG') return false;
+    if (a.timeLimit && timeStrToMin(s.end) > timeStrToMin(a.timeLimit)) return false;
+    return true;
+  }
+  if (a.kind === '要確認') {
+    a = normalizeAvail(a.fallback || '全日(出張OK)') || a;
+  }
+  if (a.timeLimit && timeStrToMin(s.end) > timeStrToMin(a.timeLimit)) return false;
+  if (a.travelOK === false && isOnsiteLocation(s.location)) return false;
+  if (a.kind === '全日' || a.kind === '保留') return true;
+  if (a.kind === 'AM') return sessionIsAM(s);
+  if (a.kind === 'PM') return sessionIsPM(s);
+  return false;
+}
+function availColorOf(v) {
+  const k = availKind(v);
+  if (!k) return 'var(--text3)';
+  if (k === '全日' || k === '部分OK') return 'var(--green)';
+  if (k === 'AM') return 'var(--blue)';
+  if (k === 'PM') return 'var(--purple)';
+  if (k === '保留') return 'var(--yellow)';
+  if (k === '条件付き' || k === '要確認') return 'var(--orange)';
+  if (k === 'NG') return 'var(--red)';
+  return 'var(--text3)';
+}
+// session採番に応じた個別バッジ (配置候補側で使用、 sIdx=null なら sessionsキー無視)
+function availBadgesText(v, sIdx) {
+  const a = normalizeAvail(v);
+  if (!a) return [];
+  const out = [];
+  if (a.kind === '部分OK' && sIdx != null) {
+    const ses = a.sessions || {};
+    const v2 = ses[String(sIdx)] || ses['_default'] || 'NG';
+    if (v2 === 'OK') out.push('[' + sIdx + ']');
+    else if (v2 === '条件付き') out.push('[' + sIdx + '💬]');
+  } else if (a.kind === '部分OK') {
+    const ses = a.sessions || {};
+    const oks = Object.entries(ses).filter(([k,v])=>k!=='_default' && v==='OK').map(([k])=>k).sort();
+    if (oks.length) out.push('[' + oks.join(',') + ']');
+  }
+  if (a.timeLimit) out.push('~' + a.timeLimit);
+  if (a.travelOK === false) out.push('✈️NG');
+  if (a.kind === '条件付き' && sIdx == null) out.push('💬');
+  if (a.kind === '要確認') out.push('⚠️');
+  return out;
+}
+// matrix セル用 CSS class
+function availCellClass(v) {
+  const k = availKind(v);
+  if (!k) return 'avail-empty';
+  const a = normalizeAvail(v);
+  if (k === '全日') return a.travelOK === false ? 'avail-full-ng' : 'avail-full-ok';
+  if (k === 'AM') return 'avail-am';
+  if (k === 'PM') return 'avail-pm';
+  if (k === '保留') return 'avail-hold';
+  if (k === 'NG') return 'avail-ng';
+  if (k === '未回答') return 'avail-pending';
+  if (k === '部分OK') return 'avail-partial';
+  if (k === '条件付き') return 'avail-cond';
+  if (k === '要確認') return 'avail-warn';
+  return 'avail-empty';
+}
+// matrix セル用 表示テキスト (バッジ含む、HTML)
+function availCellLabelHtml(v) {
+  const a = normalizeAvail(v);
+  if (!a) return '';
+  let main = '';
+  if (a.kind === '全日') main = a.travelOK === false ? '出張NG' : '出張OK';
+  else if (a.kind === '部分OK') main = '部分OK';
+  else if (a.kind === '条件付き') main = '条件付';
+  else if (a.kind === '要確認') main = '要確認';
+  else main = a.kind;
+  const badges = availBadgesText(v, null);
+  return badges.length
+    ? `${main}<span class="avail-sub">${badges.join(' ')}</span>`
+    : main;
+}
+function availTitleAttr(v) {
+  const raw = availRaw(v);
+  if (!raw) return '';
+  return ' title="' + String(raw).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '"';
+}
 let availFilterDate = null; // null = show all, string = filter by date
 
 function renderAvailability() {
@@ -1430,12 +1579,12 @@ function renderAvailability() {
   if (filterActive) {
     // Filter active: flatten all groups, filter NG, sort answered first then unanswered last
     let allFiltered = d.instructors.filter(inst => {
-      const avail = (inst.availability && inst.availability[availFilterDate]) || '';
-      return avail !== 'NG';
+      const avail = inst.availability && inst.availability[availFilterDate];
+      return availKind(avail) !== 'NG';
     });
     allFiltered.sort((a, b) => {
-      const av = (a.availability && a.availability[availFilterDate]) || '';
-      const bv = (b.availability && b.availability[availFilterDate]) || '';
+      const av = a.availability && a.availability[availFilterDate];
+      const bv = b.availability && b.availability[availFilterDate];
       if (av && !bv) return -1;
       if (!av && bv) return 1;
       return 0;
@@ -1444,10 +1593,11 @@ function renderAvailability() {
       const iIdx = d.instructors.indexOf(inst);
       html += `<tr><td class="avail-name-cell clickable-name" onclick="openAvailabilityModal(${iIdx})">${inst.name}</td>`;
       uniqueDates.forEach(dt => {
-        const avail = (inst.availability && inst.availability[dt.date]) || '';
-        const cls = AVAIL_CLASSES[avail] || 'avail-empty';
-        const label = AVAIL_LABELS[avail] || '-';
-        html += `<td><div class="avail-cell ${cls}" data-inst="${iIdx}" data-date="${dt.date}" onclick="cycleAvail(this)">${label}</div></td>`;
+        const avail = inst.availability && inst.availability[dt.date];
+        const cls = avail ? availCellClass(avail) : 'avail-empty';
+        const labelHtml = avail ? availCellLabelHtml(avail) : '';
+        const titleAttr = avail ? availTitleAttr(avail) : '';
+        html += `<td><div class="avail-cell ${cls}" data-inst="${iIdx}" data-date="${dt.date}" onclick="cycleAvail(this)"${titleAttr}>${labelHtml}</div></td>`;
       });
       html += '</tr>';
     });
@@ -1456,8 +1606,8 @@ function renderAvailability() {
     groups.forEach(group => {
       let sortedInstructors = [...group.instructors];
       sortedInstructors.sort((a, b) => {
-        const aHas = uniqueDates.some(dt => { const v = (a.availability && a.availability[dt.date]) || ''; return v !== ''; });
-        const bHas = uniqueDates.some(dt => { const v = (b.availability && b.availability[dt.date]) || ''; return v !== ''; });
+        const aHas = uniqueDates.some(dt => !!(a.availability && a.availability[dt.date]));
+        const bHas = uniqueDates.some(dt => !!(b.availability && b.availability[dt.date]));
         if (aHas && !bHas) return -1;
         if (!aHas && bHas) return 1;
         return 0;
@@ -1467,10 +1617,11 @@ function renderAvailability() {
         const iIdx = d.instructors.indexOf(inst);
         html += `<tr><td class="avail-name-cell clickable-name" onclick="openAvailabilityModal(${iIdx})">${inst.name}</td>`;
         uniqueDates.forEach(dt => {
-          const avail = (inst.availability && inst.availability[dt.date]) || '';
-          const cls = AVAIL_CLASSES[avail] || 'avail-empty';
-          const label = AVAIL_LABELS[avail] || '-';
-          html += `<td><div class="avail-cell ${cls}" data-inst="${iIdx}" data-date="${dt.date}" onclick="cycleAvail(this)">${label}</div></td>`;
+          const avail = inst.availability && inst.availability[dt.date];
+          const cls = avail ? availCellClass(avail) : 'avail-empty';
+          const labelHtml = avail ? availCellLabelHtml(avail) : '';
+          const titleAttr = avail ? availTitleAttr(avail) : '';
+          html += `<td><div class="avail-cell ${cls}" data-inst="${iIdx}" data-date="${dt.date}" onclick="cycleAvail(this)"${titleAttr}>${labelHtml}</div></td>`;
         });
         html += '</tr>';
       });
@@ -1540,8 +1691,21 @@ function cycleAvail(el) {
   const inst = shiftData.instructors[instIdx];
   if (!inst.availability) inst.availability = {};
 
-  const current = inst.availability[dateKey] || '';
-  const idx = AVAIL_STATES.indexOf(current);
+  // object availability は 同等の string 値に格下げして 巡回開始 (raw/部分OK等は破棄、ホバーで予め確認可能)
+  const current = inst.availability[dateKey];
+  let currentStr = '';
+  if (current && typeof current === 'object') {
+    if (current.kind === '全日') currentStr = current.travelOK === false ? '全日(出張NG)' : '全日(出張OK)';
+    else if (current.kind === 'AM') currentStr = 'AM';
+    else if (current.kind === 'PM') currentStr = 'PM';
+    else if (current.kind === '保留') currentStr = '保留';
+    else if (current.kind === 'NG') currentStr = 'NG';
+    else if (current.kind === '未回答') currentStr = '未回答';
+    else currentStr = '';  // 部分OK / 条件付き / 要確認 → クリックでリセット
+  } else {
+    currentStr = current || '';
+  }
+  const idx = AVAIL_STATES.indexOf(currentStr);
   const next = AVAIL_STATES[(idx + 1) % AVAIL_STATES.length];
 
   if (next === '') {
@@ -1550,10 +1714,11 @@ function cycleAvail(el) {
     inst.availability[dateKey] = next;
   }
 
-  const cls = AVAIL_CLASSES[next] || 'avail-empty';
-  const label = AVAIL_LABELS[next] || '-';
+  const cls = next ? availCellClass(next) : 'avail-empty';
+  const labelHtml = next ? availCellLabelHtml(next) : '';
   el.className = 'avail-cell ' + cls;
-  el.textContent = label;
+  el.innerHTML = labelHtml;
+  el.removeAttribute('title');
   markChanged();
   renderCalendar();
 }
@@ -1971,21 +2136,18 @@ function renderSuggestPanel() {
   function renderMiniRow(inst) {
     let row = `<tr><td class="avail-name-cell">${inst.name}</td>`;
     uniqueDates.forEach(dt => {
-      const avail = (inst.availability && inst.availability[dt.date]) || '';
+      const avail = inst.availability && inst.availability[dt.date];
       const isAssigned = assignmentMap[dt.date] && assignmentMap[dt.date].has(inst.name);
       const isTeacher = teacherMap[dt.date] && teacherMap[dt.date].has(inst.name);
-      let cls = '', label = '-';
-      if (isTeacher) { cls = 'teacher-mark'; label = '講師'; }
-      else if (isAssigned) { cls = 'assigned-mark'; label = '配置'; }
-      else if (avail === '全日(出張OK)' || avail === '全日') { cls = 'avail-full-ok'; label = '出張OK'; }
-      else if (avail === '全日(出張NG)') { cls = 'avail-full-ng'; label = '出張NG'; }
-      else if (avail === 'AM') { cls = 'avail-am'; label = 'AM'; }
-      else if (avail === 'PM') { cls = 'avail-pm'; label = 'PM'; }
-      else if (avail === '保留') { cls = 'avail-hold'; label = '保留'; }
-      else if (avail === 'NG') { cls = 'avail-ng'; label = 'NG'; }
-      else if (avail === '未回答') { cls = 'avail-pending'; label = '未回答'; }
-      else { cls = 'avail-empty'; }
-      row += `<td><div class="avail-cell ${cls}" style="width:32px;height:22px;font-size:10px;margin:auto;">${label}</div></td>`;
+      let cls = '', labelHtml = '-', titleAttr = '';
+      if (isTeacher) { cls = 'teacher-mark'; labelHtml = '講師'; }
+      else if (isAssigned) { cls = 'assigned-mark'; labelHtml = '配置'; }
+      else if (avail) {
+        cls = availCellClass(avail);
+        labelHtml = availCellLabelHtml(avail);
+        titleAttr = availTitleAttr(avail);
+      } else { cls = 'avail-empty'; labelHtml = ''; }
+      row += `<td><div class="avail-cell ${cls}" style="width:32px;height:22px;font-size:10px;margin:auto;"${titleAttr}>${labelHtml}</div></td>`;
     });
     row += '</tr>';
     return row;
@@ -2081,16 +2243,7 @@ function buildSuggestRightHtml(d) {
       if (currentAssigned.includes(inst.name)) return false;
       if (isTeachingOnDate(inst.name, s.date, s)) return false;
       if (conflicting.has(inst.name)) return false;
-      const avail = inst.availability && inst.availability[s.date];
-      if (!avail || avail === 'NG' || avail === '未回答') return false;
-      if (isFullDay(avail)) return true;
-      // AMのみ人 → sessionがAM内に収まる場合のみ候補
-      if (avail === 'AM' && isAM) return true;
-      // PMのみ人 → sessionがPM内に収まる場合のみ候補
-      if (avail === 'PM' && isPM) return true;
-      // 保留 → 終日/AM/PMすべて候補(野沢判断)
-      if (avail === '保留') return true;
-      return false;
+      return isCandidateAvail(inst, s, d.schedule);
     });
 
     const locHtml = s.location ? `<span style="color:var(--text2);font-size:11px;margin-left:6px;">📍 ${escapeHtml(s.location)}</span>` : '';
@@ -2108,9 +2261,12 @@ function buildSuggestRightHtml(d) {
         <span style="font-size:11px;color:var(--text3);">候補:</span>
         ${candidates.length > 0
           ? candidates.map(inst => {
-              const avail = (inst.availability && inst.availability[s.date]) || '';
-              const availColor = isFullDay(avail) ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : 'var(--purple)';
-              return `<span style="font-size:11px;color:${availColor};">${inst.name}</span>`;
+              const avail = inst.availability && inst.availability[s.date];
+              const sIdx = getSessionIndex(d.schedule, s);
+              const badges = availBadgesText(avail, sIdx);
+              const availColor = availColorOf(avail);
+              const titleAttr = availTitleAttr(avail);
+              return `<span style="font-size:11px;color:${availColor};"${titleAttr}>${inst.name}${badges.length ? ' '+badges.join('') : ''}</span>`;
             }).join('<span style="color:var(--text3);font-size:10px;">/</span>')
           : '<span style="color:var(--red);font-size:11px;">なし</span>'}
       </div>
@@ -2338,25 +2494,30 @@ function showModalAssignDropdown(event, schedIdx, reopenFn, ...reopenArgs) {
   }
 
   // availabilityの優先順で並べる(全日OK→全日NG→AM→PM→保留)
-  const AVAIL_PRIO = {'全日(出張OK)':0, '全日':1, '全日(出張NG)':2, 'AM':3, 'PM':4, '保留':5};
-  available.sort((a, b) => {
-    const av = (a.availability && a.availability[s.date]) || '';
-    const bv = (b.availability && b.availability[s.date]) || '';
-    return (AVAIL_PRIO[av] ?? 99) - (AVAIL_PRIO[bv] ?? 99);
-  });
+  // ソート優先度: 全日OK > 全日NG > 部分OK > AM > PM > 保留 > 条件付き > 要確認
+  const KIND_PRIO = {'全日':0, '部分OK':1, 'AM':2, 'PM':3, '保留':4, '条件付き':5, '要確認':6};
+  function _availPrio(v) {
+    const a = normalizeAvail(v);
+    if (!a) return 99;
+    let p = KIND_PRIO[a.kind] ?? 99;
+    if (a.kind === '全日' && a.travelOK === false) p += 0.5;  // 全日OK優先、 全日NGは後
+    return p;
+  }
+  available.sort((a, b) => _availPrio(a.availability && a.availability[s.date]) - _availPrio(b.availability && b.availability[s.date]));
 
   const dropdown = document.createElement('div');
   dropdown.className = 'modal-dropdown';
 
   available.forEach(inst => {
     const name = inst.name;
-    const avail = (inst.availability && inst.availability[s.date]) || '';
-    const label = AVAIL_LABELS[avail] || '';
-    const cls = AVAIL_CLASSES[avail] || '';
+    const avail = inst.availability && inst.availability[s.date];
+    const labelHtml = avail ? availCellLabelHtml(avail) : '';
+    const cls = avail ? availCellClass(avail) : '';
+    const titleAttr = avail ? availTitleAttr(avail) : '';
     const item = document.createElement('div');
     item.className = 'modal-dropdown-item';
     item.innerHTML = `<span>${escapeHtml(name)}</span>` +
-      (label ? `<span class="avail-cell ${cls}" style="display:inline-flex;min-width:auto;height:18px;font-size:10px;padding:0 6px;margin-left:8px;">${label}</span>` : '');
+      (labelHtml ? `<span class="avail-cell ${cls}" style="display:inline-flex;min-width:auto;height:18px;font-size:10px;padding:0 6px;margin-left:8px;"${titleAttr}>${labelHtml}</span>` : '');
     item.onclick = (e) => {
       e.stopPropagation();
       if (!shiftData.schedule[schedIdx].assigned) shiftData.schedule[schedIdx].assigned = [];
@@ -2535,14 +2696,16 @@ function openContactModal(instIdx) {
   const inst = shiftData.instructors[instIdx];
 
   // Availability summary
-  let fullCount = 0, amCount = 0, pmCount = 0, holdCount = 0, ngCount = 0;
+  let fullCount = 0, amCount = 0, pmCount = 0, holdCount = 0, ngCount = 0, condCount = 0;
   if (inst.availability) {
     Object.values(inst.availability).forEach(v => {
-      if (isFullDay(v)) fullCount++;
-      else if (v === 'AM') amCount++;
-      else if (v === 'PM') pmCount++;
-      else if (v === '保留') holdCount++;
-      else if (v === 'NG') ngCount++;
+      const k = availKind(v);
+      if (k === '全日' || k === '部分OK') fullCount++;
+      else if (k === 'AM') amCount++;
+      else if (k === 'PM') pmCount++;
+      else if (k === '保留') holdCount++;
+      else if (k === 'NG') ngCount++;
+      else if (k === '条件付き' || k === '要確認') condCount++;
     });
   }
 
@@ -2584,7 +2747,7 @@ function openContactModal(instIdx) {
       <span style="color:var(--blue);">AM ${amCount}件</span> /
       <span style="color:var(--purple);">PM ${pmCount}件</span> /
       <span style="color:var(--yellow);">保留 ${holdCount}件</span> /
-      <span style="color:var(--red);">NG ${ngCount}件</span>
+      <span style="color:var(--red);">NG ${ngCount}件</span>${condCount > 0 ? ` / <span style="color:var(--orange);">要確認 ${condCount}件</span>` : ''}
     </span></div>
     <div class="detail-row" style="flex-direction:column;"><span class="detail-label" style="margin-bottom:4px;">配置済みの研修</span><div style="padding-left:4px;">${assignedHtml}</div></div>
   `;
@@ -2609,27 +2772,27 @@ function openAssignmentModal(schedIdx) {
 
   let availableHtml = '';
   shiftData.instructors.forEach(inst => {
+    if (!isCandidateAvail(inst, s, shiftData.schedule)) return;
     const avail = inst.availability && inst.availability[s.date];
-    if (!avail || avail === 'NG' || avail === '未回答') return;
-    let canWork = false;
-    if (isFullDay(avail)) canWork = true;
-    else if (avail === 'AM' && isAM) canWork = true;  // AMのみ → AM内セッションのみ可
-    else if (avail === 'PM' && isPM) canWork = true;  // PMのみ → PM内セッションのみ可
-    else if (avail === '保留') canWork = true;
-
-    if (canWork) {
-      const isAssigned = s.assigned && s.assigned.includes(inst.name);
-      const availColor = isFullDay(avail) ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
-      const assignedClass = isAssigned ? ' is-assigned' : '';
-      const action = isAssigned
-        ? `onclick="event.stopPropagation();modalRemoveAssignedByName(${schedIdx},'${escapeHtml(inst.name)}',openAssignmentModal,${schedIdx});"`
-        : `onclick="event.stopPropagation();modalAddAssigned(${schedIdx},'${escapeHtml(inst.name)}',openAssignmentModal,${schedIdx});"`;
-      const statusLabel = isAssigned ? ' (配置済 - クリックで解除)' : ' (クリックで追加)';
-      availableHtml += `<div class="modal-inst-available${assignedClass}" ${action} style="margin-bottom:4px;">
-        ${escapeHtml(inst.name)} <span style="color:${availColor};font-size:12px;">[${avail}]</span>
-        <span style="font-size:10px;color:var(--text3);">${statusLabel}</span>
-      </div>`;
-    }
+    const sIdx = getSessionIndex(shiftData.schedule, s);
+    const badges = availBadgesText(avail, sIdx);
+    const isAssigned = s.assigned && s.assigned.includes(inst.name);
+    const availColor = availColorOf(avail);
+    const assignedClass = isAssigned ? ' is-assigned' : '';
+    const action = isAssigned
+      ? `onclick="event.stopPropagation();modalRemoveAssignedByName(${schedIdx},'${escapeHtml(inst.name)}',openAssignmentModal,${schedIdx});"`
+      : `onclick="event.stopPropagation();modalAddAssigned(${schedIdx},'${escapeHtml(inst.name)}',openAssignmentModal,${schedIdx});"`;
+    const statusLabel = isAssigned ? ' (配置済 - クリックで解除)' : ' (クリックで追加)';
+    const k = availKind(avail);
+    const labelMain = k === '全日'
+      ? (normalizeAvail(avail).travelOK === false ? '出張NG' : '出張OK')
+      : (k === '部分OK' ? '部分OK' : (k === '条件付き' ? '条件付' : (k === '要確認' ? '要確認' : k)));
+    const labelHtml = labelMain + (badges.length ? ' ' + badges.join(' ') : '');
+    const titleAttr = availTitleAttr(avail);
+    availableHtml += `<div class="modal-inst-available${assignedClass}" ${action} style="margin-bottom:4px;"${titleAttr}>
+      ${escapeHtml(inst.name)} <span style="color:${availColor};font-size:12px;">[${labelHtml}]</span>
+      <span style="font-size:10px;color:var(--text3);">${statusLabel}</span>
+    </div>`;
   });
   if (!availableHtml) availableHtml = '<span style="color:var(--text3);">なし</span>';
 
@@ -2791,17 +2954,25 @@ function openCalendarDayModal(day) {
   let unavailHtml = '';
   shiftData.instructors.forEach(inst => {
     const avail = inst.availability && inst.availability[dateStr];
-    if (avail && avail !== 'NG' && avail !== '未回答') {
-      const availColor = isFullDay(avail) ? 'var(--green)' : avail === 'AM' ? 'var(--blue)' : avail === 'PM' ? 'var(--purple)' : 'var(--yellow)';
+    const k = availKind(avail);
+    if (k && k !== 'NG' && k !== '未回答' && k !== '不明') {
+      const availColor = availColorOf(avail);
+      const a = normalizeAvail(avail);
+      const labelMain = k === '全日'
+        ? (a.travelOK === false ? '出張NG' : '出張OK')
+        : (k === '部分OK' ? '部分OK' : (k === '条件付き' ? '条件付' : (k === '要確認' ? '要確認' : k)));
+      const badges = availBadgesText(avail, null);
+      const availLabel = labelMain + (badges.length ? ' ' + badges.join(' ') : '');
+      const titleAttr = availTitleAttr(avail);
       const assignedCount = daySchedules.filter(s => (s.assigned || []).includes(inst.name)).length;
       if (allTeachersOnDate.has(inst.name)) {
         unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">講師</span></div>`;
       } else if (isFullyBookedOnDate(inst.name)) {
         unavailHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:var(--text3);"></span><span style="color:var(--text3);text-decoration:line-through;">${escapeHtml(inst.name)}</span><span style="color:var(--text3);font-size:11px;">配置済み</span></div>`;
       } else if (assignedCount > 0) {
-        availHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:${availColor};"></span><span style="color:var(--text);">${escapeHtml(inst.name)}</span><span style="color:var(--orange);font-size:11px;">${assignedCount}件配置済み・追加可</span></div>`;
+        availHtml += `<div class="avail-list-item"${titleAttr}><span class="avail-list-dot" style="background:${availColor};"></span><span style="color:var(--text);">${escapeHtml(inst.name)}</span><span style="color:var(--orange);font-size:11px;">${assignedCount}件配置済み・追加可</span></div>`;
       } else {
-        availHtml += `<div class="avail-list-item"><span class="avail-list-dot" style="background:${availColor};"></span><span style="color:var(--text);">${escapeHtml(inst.name)}</span><span style="color:${availColor};font-weight:600;">${avail}</span></div>`;
+        availHtml += `<div class="avail-list-item"${titleAttr}><span class="avail-list-dot" style="background:${availColor};"></span><span style="color:var(--text);">${escapeHtml(inst.name)}</span><span style="color:${availColor};font-weight:600;">${availLabel}</span></div>`;
       }
     }
   });
