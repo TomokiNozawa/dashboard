@@ -752,6 +752,48 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .axis-item-stars { color: var(--yellow); font-size: 12px; min-width: 70px; }
 .axis-item-text { color: var(--text); flex: 1; }
 
+/* ── 5アニマル占い ── */
+.goku-animal-wrap { position: relative; max-width: 480px; margin: 16px auto; padding: 20px 12px; }
+.goku-animal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.goku-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: 10px; background: var(--card); border: 1px solid var(--border-light); }
+.goku-cell.honshitsu { border-color: var(--pink, #e85ab7); background: rgba(232,90,183,0.08); }
+.goku-cell.hyomen    { border-color: var(--orange); background: rgba(240,136,62,0.08); }
+.goku-cell.ishi      { border-color: var(--blue); background: rgba(88,166,255,0.08); }
+.goku-cell.kibou     { border-color: var(--green); background: rgba(63,185,80,0.08); }
+.goku-cell.kakure    { border-color: var(--purple); background: rgba(188,140,255,0.08); }
+.goku-icon { font-size: 36px; line-height: 1; }
+.goku-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.goku-role { font-size: 10px; color: var(--text3); }
+.goku-empty { font-size: 11px; color: var(--text3); padding: 16px 6px; text-align: center; }
+
+/* 円形配置: 表面=上 / 希望=左 / 本質=中央 / 意思決定=右 / 隠れ=下 */
+.goku-animal-grid .gk-hyomen    { grid-column: 2; grid-row: 1; }
+.goku-animal-grid .gk-kibou     { grid-column: 1; grid-row: 2; }
+.goku-animal-grid .gk-honshitsu { grid-column: 2; grid-row: 2; transform: scale(1.05); }
+.goku-animal-grid .gk-ishi      { grid-column: 3; grid-row: 2; }
+.goku-animal-grid .gk-kakure    { grid-column: 2; grid-row: 3; }
+
+.goku-legend { margin-top: 12px; display: grid; grid-template-columns: 1fr; gap: 4px; font-size: 11px; color: var(--text2); padding: 12px; border-radius: 8px; background: var(--card); border: 1px solid var(--border-light); }
+.goku-legend-row { display: flex; gap: 8px; align-items: baseline; }
+.goku-legend-tag { display: inline-block; min-width: 70px; padding: 1px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-align: center; }
+.goku-legend-tag.honshitsu { background: rgba(232,90,183,0.18); color: var(--pink, #e85ab7); }
+.goku-legend-tag.hyomen    { background: rgba(240,136,62,0.18); color: var(--orange); }
+.goku-legend-tag.ishi      { background: rgba(88,166,255,0.18); color: var(--blue); }
+.goku-legend-tag.kibou     { background: rgba(63,185,80,0.18); color: var(--green); }
+.goku-legend-tag.kakure    { background: rgba(188,140,255,0.18); color: var(--purple); }
+
+@media (max-width: 768px) {
+  .goku-animal-grid { gap: 6px; }
+  .goku-icon { font-size: 28px; }
+  .goku-name { font-size: 12px; }
+}
+
 /* ── タロット ── */
 .tarot-card-display {
   background: linear-gradient(135deg, var(--card) 0%, var(--card-hover) 100%);
@@ -1169,6 +1211,18 @@ function renderToday() {
     stars: byKind.doubutsu?.stars ?? 3,
     body: byKind.doubutsu?.text || '本日の動物占い (生成待ち)',
   });
+  // 5アニマル (本日のキャラ別 ワンポイント)
+  const ga = c.gokAnimal || {};
+  const animalIco = name => (name && UranaiCalc.ANIMAL_ICON[name]) || '❓';
+  const animalLabel = (role, name) => name ? `${animalIco(name)}${name}` : '─';
+  const gaSub = `表${animalLabel('表面',ga.hyomen)} 本${animalLabel('本質',ga.honshitsu)} 意${animalLabel('意思',ga.ishi)} 希${animalLabel('希望',ga.kibou)} 隠${animalLabel('隠れ',ga.kakure)}`;
+  cards.push({
+    icon: '🐾',
+    title: '5アニマル',
+    sub: gaSub,
+    stars: 0,
+    body: '5つの側面の動物キャラ。 固定情報タブで 詳細表示・編集',
+  });
   // 四柱推命
   const sh = c.shichuu;
   cards.push({
@@ -1463,6 +1517,18 @@ function renderStatic() {
       </div>
     </div>
 
+    <div class="section"><h2>🐾 5アニマル占い (doubutsu-uranai.com 由来)</h2>
+      ${renderGokAnimal(c.gokAnimal)}
+      <div class="goku-legend">
+        <div class="goku-legend-row"><span class="goku-legend-tag honshitsu">本質キャラ</span><span>基本的な性格を表す (60キャラと連動、 自動算出)</span></div>
+        <div class="goku-legend-row"><span class="goku-legend-tag hyomen">表面キャラ</span><span>他人に見せている表向きの顔</span></div>
+        <div class="goku-legend-row"><span class="goku-legend-tag ishi">意思決定</span><span>何かを決断する時に現れる性格</span></div>
+        <div class="goku-legend-row"><span class="goku-legend-tag kibou">希望キャラ</span><span>無意識のうちに憧れる理想の姿</span></div>
+        <div class="goku-legend-row"><span class="goku-legend-tag kakure">隠れキャラ</span><span>ピンチの時にあらわれる潜在的な裏の顔</span></div>
+      </div>
+      <p style="color:var(--text3);font-size:11px;margin-top:8px;">※ 5アニマルの 表面/意思決定/希望/隠れ は 公式算式が非公開のため、 <a href="https://www.doubutsu-uranai.com/" target="_blank" style="color:var(--blue);">doubutsu-uranai.com 公式</a> で確認した結果を 「編集」 から登録してください。</p>
+    </div>
+
     <div class="section"><h2>⭐ 九星気学</h2>
       <div class="profile-item">
         <div class="profile-item-value">${escapeHtml(c.kyuusei.name)}</div>
@@ -1476,6 +1542,27 @@ function renderStatic() {
       </div>
     </div>
   `;
+}
+
+function renderGokAnimal(g) {
+  if (!g) return '<div class="goku-empty">5アニマル 未設定</div>';
+  const cells = [
+    { key: 'hyomen',    role: '表面',   name: g.hyomen,    cls: 'gk-hyomen hyomen' },
+    { key: 'kibou',     role: '希望',   name: g.kibou,     cls: 'gk-kibou kibou' },
+    { key: 'honshitsu', role: '本質',   name: g.honshitsu, cls: 'gk-honshitsu honshitsu' },
+    { key: 'ishi',      role: '意思決定', name: g.ishi,      cls: 'gk-ishi ishi' },
+    { key: 'kakure',    role: '隠れ',   name: g.kakure,    cls: 'gk-kakure kakure' },
+  ];
+  const html = cells.map(c => {
+    const icon = UranaiCalc.ANIMAL_ICON[c.name] || '❓';
+    const display = c.name || '未設定';
+    return `<div class="goku-cell ${c.cls}">
+      <div class="goku-icon">${icon}</div>
+      <div class="goku-name">${escapeHtml(display)}</div>
+      <div class="goku-role">${c.role}キャラ</div>
+    </div>`;
+  }).join('');
+  return `<div class="goku-animal-wrap"><div class="goku-animal-grid">${html}</div></div>`;
 }
 
 // ── 履歴タブ ──
@@ -1623,6 +1710,20 @@ window.openProfileEditor = function() {
           <option value="old" ${p.kakusuuSchool === 'old' ? 'selected' : ''}>旧字 (熊崎式)</option>
         </select>
       </div>
+      <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border-light);">
+        <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px;">🐾 5アニマル (doubutsu-uranai.com で確認した結果を 12動物名で 入力)</div>
+        ${['hyomen:表面','ishi:意思決定','kibou:希望','kakure:隠れ'].map(s => {
+          const [k, label] = s.split(':');
+          const cur = (p.gokAnimal && p.gokAnimal[k]) || '';
+          return `<div class="form-row"><label>${label}キャラ</label>
+            <select id="pf_gok_${k}">
+              <option value="" ${!cur ? 'selected' : ''}>未設定</option>
+              ${UranaiCalc.ANIMAL_12.map(a => `<option value="${a}" ${cur === a ? 'selected' : ''}>${UranaiCalc.ANIMAL_ICON[a]||''} ${a}</option>`).join('')}
+            </select>
+          </div>`;
+        }).join('')}
+        <p style="color:var(--text3);font-size:11px;margin-top:4px;">※ 本質キャラは 60キャラから 自動算出されます</p>
+      </div>
       <div class="form-actions">
         <button type="button" class="tarot-draw-btn" style="background:var(--card-hover);color:var(--text);" onclick="closeUranaiModal()">キャンセル</button>
         <button type="submit" class="tarot-draw-btn">保存 (Alt+S)</button>
@@ -1649,6 +1750,13 @@ window.saveProfile = function() {
     bloodType: get('pf_blood') || null,
     mbti: get('pf_mbti') || null,
     kakusuuSchool: get('pf_school'),
+    gokAnimal: {
+      hyomen:    get('pf_gok_hyomen') || null,
+      honshitsu: (appData.profile && appData.profile.gokAnimal && appData.profile.gokAnimal.honshitsu) || null,
+      ishi:      get('pf_gok_ishi') || null,
+      kibou:     get('pf_gok_kibou') || null,
+      kakure:    get('pf_gok_kakure') || null,
+    },
   };
   appData.profile = Object.assign({}, appData.profile || {}, newP);
   appData.computed = UranaiCalc.computeAll(appData.profile);

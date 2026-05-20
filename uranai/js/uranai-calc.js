@@ -238,6 +238,28 @@ const UranaiCalc = (function() {
     return entry ? Object.assign({ num }, entry) : { num, name: '?', color: '?', tag: '?' };
   }
 
+  // ──────── 5アニマル (doubutsu-uranai.com 5アニマル占い) ────────
+  // 本質キャラは 60キャラから自動算出、 残り 4キャラは profile.gokAnimal に手動登録した値を返す。
+  // 公式算式 (表面/意思決定/希望/隠れ) は 各サイトで非公開のため、 doubutsu-uranai.com 公式ツールで
+  // 確認した結果を プロフィール編集モーダルから 入力する運用。
+  const ANIMAL_12 = ['狼','こじか','猿','チータ','黒ひょう','ライオン','虎','たぬき','コアラ','象','羊','ペガサス'];
+  const ANIMAL_ICON = {
+    '狼':'🐺','こじか':'🦌','猿':'🐵','チータ':'🐆','黒ひょう':'🐈','ライオン':'🦁',
+    '虎':'🐯','たぬき':'🦝','コアラ':'🐨','象':'🐘','羊':'🐑','ペガサス':'🦄',
+  };
+  function getGokAnimal(profile, doubutsuFromCalc) {
+    const g = (profile && profile.gokAnimal) || {};
+    // 本質キャラ = 60キャラから派生 (12動物名)
+    const honshitsuAuto = doubutsuFromCalc && doubutsuFromCalc.name ? doubutsuFromCalc.name : '?';
+    return {
+      hyomen:    g.hyomen    || null,
+      honshitsu: g.honshitsu || honshitsuAuto,
+      ishi:      g.ishi      || null,
+      kibou:     g.kibou     || null,
+      kakure:    g.kakure    || null,
+    };
+  }
+
   // ──────── 高レベル API ────────
   function computeAll(profile) {
     const { birthYear: y, birthMonth: m, birthDay: d, birthHour: hh = 0,
@@ -250,8 +272,9 @@ const UranaiCalc = (function() {
     const eto = { year: shichuu.年.shi, doubutsu: SHI_DOUBUTSU[SHI.indexOf(shichuu.年.shi)], char: shichuu.年.name };
     const seimeiNew = getSeimei(lastKanji, firstKanji, 'new');
     const seimeiOld = getSeimei(lastKanji, firstKanji, 'old');
+    const gokAnimal = getGokAnimal(profile, doubutsu);
     return {
-      seiza, shichuu, suuhi, kyuusei, doubutsu, eto,
+      seiza, shichuu, suuhi, kyuusei, doubutsu, eto, gokAnimal,
       seimei: { new: seimeiNew, old: seimeiOld, school: kakusuuSchool },
       lifepathText: LIFEPATH_TEXT[suuhi.lifepath] || '',
     };
@@ -265,6 +288,7 @@ const UranaiCalc = (function() {
     reduceNum, getSuuhi, LIFEPATH_TEXT,
     getKyuusei, KYUUSEI_NAMES, KYUUSEI_ELEM,
     setDoubutsuData, getDoubutsu,
+    ANIMAL_12, ANIMAL_ICON, getGokAnimal,
     computeAll,
   };
 })();
