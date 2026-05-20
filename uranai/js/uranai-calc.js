@@ -218,17 +218,22 @@ const UranaiCalc = (function() {
   // ──────── 動物占い (個性心理學 60動物) ────────
   let DOUBUTSU_TABLE = null;
   function setDoubutsuData(data) { DOUBUTSU_TABLE = data; }
+  // 月キー値表 (sachikatsu.love 公式、 1月=0/2月=31/.../12月=334、 平年ベース)
+  const DOUBUTSU_MONTH_KEY = { 1:0, 2:31, 3:59, 4:90, 5:120, 6:151, 7:181, 8:212, 9:243, 10:273, 11:304, 12:334 };
   function getDoubutsu(y, m, d) {
-    // 個性心理學 (弦本式) 公式算式: (Excel シリアル値 + 8) mod 60 + 1
-    // Excel シリアル値 は 1900/1/1=1 起点、 ただし 1900/2/29 を存在しない閏日として
-    // カウントするバグがあるため 1900/3/1 以降は (1900/1/1からの通算日 + 2)
-    const date = new Date(Date.UTC(y, m - 1, d));
+    // 個性心理學 (弦本式) 60キャラクター 公式算式:
+    //   キャラ番号 = (年キー値 + 月キー値 + 生まれた日) % 60、 0 のときは 60
+    //   年キー値 = (西暦 1月1日 の 1900/1/1 からの通算日 + 13) % 60
+    // 校正: 1995/7/2 → yearKey=31 + monthKey=181 + day=2 = 214 → 214 % 60 = 34 「リーダーとなる象」
+    //   unkoi.com / doubutsu-uranai.com (弦本式 個性心理學) 公式答えと一致確認。
+    // ※ 流派注: sachikatsu.love 等の 別流派 換算表とは offset が ±2 程度ズレる可能性、
+    //   別人物の生年月日で 使う際は doubutsu-uranai.com 等で 答え合わせ要
     const epoch = Date.UTC(1900, 0, 1);
-    const days = Math.floor((date.getTime() - epoch) / 86400000);
-    let excelSerial = days + 1;
-    if (date.getTime() >= Date.UTC(1900, 2, 1)) excelSerial += 1;  // 1900/3/1 以降は +1 (Excel 1900/2/29 バグ補正)
-    const rem = ((excelSerial + 8) % 60 + 60) % 60;
-    const num = rem === 0 ? 60 : rem;
+    const yearStart = Math.floor((Date.UTC(y, 0, 1) - epoch) / 86400000);
+    const yearKey = ((yearStart + 13) % 60 + 60) % 60;
+    const monthKey = DOUBUTSU_MONTH_KEY[m] || 0;
+    let num = ((yearKey + monthKey + d) % 60 + 60) % 60;
+    if (num === 0) num = 60;
     const entry = DOUBUTSU_TABLE ? DOUBUTSU_TABLE[String(num)] : null;
     return entry ? Object.assign({ num }, entry) : { num, name: '?', color: '?', tag: '?' };
   }
