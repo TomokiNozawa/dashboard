@@ -3060,10 +3060,34 @@ function buildSheet1ExportData() {
   return result;
 }
 
-// スプシ①から現在のN列値を取得 (範囲: N月!N4:N34)
-async function fetchSheet1CurrentBiko(monthNum) {
+// 0-based 列index → A1 列文字 (0→A, 13→N, 19→T)
+function colIdxToLetter(idx) {
+  let s = ''; idx++;
+  while (idx > 0) { const m = (idx - 1) % 26; s = String.fromCharCode(65 + m) + s; idx = Math.floor((idx - 1) / 26); }
+  return s;
+}
+
+// スプシ①「備考」列を ヘッダ(row3) から動的検出する。
+// ★由美子削除/メンバー増減で 備考列は月毎に移動 (5月=N / 6月=T 等)。N固定は厳禁
+//   (固定だと 6月では N=宗行 を上書き破壊する)。複数「備考」がある場合は最右を採用。
+async function getSheet1BikoCol(monthNum) {
   const token = await getSheetsAccessToken();
-  const range = encodeURIComponent(`${monthNum}月!N4:N34`);
+  const range = encodeURIComponent(`${monthNum}月!A3:Z3`);
+  const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET1_ID}/values/${range}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!resp.ok) throw new Error('スプシ①ヘッダ取得失敗: ' + resp.status + ' ' + await resp.text());
+  const hdr = ((await resp.json()).values || [[]])[0] || [];
+  let idx = -1;
+  for (let i = 0; i < hdr.length; i++) { if (String(hdr[i] || '').includes('備考')) idx = i; }
+  if (idx < 0) throw new Error(`${monthNum}月シートに「備考」列が見つかりません (ヘッダ行3を確認)`);
+  return colIdxToLetter(idx);
+}
+
+// スプシ①から現在の備考列値を取得 (範囲: {備考列}4:{備考列}34)
+async function fetchSheet1CurrentBiko(monthNum, bikoCol) {
+  const token = await getSheetsAccessToken();
+  const range = encodeURIComponent(`${monthNum}月!${bikoCol}4:${bikoCol}34`);
   const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET1_ID}/values/${range}`, {
     headers: { 'Authorization': `Bearer ${token}` },
   });
@@ -3197,11 +3221,11 @@ async function writeSheet2(yearSheetName, diffs) {
 // ============================================================
 // スプシ① batchUpdate (備考列一括書き込み)
 // ============================================================
-async function writeSheet1Biko(monthNum, rowsToUpdate) {
-  // rowsToUpdate: [{day: 7, value: '福田+赤井？'}, ...]
+async function writeSheet1Biko(monthNum, rowsToUpdate, bikoCol) {
+  // rowsToUpdate: [{day: 7, value: '福田+赤井？'}, ...]、 bikoCol: 動的検出した備考列文字
   const token = await getSheetsAccessToken();
   const data = rowsToUpdate.map(r => ({
-    range: `${monthNum}月!N${r.day + 3}`,  // 1日=r4, 31日=r34
+    range: `${monthNum}月!${bikoCol}${r.day + 3}`,  // 1日=r4, 31日=r34
     values: [[r.value]],
   }));
   const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET1_ID}/values:batchUpdate`, {
@@ -3285,15 +3309,19 @@ async function openExportModal() {
   document.addEventListener('keydown', _exportKeydownHandler, true);
 
   try {
-    // スプシ①: 備考列差分
-    const current1 = await fetchSheet1CurrentBiko(monthNum);
+    // スプシ①: 備考列差分 (★備考列は月毎に移動するため動的検出。N固定厳禁)
+    const bikoCol = await getSheet1BikoCol(monthNum);
+    window._exportBikoCol = bikoCol;
+    const current1 = await fetchSheet1CurrentBiko(monthNum, bikoCol);
     const newData1 = buildSheet1ExportData();
     const diffs1 = [];
     newData1.forEach(row => {
       const day = parseInt(row.date.split('-')[2], 10);
       const old = current1[day] || '';
       if (old !== row.cellValue) {
-        diffs1.push({ day, dateStr: row.date, old, neu: row.cellValue });
+        // ★既存備考あり (赤井講師等の手入力) は誤クリア防止のため既定OFF。空欄→新規記入のみ既定ON
+        const hasExisting = !!String(old).trim();
+        diffs1.push({ day, dateStr: row.date, old, neu: row.cellValue, checked: !hasExisting, hasExisting });
       }
     });
     // スプシ②: ｻﾎﾟ/赤井列差分 (年度判定: 4-12月=同年、1-3月=前年度)
@@ -3360,7 +3388,8 @@ function renderExportBody() {
         <button onclick="toggleAllExport(1, true)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">全選択</button>
         <button onclick="toggleAllExport(1, false)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">全解除</button>
       </div>
-    </div>`;
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin:0 0 8px;padding:6px 10px;background:rgba(229,83,75,0.08);border-radius:4px;">⚠️ 既存備考(赤井講師等の手入力)がある日は <strong>誤クリア防止のため既定OFF</strong>。上書きする場合のみチェック。備考列は月毎に移動するため自動検出 (今月=${window._exportBikoCol || '?'}列)。</div>`;
   if (diffs1.length === 0) {
     html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
   } else {
@@ -3377,7 +3406,7 @@ function renderExportBody() {
       const dow1 = dowOfIso(d.dateStr);
       html += `<tr style="border-bottom:1px solid var(--border-light);opacity:${opacity};">
         <td style="padding:8px;text-align:center;"><input type="checkbox" ${d.checked ? 'checked' : ''} onchange="toggleExportItem(1, ${i}, this.checked)" aria-label="${d.day}日(${dow1})を書き出し対象に" style="cursor:pointer;width:16px;height:16px;"></td>
-        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日(${dow1})</td>
+        <td style="padding:8px 10px;font-weight:600;vertical-align:top;white-space:nowrap;">${d.day}日(${dow1})${d.hasExisting ? '<br><span style="color:var(--red);font-size:10px;font-weight:700;">⚠️既存備考</span>' : ''}</td>
         <td style="padding:8px 10px;color:var(--text2);vertical-align:top;">${oldHtml}</td>
         <td style="padding:8px 10px;color:var(--green);vertical-align:top;">${newHtml}</td>
       </tr>`;
@@ -3528,7 +3557,7 @@ async function confirmExport() {
   try {
     if (diffs1.length) {
       const rows = diffs1.map(d => ({ day: d.day, value: d.neu }));
-      await writeSheet1Biko(monthNum, rows);
+      await writeSheet1Biko(monthNum, rows, window._exportBikoCol);
     }
     if (diffs2.length) {
       await writeSheet2(yearSheetName, diffs2);
