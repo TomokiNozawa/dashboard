@@ -3041,17 +3041,23 @@ function buildSheet1ExportData() {
     const isSingle = sessions.length === 1;
     const lines = sessions.map((s, i) => {
       const prefix = isSingle ? '' : (CIRCLE_NUMS[i] || (i+1) + '.');
+      // ★赤井が講師(teachers)の場合は「赤井講師」を残す/付与 (SKILL: 赤井のみ・冪等)。
+      //   他の社員講師(樋口/野沢/中田等)は備考(=インストラクター欄)には出さない。
+      const akaiKoushi = (s.teachers || []).includes('赤井');
       let text;
-      if (!s.instNeeded || s.instNeeded === 0) {
-        text = 'なし';
-      } else if (!s.assigned || s.assigned.length === 0) {
-        text = '';  // 未配置
+      if (!s.assigned || s.assigned.length === 0) {
+        // 未配置: 赤井講師なら「赤井講師」、 instNeeded=0なら「なし」、 それ以外は空(未配置)
+        if (akaiKoushi) text = '赤井講師';
+        else if (!s.instNeeded || s.instNeeded === 0) text = 'なし';
+        else text = '';
       } else {
         const ic = s.instConfirm || {};
         const names = s.assigned
           .filter(n => ic[n] !== 'NG')
           .map(n => (ic[n] === 'OK') ? n : n + '？');
-        text = names.length > 0 ? names.join('+') : 'なし';
+        const joined = names.length > 0 ? names.join('+') : 'なし';
+        // 赤井が講師 かつ assigned に赤井がいない場合のみ「赤井講師+」を前置
+        text = (akaiKoushi && !s.assigned.includes('赤井')) ? ('赤井講師+' + joined) : joined;
       }
       return prefix + text;
     });
@@ -3389,7 +3395,7 @@ function renderExportBody() {
         <button onclick="toggleAllExport(1, false)" style="padding:3px 10px;font-size:11px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">全解除</button>
       </div>
     </div>
-    <div style="font-size:11px;color:var(--text2);margin:0 0 8px;padding:6px 10px;background:rgba(229,83,75,0.08);border-radius:4px;">⚠️ 既存備考(赤井講師等の手入力)がある日は <strong>誤クリア防止のため既定OFF</strong>。上書きする場合のみチェック。備考列は月毎に移動するため自動検出 (今月=${window._exportBikoCol || '?'}列)。</div>`;
+    <div style="font-size:11px;color:var(--text2);margin:0 0 8px;padding:6px 10px;background:rgba(229,83,75,0.08);border-radius:4px;">✅ <strong>赤井講師</strong>(=配置データのteachersに赤井)は書き出し値に<strong>自動で残ります</strong>。 ⚠️ それ以外の手入力備考がある日は誤クリア防止で<strong>既定OFF</strong>(上書き時のみチェック)。 備考列は月毎に移動するため自動検出 (今月=${window._exportBikoCol || '?'}列)。</div>`;
   if (diffs1.length === 0) {
     html += '<div style="color:var(--text3);font-size:12px;padding:8px 12px;">差分なし</div>';
   } else {
