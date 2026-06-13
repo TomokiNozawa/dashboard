@@ -24,7 +24,7 @@ window.DASHBOARD_DATA = {
     { id: 2, title: "報告資料自動生成", status: "completed", notes: "/report スキル化済み", details: "アンケートExcel→集計→テンプレPPTX転記を自動化。満足度・理解度・Excel使用時間・効果実感・感想スライド対応。チャートCOM更新、ピクセル幅ベース改行。ExcelCamp・D-Wind研修対応。report_helpers.py汎用モジュール化済み。" },
     { id: 3, title: "Zoom URL発行+Gカレ転記", status: "completed", notes: "/zoom スキル化済み", details: "Zoom会議作成→GoogleカレンダーにURL転記→クリップボードにコピー。zoom_cal.pyで一発実行。引数あり/なし両対応。" },
     { id: 4, title: "請求書作成→PDF→Box保存", status: "in-progress", notes: "単社モードOK、バッチ未実装", details: "金額スプシ・toB管理スプシ・見積書を照合し、Excelテンプレートに転記→PDF出力→Box保存。単社モードは動作確認済み。バッチモード（複数社一括）は未実装。" },
-    { id: 5, title: "請求書送付メール下書き", status: "pending", notes: "#4の後工程", details: "請求書作成後にGmailで送付メールの下書きを自動作成する。#4のバッチモード完了後に着手予定。" },
+    { id: 5, title: "請求書送付メール下書き", status: "completed", notes: "/請求書メール スキル化済み", details: "請求書作成後にGmailで送付メールの下書きを自動作成。/請求書メール {会社名} [YYYYMM] で、Boxの請求書PDFを添付 + 過去の「ご請求書送付」スレッドからTo/Ccを踏襲してGmail下書きを作成（送信せず）。invoice_mail_draft.py、remind_draft.pyのGmail機構を流用。" },
     { id: 6, title: "教材作成+復習フォーム", status: "completed", notes: "/教材作成 スキル化済み", details: "テンプレ教材コピー→フォルダリネーム→復習ドリル★Summary更新→Google Formsテンプレコピー→Apps Script自動生成→回答スプシ作成→QR生成→ドリルにURL+QR埋め込み→Slackブックマーク追加。2Phase構成（Phase1:フォーム作成、Phase2:教材作成+QR埋め込み）。zipfile直接編集方式。" },
     { id: 7, title: "メールレポート→Slack投稿", status: "in-progress", notes: "v5稼働中、GPT-4oで精度改善中", details: "GitHub Actionsで毎朝8:00 JSTに実行。Gmail→スレッド分析→GPT-4oで要約・タスク抽出→Slackチャンネル投稿。v5でバグ修正・通知フィルタ強化・返信検出精度向上済み。" },
     { id: 8, title: "DIK Lounge", status: "completed", notes: "v0.8.2 公開済み", details: "リアルタイムチャット、スタンプ32種、2D空間(PC)、アバターストリップ(モバイル)、アバターカスタマイズ(色8色・帽子5種・顔6種)、背景テーマ5種(Space/Ocean/Forest/Sunset/Cafe)全員同期・装飾アニメーション付き、入退室通知、在室数表示、タブ通知。Firebase Realtime DB。GitHub Pages公開。" },
