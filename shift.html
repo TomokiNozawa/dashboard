@@ -1264,7 +1264,10 @@ function renderSchedule() {
             <option value="中田" ${scheduleFilterTeacher==='中田'?'selected':''}>中田</option>
             <option value="野沢" ${scheduleFilterTeacher==='野沢'?'selected':''}>野沢</option>
             <option value="樋口" ${scheduleFilterTeacher==='樋口'?'selected':''}>樋口</option>
+            <option value="保坂" ${scheduleFilterTeacher==='保坂'?'selected':''}>保坂</option>
             <option value="赤井" ${scheduleFilterTeacher==='赤井'?'selected':''}>赤井</option>
+            <option value="福田" ${scheduleFilterTeacher==='福田'?'selected':''}>福田</option>
+            <option value="澁谷" ${scheduleFilterTeacher==='澁谷'?'selected':''}>澁谷</option>
           </select>
         </div>
       </div>
@@ -2560,7 +2563,7 @@ function modalRemoveAssigned(schedIdx, tagIdx, reopenFn, ...reopenArgs) {
 // -- Schedule row modal (EDITABLE) --
 function openScheduleModal(schedIdx) {
   const s = shiftData.schedule[schedIdx];
-  const TEACHER_LIST = ['中田', '野沢', '樋口', '赤井'];
+  const TEACHER_LIST = ['中田', '野沢', '樋口', '保坂', '赤井', '福田', '澁谷'];
   const currentTeachers = s.teachers || [];
   const teacherTags = TEACHER_LIST.map(name => {
     const isActive = currentTeachers.includes(name);
