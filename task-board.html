@@ -816,6 +816,59 @@ button.side-nav-item {
 }
 .company-shift-link:hover { background: rgba(240,136,62,0.1); }
 
+/* ── Overdue View (期日超過専用) ── */
+.overdue-view { padding: 16px 20px; overflow: auto; height: 100%; }
+.tab-count-badge {
+  display: inline-block; min-width: 18px; padding: 1px 5px; margin-left: 4px;
+  background: var(--accent-red); color: #fff; border-radius: 9px;
+  font-size: 10px; font-weight: 700; text-align: center; line-height: 15px;
+}
+.overdue-bulk-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 14px; margin-bottom: 12px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.overdue-bulk-btn { min-height: 44px; padding: 8px 14px; font-size: 12px; }
+@media (min-width: 769px) { .overdue-bulk-btn { min-height: 32px; padding: 6px 12px; } }
+.overdue-archive-btn { color: var(--accent-purple); border-color: rgba(184,140,255,0.3); }
+.overdue-group {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 8px; transition: all var(--transition);
+}
+.overdue-group-header {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  cursor: pointer; transition: background var(--transition); min-height: 44px;
+}
+.overdue-group-header:hover { background: var(--bg-card-hover); }
+.overdue-group-name { font-size: 13px; font-weight: 600; flex: 1; }
+.overdue-group-body { display: none; padding: 0 14px 10px; border-top: 1px solid var(--border-light); }
+.overdue-group.expanded .overdue-group-body { display: block; }
+.overdue-group .company-chevron { transition: transform var(--transition); }
+.overdue-group.expanded .company-chevron { transform: rotate(90deg); }
+.overdue-row {
+  display: flex; align-items: center; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--border-light); font-size: 12px; min-height: 44px;
+  cursor: pointer;
+}
+.overdue-row:last-child { border-bottom: none; }
+.overdue-row.kb-focus { outline: 2px solid var(--accent-blue); outline-offset: -2px; border-radius: var(--radius-sm); }
+.overdue-check { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; accent-color: var(--accent-red); }
+.overdue-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.overdue-age-badge {
+  flex-shrink: 0; padding: 2px 7px; border-radius: 9px; font-size: 10px; font-weight: 700;
+}
+.overdue-age-badge.age1 { background: rgba(240,200,60,0.18); color: var(--accent-yellow); }
+.overdue-age-badge.age7 { background: rgba(240,136,62,0.18); color: var(--accent-orange); }
+.overdue-age-badge.age30 { background: rgba(240,80,80,0.18); color: var(--accent-red); }
+.overdue-age-badge.age90 { background: rgba(184,140,255,0.2); color: var(--accent-purple); }
+.queue-badge {
+  display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-left: 4px;
+}
+.queue-badge.pending { background: rgba(240,200,60,0.18); color: var(--accent-yellow); }
+.queue-badge.running { background: rgba(90,160,255,0.18); color: var(--accent-blue); }
+.queue-badge.error { background: rgba(240,80,80,0.18); color: var(--accent-red); }
+.queue-badge.done { background: rgba(66,199,96,0.18); color: var(--accent-green); }
+
 /* ── Calendar View (C4) ── */
 .calendar-view { padding: 16px 20px; overflow: auto; height: 100%; }
 .cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
@@ -1240,6 +1293,7 @@ html { scroll-behavior: smooth; }
     <button class="tab-item" onclick="switchView('calendar')" data-view="calendar">カレンダー<span class="tab-kbd">Alt&3</span></button>
     <button class="tab-item" onclick="switchView('company')" data-view="company">企業別<span class="tab-kbd">Alt&4</span></button>
     <button class="tab-item" onclick="switchView('stats')" data-view="stats">統計<span class="tab-kbd">Alt&5</span></button>
+    <button class="tab-item tab-overdue" onclick="switchView('overdue')" data-view="overdue">&#9888;超過<span class="tab-count-badge" id="tabOverdueCount" style="display:none">0</span><span class="tab-kbd">Alt&6</span></button>
   </div>
 
   <!-- Kanban Board -->
@@ -1332,6 +1386,30 @@ html { scroll-behavior: smooth; }
     <div class="stats-view">
       <div class="stats-kpi-grid" id="statsKpis" style="margin-bottom:16px"></div>
       <div class="stats-grid" id="statsGrid"></div>
+    </div>
+  </div>
+
+  <!-- Overdue View (期日超過専用) -->
+  <div class="view-container" id="view-overdue">
+    <div class="overdue-view">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <h3 style="font-size:15px;font-weight:600">&#9888; 期日超過タスク</h3>
+        <span id="overdueTotalCount" style="font-size:11px;color:var(--text-muted)"></span>
+        <div style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">
+          <button class="todo-group-btn" onclick="toggleOverdueSelectAll()" style="font-size:10px;padding:3px 8px">全選択/解除 <span style="font-size:9px;color:var(--text-muted)">A</span></button>
+          <button class="todo-group-btn" onclick="document.querySelectorAll('.overdue-group').forEach(c=>c.classList.add('expanded'))" style="font-size:10px;padding:3px 8px">全展開 <span style="font-size:9px;color:var(--text-muted)">E</span></button>
+          <button class="todo-group-btn" onclick="document.querySelectorAll('.overdue-group').forEach(c=>c.classList.remove('expanded'))" style="font-size:10px;padding:3px 8px">全折畳 <span style="font-size:9px;color:var(--text-muted)">C</span></button>
+        </div>
+      </div>
+      <div class="overdue-bulk-bar" id="overdueBulkBar">
+        <span id="overdueSelCount" style="font-size:12px;font-weight:600">0件 選択中</span>
+        <span style="flex:1"></span>
+        <button class="task-action-btn done overdue-bulk-btn" onclick="bulkOverdueAction('done')" title="選択タスクを完了 (スプシに「済」)">&#10003; 完了(済)</button>
+        <button class="task-action-btn skip overdue-bulk-btn" onclick="bulkOverdueAction('skip')" title="不要として完了 (スプシに「ー」)">ー 不要</button>
+        <button class="task-action-btn overdue-bulk-btn" onclick="openOverdueReschedPopup()" title="期限を変更して現役に戻す">&#128197; リスケ</button>
+        <button class="task-action-btn overdue-bulk-btn overdue-archive-btn" onclick="bulkOverdueAction('archive')" title="ボードから退避 (スプシは触らない、Ctrl+Zで復元可)">&#128230; アーカイブ</button>
+      </div>
+      <div id="overdueContainer"></div>
     </div>
   </div>
 
@@ -1472,6 +1550,28 @@ html { scroll-behavior: smooth; }
       <span style="flex:1"></span>
       <button class="btn btn-secondary" onclick="closeSkillRunModal()" style="font-size:12px;padding:6px 14px">キャンセル <span style="font-size:9px;color:var(--text-muted)">Esc</span></button>
       <button class="btn" onclick="executeSkillBatch()" style="font-size:12px;padding:6px 14px;background:var(--accent-purple);color:#fff;border-color:var(--accent-purple)">実行 <span style="font-size:9px;color:rgba(255,255,255,0.6)">Enter</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Overdue Reschedule Popup -->
+<div class="step-popup-overlay" id="overdueReschedPopup" onclick="closeOverdueReschedPopup()">
+  <div class="step-popup" onclick="event.stopPropagation()" style="width:420px;max-width:95vw">
+    <h4>&#128197; 期限リスケ</h4>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px" id="overdueReschedDesc"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="todo-group-btn overdue-resched-preset" onclick="applyOverdueResched(3)">+3日 <span style="font-size:9px;color:var(--text-muted)">1</span></button>
+      <button class="todo-group-btn overdue-resched-preset" onclick="applyOverdueResched(7)">+1週 <span style="font-size:9px;color:var(--text-muted)">2</span></button>
+      <button class="todo-group-btn overdue-resched-preset" onclick="applyOverdueResched(14)">+2週 <span style="font-size:9px;color:var(--text-muted)">3</span></button>
+      <button class="todo-group-btn overdue-resched-preset" onclick="applyOverdueResched(30)">+1ヶ月 <span style="font-size:9px;color:var(--text-muted)">4</span></button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label style="font-size:11px;color:var(--text-muted)">日付指定</label>
+      <input type="date" class="form-input" id="overdueReschedDate" style="flex:1;font-size:12px;padding:8px 10px">
+      <button class="btn" onclick="applyOverdueResched(null)" style="font-size:12px;padding:8px 14px">適用 <span style="font-size:9px;color:rgba(255,255,255,0.6)">Enter</span></button>
+    </div>
+    <div style="margin-top:10px;text-align:right">
+      <button class="btn btn-secondary" onclick="closeOverdueReschedPopup()" style="font-size:12px;padding:6px 14px">キャンセル <span style="font-size:9px;color:var(--text-muted)">Esc</span></button>
     </div>
   </div>
 </div>
@@ -1618,6 +1718,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auto-login (no password gate)
   initApp();
+
+  // Deep link: ?view=overdue 等 (Slack通知リンクから直行)
+  const urlView = new URLSearchParams(location.search).get('view');
+  if (urlView && ['kanban','timeline','calendar','company','stats','overdue'].includes(urlView)) {
+    switchView(urlView);
+  }
 
   // Keyboard shortcuts
   document.addEventListener('keydown', handleKeydown);
@@ -1776,6 +1882,7 @@ function listenTasks() {
     updateSummary();
     updateCompanyFilter();
   });
+  initSkillQueueListener();
 }
 
 function renderCurrentView() {
@@ -1785,7 +1892,9 @@ function renderCurrentView() {
     else if (currentView === 'calendar') renderCalendar();
     else if (currentView === 'company') renderCompanyView();
     else if (currentView === 'stats') renderStats();
+    else if (currentView === 'overdue') renderOverdue();
   } catch(e) { console.error('renderView:', e); }
+  try { updateOverdueTabCount(); } catch(e) { console.error('overdueTabCount:', e); }
 }
 
 function switchView(view) {
@@ -1801,6 +1910,7 @@ function switchView(view) {
     else if (view === 'calendar') renderCalendar();
     else if (view === 'company') renderCompanyView();
     else if (view === 'stats') renderStats();
+    else if (view === 'overdue') renderOverdue();
   } catch(e) { console.error('switchView render:', e); }
 }
 
@@ -1942,6 +2052,7 @@ function renderTaskCard(t) {
         <button class="${starCls}" onclick="toggleImportant('${t._id}', event)" title="重要トグル">${starChar}</button>
         ${renderStepBadge(t)}
         ${t.autoGenerated ? '<span class="task-auto-badge">&#9881; auto</span>' : ''}
+        ${renderQueueBadge(t._id)}
       </div>
       <div class="task-card-title">${escHtml(t.title)}</div>
       <div class="task-card-meta">
@@ -2496,6 +2607,7 @@ function handleKeydown(e) {
   // Escape: close modals/popups
   if (e.key === 'Escape') {
     if (document.getElementById('calDayPopup')) { closeCalDayPopup(); return; }
+    if (document.getElementById('overdueReschedPopup').classList.contains('active')) { closeOverdueReschedPopup(); return; }
     if (document.getElementById('skillRunModal').classList.contains('active')) { closeSkillRunModal(); return; }
     if (document.getElementById('syncDiffModal').classList.contains('active')) { closeSyncDiffModal(); return; }
     if (document.getElementById('filterPopup').classList.contains('active')) { closeFilterPopup(); return; }
@@ -2556,6 +2668,17 @@ function handleKeydown(e) {
     // Tab to focus textarea
     if (e.key === 'Tab') { e.preventDefault(); document.getElementById('skillRunNote').focus(); return; }
     return;
+  }
+
+  // Overdue reschedule popup shortcuts
+  if (document.getElementById('overdueReschedPopup').classList.contains('active')) {
+    if (!isInput && e.key >= '1' && e.key <= '4') {
+      e.preventDefault();
+      applyOverdueResched([3, 7, 14, 30][e.key - 1]);
+      return;
+    }
+    if (e.key === 'Enter') { e.preventDefault(); applyOverdueResched(null); return; }
+    return; // Block other shortcuts while popup is open
   }
 
   // Sync diff modal shortcuts
@@ -2769,20 +2892,31 @@ function handleKeydown(e) {
     if (e.key === 'ArrowUp') { e.preventDefault(); companyFocusIdx = Math.max(companyFocusIdx - ccols, 0); setKbFocus('.company-card', companyFocusIdx); return; }
     if (e.key === 'Enter' && companyFocusIdx >= 0) { e.preventDefault(); ccards[companyFocusIdx]?.classList.toggle('expanded'); return; }
   }
-  // Alt&1-5: Switch views (only when no modal/popup open)
-  if (e.altKey && e.key >= '1' && e.key <= '5' &&
+  // Overdue view: A=全選択, E=展開, C=折畳, ↑↓=行フォーカス, Space=チェック, Enter=編集
+  if (currentView === 'overdue' && !isInput && !e.altKey && !e.ctrlKey && !e.metaKey && !getActiveModal()) {
+    const orows = [...document.querySelectorAll('.overdue-group.expanded .overdue-row')];
+    if (e.key === 'a' || e.key === 'A') { e.preventDefault(); toggleOverdueSelectAll(); return; }
+    if (e.key === 'e' || e.key === 'E') { e.preventDefault(); document.querySelectorAll('.overdue-group').forEach(c=>c.classList.add('expanded')); return; }
+    if (e.key === 'c' || e.key === 'C') { e.preventDefault(); document.querySelectorAll('.overdue-group').forEach(c=>c.classList.remove('expanded')); return; }
+    if (e.key === 'ArrowDown' && orows.length) { e.preventDefault(); overdueFocusIdx = Math.min(overdueFocusIdx + 1, orows.length - 1); setOverdueKbFocus(orows); return; }
+    if (e.key === 'ArrowUp' && orows.length) { e.preventDefault(); overdueFocusIdx = Math.max(overdueFocusIdx - 1, 0); setOverdueKbFocus(orows); return; }
+    if (e.key === ' ' && overdueFocusIdx >= 0 && orows[overdueFocusIdx]) { e.preventDefault(); toggleOverdueCheck(orows[overdueFocusIdx].dataset.id); return; }
+    if (e.key === 'Enter' && overdueFocusIdx >= 0 && orows[overdueFocusIdx]) { e.preventDefault(); openEditTask(orows[overdueFocusIdx].dataset.id); return; }
+  }
+  // Alt&1-6: Switch views (only when no modal/popup open)
+  if (e.altKey && e.key >= '1' && e.key <= '6' &&
       !document.getElementById('taskModal').classList.contains('active') &&
       !document.getElementById('stepPopup').classList.contains('active') &&
       !document.getElementById('companyPopup').classList.contains('active')) {
     e.preventDefault();
-    const views = ['kanban', 'timeline', 'calendar', 'company', 'stats'];
+    const views = ['kanban', 'timeline', 'calendar', 'company', 'stats', 'overdue'];
     switchView(views[e.key - 1]);
     return;
   }
   // Alt&↑: left tab, Alt&↓: right tab
   if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
     e.preventDefault();
-    const views = ['kanban', 'timeline', 'calendar', 'company', 'stats'];
+    const views = ['kanban', 'timeline', 'calendar', 'company', 'stats', 'overdue'];
     const idx = views.indexOf(currentView);
     const next = e.key === 'ArrowUp' ? (idx - 1 + views.length) % views.length : (idx + 1) % views.length;
     switchView(views[next]);
@@ -2808,7 +2942,7 @@ function getActiveModal() {
   const ids = [
     // より前面に来るポップアップを先にチェック
     'stepPopup', 'companyPopup',
-    'skillRunModal', 'syncDiffModal', 'filterPopup',
+    'overdueReschedPopup', 'skillRunModal', 'syncDiffModal', 'filterPopup',
     'searchOverlay', 'taskModal',
   ];
   for (const id of ids) {
@@ -3171,6 +3305,15 @@ function performUndo() {
       important: !!action.prevData.important,
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
     }).then(() => showToast(`「${action.prevData.title || 'タスク'}」の重要トグルを元に戻しました`, 'success'));
+  } else if (action.type === 'archive') {
+    // アーカイブの取消 = /tasks へ復元 + /tasks_archive から削除
+    const restore = { ...action.prevData };
+    delete restore._id;
+    restore.updatedAt = firebase.database.ServerValue.TIMESTAMP;
+    db.ref().update({
+      ['tasks/' + action.taskId]: restore,
+      ['tasks_archive/' + action.taskId]: null,
+    }).then(() => showToast(`「${action.prevData.title || 'タスク'}」をアーカイブから復元しました`, 'success'));
   } else {
     showToast(`未対応のundoタイプ: ${action.type}`, 'error');
   }
@@ -3966,6 +4109,312 @@ function statsFilterStatus(status) {
 }
 
 // ────────────────────────────────────────────
+// Overdue View (期日超過専用)
+// ────────────────────────────────────────────
+let overdueSelected = new Set();
+let overdueExpanded = new Set();
+let overdueFocusIdx = -1;
+
+function getOverdueTasksArr() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Object.entries(allTasks)
+    .map(([id, t]) => ({ ...t, _id: id }))
+    .filter(t => t && t.status !== 'done' && t.dueDate)
+    .map(t => ({ ...t, _age: Math.floor((today - new Date(t.dueDate + 'T00:00:00')) / 86400000) }))
+    .filter(t => t._age >= 1);
+}
+
+function overdueAgeBadge(age) {
+  const cls = age >= 90 ? 'age90' : age >= 30 ? 'age30' : age >= 7 ? 'age7' : 'age1';
+  return `<span class="overdue-age-badge ${cls}">${age}日超過</span>`;
+}
+
+function updateOverdueTabCount() {
+  const el = document.getElementById('tabOverdueCount');
+  if (!el) return;
+  const n = getOverdueTasksArr().length;
+  el.textContent = n;
+  el.style.display = n > 0 ? '' : 'none';
+}
+
+function renderOverdue() {
+  const container = document.getElementById('overdueContainer');
+  if (!container) return;
+  const arr = getOverdueTasksArr();
+
+  // 既に解消したタスクは選択から外す
+  const alive = new Set(arr.map(t => t._id));
+  overdueSelected = new Set([...overdueSelected].filter(id => alive.has(id)));
+
+  document.getElementById('overdueTotalCount').textContent = arr.length ? `${arr.length}件` : '';
+  updateOverdueSelCount();
+
+  if (!arr.length) {
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px">&#127881; 期日超過タスクはありません</div>';
+    return;
+  }
+
+  // 会社別グループ (最大超過日数の降順)
+  const byComp = {};
+  arr.forEach(t => {
+    const c = t.company || '(その他)';
+    (byComp[c] = byComp[c] || []).push(t);
+  });
+  const comps = Object.keys(byComp).sort((a, b) =>
+    Math.max(...byComp[b].map(t => t._age)) - Math.max(...byComp[a].map(t => t._age)));
+
+  let html = '';
+  comps.forEach(comp => {
+    const rows = byComp[comp].sort((a, b) => b._age - a._age);
+    const allChecked = rows.every(t => overdueSelected.has(t._id));
+    const expCls = overdueExpanded.has(comp) ? ' expanded' : '';
+    html += `
+      <div class="overdue-group${expCls}" data-comp="${escHtml(comp)}">
+        <div class="overdue-group-header" onclick="toggleOverdueGroupEl(this)">
+          <input type="checkbox" class="overdue-check" ${allChecked ? 'checked' : ''} onclick="event.stopPropagation();toggleOverdueGroupCheckEl(this)" title="グループ全選択">
+          <span class="company-chevron">&#9654;</span>
+          <span class="overdue-group-name">${escHtml(comp)}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${rows.length}件</span>
+          ${overdueAgeBadge(rows[0]._age)}
+        </div>
+        <div class="overdue-group-body">
+          ${rows.map(t => `
+            <div class="overdue-row" data-id="${t._id}" onclick="toggleOverdueCheck('${t._id}')">
+              <input type="checkbox" class="overdue-check" ${overdueSelected.has(t._id) ? 'checked' : ''} onclick="event.stopPropagation();toggleOverdueCheck('${t._id}')">
+              ${overdueAgeBadge(t._age)}
+              ${renderStepBadge(t)}
+              <span class="overdue-row-title">${escHtml(t.title)}</span>
+              ${renderQueueBadge(t._id)}
+              <span class="company-task-due">期限: ${escHtml(getDueInfo(t.dueDate).label || t.dueDate)}</span>
+              <button class="task-action-btn" onclick="event.stopPropagation();openEditTask('${t._id}')" title="詳細を開く">開く</button>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+  overdueFocusIdx = -1;
+}
+
+function toggleOverdueGroupEl(headerEl) {
+  const g = headerEl.closest('.overdue-group');
+  if (!g) return;
+  g.classList.toggle('expanded');
+  if (g.classList.contains('expanded')) overdueExpanded.add(g.dataset.comp);
+  else overdueExpanded.delete(g.dataset.comp);
+}
+
+function toggleOverdueGroupCheckEl(cb) {
+  const comp = cb.closest('.overdue-group')?.dataset.comp;
+  if (comp == null) return;
+  getOverdueTasksArr().filter(t => (t.company || '(その他)') === comp).forEach(t => {
+    if (cb.checked) overdueSelected.add(t._id); else overdueSelected.delete(t._id);
+  });
+  renderOverdue();
+}
+
+function toggleOverdueCheck(id) {
+  if (overdueSelected.has(id)) overdueSelected.delete(id); else overdueSelected.add(id);
+  const cb = document.querySelector(`.overdue-row[data-id="${id}"] .overdue-check`);
+  if (cb) cb.checked = overdueSelected.has(id);
+  updateOverdueSelCount();
+}
+
+function toggleOverdueSelectAll() {
+  const arr = getOverdueTasksArr();
+  if (arr.length && arr.every(t => overdueSelected.has(t._id))) overdueSelected.clear();
+  else arr.forEach(t => overdueSelected.add(t._id));
+  renderOverdue();
+}
+
+function updateOverdueSelCount() {
+  const el = document.getElementById('overdueSelCount');
+  if (el) el.textContent = `${overdueSelected.size}件 選択中`;
+}
+
+function setOverdueKbFocus(rows) {
+  document.querySelectorAll('.overdue-row.kb-focus').forEach(r => r.classList.remove('kb-focus'));
+  const row = rows[overdueFocusIdx];
+  if (row) { row.classList.add('kb-focus'); row.scrollIntoView({ block: 'nearest' }); }
+}
+
+async function bulkOverdueAction(kind) {
+  if (!db) return;
+  const ids = [...overdueSelected].filter(id => allTasks[id]);
+  if (!ids.length) { showToast('タスクを選択してください', 'info'); return; }
+  const labels = {
+    done: '完了 (スプシの空欄セルに「済」を書込)',
+    skip: '不要として完了 (スプシの空欄セルに「ー」を書込)',
+    archive: 'アーカイブ (ボードから退避、スプシは変更なし)',
+  };
+  if (!confirm(`選択した${ids.length}件を「${labels[kind]}」処理します。よろしいですか？\n（Ctrl+Zで1件ずつ復元可能）`)) return;
+
+  const ts = firebase.database.ServerValue.TIMESTAMP;
+  const updates = {};
+  const sheetTasks = [];
+  ids.forEach(id => {
+    const t = allTasks[id];
+    if (kind === 'archive') {
+      pushUndo('archive', id, { ...t });
+      updates[`tasks_archive/${id}`] = { ...t, archivedAt: Date.now() };
+      updates[`tasks/${id}`] = null;
+    } else {
+      pushUndo('status_change', id, { status: t.status, title: t.title });
+      updates[`tasks/${id}/status`] = 'done';
+      updates[`tasks/${id}/completedAt`] = ts;
+      updates[`tasks/${id}/updatedAt`] = ts;
+      sheetTasks.push({ ...t, _id: id });
+    }
+  });
+
+  try {
+    await db.ref().update(updates);
+    overdueSelected.clear();
+    showToast(`${ids.length}件を${kind === 'archive' ? 'アーカイブ' : '完了に'}しました（Ctrl+Zで復元可）`, 'success');
+    if (sheetTasks.length) {
+      bulkWriteBackToSheet(sheetTasks, kind === 'skip' ? 'ー' : '済').catch(e => console.warn('Sheets sync error:', e));
+    }
+  } catch (e) {
+    showToast(`一括処理エラー: ${e.message}`, 'error');
+  }
+}
+
+// 一括版スプシ書き戻し: シートを1回だけ読み、空欄セルのみ書込 (非空セルは上書きしない安全策)
+async function bulkWriteBackToSheet(tasks, sheetValue = '済') {
+  const targets = tasks.filter(t => STEP_TO_SHEET_COL[getStepType(t)]);
+  if (!targets.length) return;
+  if (!(await initSheetsCreds())) { console.warn('Sheets sync skipped: no credentials'); return; }
+  const token = await getSheetsToken();
+  if (!token) return;
+
+  const now = new Date();
+  const fy = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const sheetName = `${fy}年`;
+  const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SSID}/values/${encodeURIComponent(sheetName)}?majorDimension=ROWS`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!resp.ok) { console.error('Sheets read failed:', resp.status); return; }
+  const rows = (await resp.json()).values || [];
+
+  const colIdx = letter => { let n = 0; for (const ch of letter) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
+  const perTermTypes = ['premtg_schedule', 'roster_send', 'invoice', 'mid_schedule', 'final_schedule'];
+  const data = [];
+  let skippedNonEmpty = 0;
+
+  targets.forEach(task => {
+    const stepType = getStepType(task);
+    const colLetter = STEP_TO_SHEET_COL[stepType];
+    const ci = colIdx(colLetter);
+    const matchRows = [];
+    for (let i = SHEETS_HEADER_ROW + 1; i < rows.length; i++) {
+      const row = rows[i];
+      const dateIso = sheetsParseDate((row[SHEETS_COL_DATE] || '').trim(), fy);
+      const company = (row[SHEETS_COL_COMPANY] || '').trim();
+      if (!dateIso || !company) continue;
+      if (task.trainingDate && dateIso === task.trainingDate && sheetsCompanyMatch(company, task.company || '')) matchRows.push(i);
+    }
+    if (!matchRows.length) { console.warn(`Sheets sync: no matching row for ${task.title}`); return; }
+    const rowsToUpdate = perTermTypes.includes(stepType) ? [matchRows[0]] : matchRows;
+    rowsToUpdate.forEach(ri => {
+      const cur = ((rows[ri] || [])[ci] || '').toString().trim();
+      if (cur) { skippedNonEmpty++; return; }
+      data.push({ range: `${sheetName}!${colLetter}${ri + 1}`, values: [[sheetValue]] });
+      if (!rows[ri]) rows[ri] = [];
+      rows[ri][ci] = sheetValue; // 同一実行内の二重書込も防ぐ
+    });
+  });
+
+  if (!data.length) {
+    if (skippedNonEmpty) showToast(`スプシ: ${skippedNonEmpty}セルは既に値があるためスキップしました`, 'info');
+    return;
+  }
+  const writeResp = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_SSID}/values:batchUpdate`,
+    { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ valueInputOption: 'RAW', data }) }
+  );
+  if (writeResp.ok) {
+    showToast(`スプシ同期: ${data.length}セルに「${sheetValue}」を書込${skippedNonEmpty ? `（${skippedNonEmpty}セルは既値でスキップ）` : ''}`, 'success');
+  } else {
+    console.error('Sheets write failed:', writeResp.status);
+    showToast('スプシ同期に失敗しました', 'error');
+  }
+}
+
+function openOverdueReschedPopup() {
+  const n = [...overdueSelected].filter(id => allTasks[id]).length;
+  if (!n) { showToast('タスクを選択してください', 'info'); return; }
+  document.getElementById('overdueReschedDesc').textContent = `選択中の${n}件の期限日を変更して現役タスクに戻します`;
+  const d = new Date(); d.setDate(d.getDate() + 7);
+  document.getElementById('overdueReschedDate').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  showModal('overdueReschedPopup');
+}
+
+function closeOverdueReschedPopup() {
+  document.getElementById('overdueReschedPopup').classList.remove('active');
+}
+
+function applyOverdueResched(days) {
+  if (!db) return;
+  let newDate;
+  if (days) {
+    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() + days);
+    newDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  } else {
+    newDate = document.getElementById('overdueReschedDate').value;
+    if (!newDate) { showToast('日付を指定してください', 'info'); return; }
+  }
+  const ids = [...overdueSelected].filter(id => allTasks[id]);
+  if (!ids.length) { closeOverdueReschedPopup(); return; }
+  const ts = firebase.database.ServerValue.TIMESTAMP;
+  const updates = {};
+  ids.forEach(id => {
+    pushUndo('edit', id, { ...allTasks[id] });
+    updates[`tasks/${id}/dueDate`] = newDate;
+    updates[`tasks/${id}/updatedAt`] = ts;
+  });
+  db.ref().update(updates).then(() => {
+    overdueSelected.clear();
+    closeOverdueReschedPopup();
+    const due = new Date(newDate + 'T00:00:00');
+    const label = `${String(due.getMonth()+1).padStart(2,'0')}/${String(due.getDate()).padStart(2,'0')}(${'日月火水木金土'[due.getDay()]})`;
+    showToast(`${ids.length}件の期限を ${label} に変更しました（Ctrl+Zで復元可）`, 'success');
+  }).catch(e => showToast(`リスケエラー: ${e.message}`, 'error'));
+}
+
+// ────────────────────────────────────────────
+// Skill Queue Status Badge (skill-queue 監視)
+// ────────────────────────────────────────────
+let skillQueueByTask = {};
+
+function initSkillQueueListener() {
+  if (!db) return;
+  db.ref('skill-queue').on('value', snap => {
+    const q = snap.val() || {};
+    const map = {};
+    Object.entries(q).forEach(([, item]) => {
+      if (!item || !item.taskId) return;
+      const cur = map[item.taskId];
+      if (!cur || (item.requestedAt || 0) > (cur.requestedAt || 0)) {
+        map[item.taskId] = { status: item.status, requestedAt: item.requestedAt || 0, completedAt: item.completedAt || 0 };
+      }
+    });
+    skillQueueByTask = map;
+    renderCurrentView();
+  });
+}
+
+function renderQueueBadge(taskId) {
+  const q = skillQueueByTask[taskId];
+  if (!q) return '';
+  if (q.status === 'pending') return '<span class="queue-badge pending" title="スキル実行待ち (PC側で /check-queue が拾うまで待機)">&#9203;実行待ち</span>';
+  if (q.status === 'running') return '<span class="queue-badge running" title="スキル実行中">&#9654;実行中</span>';
+  if (q.status === 'error') return '<span class="queue-badge error" title="スキル実行エラー (詳細はキュー参照)">&#10005;エラー</span>';
+  if (q.status === 'done' && q.completedAt && Date.now() - q.completedAt < 86400000) {
+    return '<span class="queue-badge done" title="スキル実行完了 (24時間表示)">&#10003;実行済</span>';
+  }
+  return '';
+}
+
+// ────────────────────────────────────────────
 // Skill Execution (Camp Selection)
 // ────────────────────────────────────────────
 const SKILL_MAP = {
@@ -3990,6 +4439,16 @@ const SKILL_MAP = {
     title: '復習リマインド送付',
     desc: '/復習リマインド スキルを実行します。toB管理表から対象案件をピックアップしGmail下書き作成。',
     buildCommand: () => '/復習リマインド',
+  },
+  invoice: {
+    skill: 'invoice',
+    title: '請求書作成',
+    desc: '/invoice スキルを実行します。金額スプシ・toB管理スプシ・見積書を照合し請求書PDF作成→Box保存。送付メールは完了後に /請求書メール で。',
+    buildCommand: t => {
+      const d = t.trainingDate ? new Date(t.trainingDate + 'T00:00:00') : null;
+      const ym = d ? ` ${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}` : '';
+      return `/invoice ${t.company}${ym}`;
+    },
   },
   final_create: {
     skill: 'report',
@@ -4680,7 +5139,7 @@ async function applySyncDiff() {
 // ============================================================
 window.DASHBOARD_SHORTCUTS = [
   { section: 'タブ切替', items: [
-    { keys: 'Alt+1〜7', desc: '各タブへ直接切替 (カンバン/やること/カレンダー/企業別/統計/ステップ別/週別)' },
+    { keys: 'Alt+1〜6', desc: '各タブへ直接切替 (カンバン/やること/カレンダー/企業別/統計/⚠超過)' },
     { keys: 'Alt+↑/↓', desc: '前後のタブに順送り' },
     { keys: '1〜6', desc: 'カンバン上でステータス列へジャンプ' },
   ]},
