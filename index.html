@@ -122,49 +122,9 @@ body.light .mobile-bottom-nav .mbn-item.active { color: #5aadff; }
 </head>
 <body>
 
-<nav class="side-nav" id="sideNav">
-  <a class="side-nav-item active" href="index.html" title="NozaBoard">
-    <svg viewBox="0 0 100 100" width="22" height="22"><defs><linearGradient id="sng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5aadff"/><stop offset="100%" stop-color="#b88cff"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(#sng)"/><text x="50" y="68" text-anchor="middle" fill="#fff" font-family="Inter,sans-serif" font-weight="700" font-size="52">N</text></svg>
-    <span>NozaBoard</span>
-  </a>
-  <a class="side-nav-item" href="task-board.html" title="タスクボード">
-    <span style="font-size:18px">&#9745;</span>
-    <span>タスク</span>
-  </a>
-  <a class="side-nav-item" href="materials.html" title="教材作成">
-    <span style="font-size:18px">&#128230;</span>
-    <span>教材</span>
-  </a>
-  <a class="side-nav-item" href="shift.html" title="シフト管理">
-    <span style="font-size:18px">&#128101;</span>
-    <span>シフト</span>
-  </a>
-  <a class="side-nav-item" href="uranai.html" title="占い">
-    <span style="font-size:18px">&#128302;</span>
-    <span>占い</span>
-  </a>
-</nav>
-
-<nav class="mobile-bottom-nav" id="mobileBottomNav">
-  <a class="mbn-item active" href="index.html" data-page="index">
-    <span class="mbn-icon">&#128202;</span><span class="mbn-label">Noza</span>
-  </a>
-  <a class="mbn-item" href="task-board.html" data-page="task">
-    <span class="mbn-icon">&#9745;</span><span class="mbn-label">タスク</span>
-  </a>
-  <a class="mbn-item" href="materials.html" data-page="materials">
-    <span class="mbn-icon">&#128230;</span><span class="mbn-label">教材</span>
-  </a>
-  <a class="mbn-item" href="shift.html" data-page="shift">
-    <span class="mbn-icon">&#128101;</span><span class="mbn-label">シフト</span>
-  </a>
-  <a class="mbn-item" href="property.html" data-page="property">
-    <span class="mbn-icon">&#127968;</span><span class="mbn-label">物件</span>
-  </a>
-  <a class="mbn-item" href="uranai.html" data-page="uranai">
-    <span class="mbn-icon">&#128302;</span><span class="mbn-label">占い</span>
-  </a>
-</nav>
+<!-- ナビ項目は nav.js が流し込む（全ページ共通） -->
+<nav class="side-nav" id="sideNav"></nav>
+<nav class="mobile-bottom-nav" id="mobileBottomNav"></nav>
 
 <div class="login-container" id="loginScreen">
   <h1>NozaBoard</h1>
@@ -209,26 +169,14 @@ async function decryptAndShow(password) {
   localStorage.setItem('dk_pass', password);
   localStorage.setItem('dk_ts', Date.now().toString());
 
-  // Inject side nav, theme toggle, and keyboard nav into the decrypted HTML
+  // 復号後のページに テーマ切替 を注入する
+  // （サイドナビ / ボトムナビ / G→数字 は復号後HTMLが読み込む nav.js が担当）
   const injectScript = `<script>
 (function(){
-  if (document.getElementById('sideNav')) return;
-  var nav = document.createElement('nav');
-  nav.id = 'sideNav'; nav.className = 'side-nav';
-  nav.innerHTML = '<a class="side-nav-item active" href="index.html" title="NozaBoard"><svg viewBox="0 0 100 100" width="22" height="22"><defs><linearGradient id="sng" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#5aadff"/><stop offset="100%" stop-color="#b88cff"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(#sng)"/><text x="50" y="68" text-anchor="middle" fill="#fff" font-family="Inter,sans-serif" font-weight="700" font-size="52">N</text></svg><span>NozaBoard</span></a><a class="side-nav-item" href="task-board.html" title="タスクボード"><span style="font-size:18px">&#9745;</span><span>タスク</span></a><a class="side-nav-item" href="materials.html" title="教材作成"><span style="font-size:18px">&#128230;</span><span>教材</span></a><a class="side-nav-item" href="shift.html" title="シフト管理"><span style="font-size:18px">&#128101;</span><span>シフト</span></a>';
+  if (document.querySelector('.theme-toggle')) return;
   var s = document.createElement('style');
-  s.textContent = '.side-nav{position:fixed;top:0;left:0;width:56px;height:100vh;background:#161b22;border-right:1px solid #30363d;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;z-index:200;overflow:hidden;transition:width .2s ease}.side-nav:hover{width:140px}.side-nav-item{display:flex;align-items:center;gap:8px;width:100%;padding:10px 16px;color:#6e7681;text-decoration:none;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;transition:all .2s;line-height:1}.side-nav-item span:first-child,.side-nav-item svg{display:flex;align-items:center;justify-content:center;width:22px;height:22px;flex-shrink:0}.side-nav-item:hover{background:#1c2129;color:#e6edf3}.side-nav-item.active{color:#58a6ff;background:rgba(88,166,255,.08);border-right:2px solid #58a6ff}.side-nav-item span:last-child{opacity:0;transition:opacity .15s}.side-nav:hover .side-nav-item span:last-child{opacity:1}.theme-toggle{position:fixed;bottom:12px;left:10px;z-index:210;width:36px;height:36px;border-radius:50%;border:1px solid #30363d;background:#161b22;color:#8b949e;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2)}.theme-toggle:hover{background:#1c2129;color:#e6edf3}.light .side-nav{background:#fff;border-color:#d8dde4}.light .side-nav-item{color:#8b95a5}.light .side-nav-item:hover{background:#f0f2f5;color:#1a1d23}.light .theme-toggle{background:#fff;border-color:#d8dde4;color:#5a6270}@media(max-width:768px){.side-nav{display:none}}';
+  s.textContent = '.theme-toggle{position:fixed;bottom:12px;left:10px;z-index:210;width:44px;height:44px;border-radius:50%;border:1px solid #30363d;background:#161b22;color:#8b949e;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.2)}.theme-toggle:hover{background:#1c2129;color:#e6edf3}.light .theme-toggle,body.light .theme-toggle{background:#fff;border-color:#d8dde4;color:#5a6270}';
   document.head.appendChild(s);
-  document.body.prepend(nav);
-  document.body.style.paddingLeft = '56px';
-  // ── Mobile bottom nav (max-width 768px) ──
-  var mbn = document.createElement('nav');
-  mbn.id = 'mobileBottomNav'; mbn.className = 'mobile-bottom-nav';
-  mbn.innerHTML = '<a class="mbn-item active" href="index.html"><span class="mbn-icon">\\ud83d\\udcca</span><span class="mbn-label">Noza</span></a><a class="mbn-item" href="task-board.html"><span class="mbn-icon">\\u2611</span><span class="mbn-label">\\u30bf\\u30b9\\u30af</span></a><a class="mbn-item" href="materials.html"><span class="mbn-icon">\\ud83d\\udce6</span><span class="mbn-label">\\u6559\\u6750</span></a><a class="mbn-item" href="shift.html"><span class="mbn-icon">\\ud83d\\udc65</span><span class="mbn-label">\\u30b7\\u30d5\\u30c8</span></a><a class="mbn-item" href="property.html"><span class="mbn-icon">\\ud83c\\udfe0</span><span class="mbn-label">\\u7269\\u4ef6</span></a>';
-  var ms = document.createElement('style');
-  ms.textContent = '.mobile-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;background:#161b22;border-top:1px solid #30363d;height:56px;z-index:900;padding-bottom:env(safe-area-inset-bottom);justify-content:space-around;align-items:stretch}.mobile-bottom-nav .mbn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#6e7681;text-decoration:none;font-size:10px;font-weight:600;transition:color .15s}.mobile-bottom-nav .mbn-item:hover,.mobile-bottom-nav .mbn-item:active{color:#e6edf3}.mobile-bottom-nav .mbn-item.active{color:#58a6ff}.mobile-bottom-nav .mbn-icon{font-size:20px;line-height:1}.mobile-bottom-nav .mbn-label{font-size:10px}body.light .mobile-bottom-nav{background:#fff;border-top-color:#d8dde4}body.light .mobile-bottom-nav .mbn-item{color:#8b95a5}body.light .mobile-bottom-nav .mbn-item.active{color:#5aadff}@media(max-width:768px){.mobile-bottom-nav{display:flex}body{padding-left:0!important;padding-bottom:calc(56px + env(safe-area-inset-bottom))!important}}';
-  document.head.appendChild(ms);
-  document.body.appendChild(mbn);
   var saved = localStorage.getItem('noza_theme');
   if (saved === 'light') document.body.classList.add('light');
   var tb = document.createElement('button');
@@ -236,10 +184,10 @@ async function decryptAndShow(password) {
   tb.onclick = function(){ document.body.classList.toggle('light'); localStorage.setItem('noza_theme', document.body.classList.contains('light') ? 'light' : 'dark'); };
   document.body.appendChild(tb);
   document.addEventListener('keydown', function(e){
-    if (['INPUT','TEXTAREA','SELECT'].indexOf(document.activeElement && document.activeElement.tagName)>=0) return;
-    if (e.key==='t'||e.key==='T'){e.preventDefault();tb.click();return}
-    if (e.key==='g'||e.key==='G'){e.preventDefault();window._nc=true;window._nct=setTimeout(function(){window._nc=false},2000);var d=document.createElement('div');d.style.cssText='position:fixed;bottom:60px;right:20px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 16px;font-size:12px;color:#e6edf3;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3)';d.textContent='G \\u2192 1:NozaBoard 2:\\u30bf\\u30b9\\u30af 3:\\u6559\\u6750 4:\\u30b7\\u30d5\\u30c8';document.body.appendChild(d);setTimeout(function(){d.remove()},2000);return}
-    if (window._nc&&e.key>='1'&&e.key<='4'){e.preventDefault();window._nc=false;clearTimeout(window._nct);window.location.href=['index.html','task-board.html','materials.html','shift.html'][e.key-1]}
+    var el = document.activeElement;
+    if (el && (['INPUT','TEXTAREA','SELECT'].indexOf(el.tagName)>=0 || el.isContentEditable)) return;
+    if (e.altKey||e.ctrlKey||e.metaKey) return;
+    if (e.key==='t'||e.key==='T'){e.preventDefault();tb.click();}
   });
 })();
 <\/script>`;
@@ -295,5 +243,6 @@ async function unlock() {
   }
 })();
 </script>
+<script src="nav.js"></script>
 </body>
 </html>
