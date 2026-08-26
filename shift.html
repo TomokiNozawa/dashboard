@@ -1446,8 +1446,12 @@ function isCandidateAvail(inst, s, schedule) {
     const sIdx = getSessionIndex(schedule, s);
     const ses = a.sessions || {};
     const v2 = ses[String(sIdx)] || ses['_default'] || 'NG';
-    if (v2 === 'NG') return false;
+    // sessions 指定が無い条件付き (onlineOnly 等) は sessions で弾かない
+    if (Object.keys(ses).length > 0 && v2 === 'NG') return false;
     if (a.timeLimit && timeStrToMin(s.end) > timeStrToMin(a.timeLimit)) return false;
+    // オンラインのみ / 出張NG は現地Campを除外 (条件付きでも必ず評価する)
+    if (a.onlineOnly === true && isOnsiteLocation(s.location)) return false;
+    if (a.travelOK === false && isOnsiteLocation(s.location)) return false;
     return true;
   }
   if (a.kind === '要確認') {
@@ -1487,7 +1491,8 @@ function availBadgesText(v, sIdx) {
     if (oks.length) out.push('[' + oks.join(',') + ']');
   }
   if (a.timeLimit) out.push('~' + a.timeLimit);
-  if (a.travelOK === false) out.push('✈️NG');
+  if (a.onlineOnly === true) out.push('💻オンラインのみ');
+  else if (a.travelOK === false) out.push('✈️NG');
   if (a.kind === '条件付き' && sIdx == null) out.push('💬');
   if (a.kind === '要確認') out.push('⚠️');
   return out;
