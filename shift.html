@@ -1122,6 +1122,7 @@ function renderApp() {
       <button class="tab" data-tab="calendar">カレンダー(5)</button>
       <button class="tab" data-tab="suggest">配置提案(6)</button>
       <button class="tab" data-tab="history">更新履歴(7)</button>
+      <button class="tab" data-tab="autolog">自動対応(8)</button>
     </div>
 
     <div class="tab-panel active" id="panel-schedule"></div>
@@ -1131,6 +1132,7 @@ function renderApp() {
     <div class="tab-panel" id="panel-calendar"></div>
     <div class="tab-panel" id="panel-suggest"></div>
     <div class="tab-panel" id="panel-history"></div>
+    <div class="tab-panel" id="panel-autolog"></div>
   `;
 
   initTabs();
@@ -1141,6 +1143,7 @@ function renderApp() {
   renderCalendar();
   renderSuggestPanel();
   renderHistoryPanel();
+  renderAutoLog();
 }
 
 // ============================================================
@@ -2292,6 +2295,35 @@ function openScheduleFromSuggest(schedIdx) {
 // ============================================================
 // History
 // ============================================================
+function renderAutoLog() {
+  const panel = document.getElementById('panel-autolog');
+  if (!panel) return;
+  const logs = ((shiftData && shiftData.autoLog) || []).slice().reverse();
+  const todo = logs.filter(l => l.kind === '要対応');
+  const done = logs.filter(l => l.kind !== '要対応');
+  const card = (l) => {
+    const isTodo = l.kind === '要対応';
+    const color = isTodo ? 'var(--orange, #e8871a)' : 'var(--green, #42c760)';
+    const badge = isTodo ? '⚠️ 要対応' : '✅ 自動確定';
+    return `<div class="history-item" style="border-left:3px solid ${color};padding-left:10px;margin-bottom:10px;">
+      <div class="history-date">${escapeHtml(l.at || '')} ・ ${escapeHtml(l.month || '')} ・ <strong>${escapeHtml(l.name || '')}</strong>
+        <span style="color:${color};font-size:11px;margin-left:6px;">${badge}</span>
+        <span style="color:var(--text3);font-size:11px;margin-left:4px;">${escapeHtml(l.verdict || '')}</span>
+      </div>
+      <div class="history-msg">${escapeHtml(l.detail || '')}</div>
+      <div style="color:var(--text3);font-size:12px;margin-top:3px;">${escapeHtml(l.action || '')}</div>
+    </div>`;
+  };
+  panel.innerHTML = `<div class="section">
+    <p style="color:var(--text3);font-size:0.85rem;margin-bottom:12px;">
+      Slack確認の返信を30分ごとに自動チェックし、OK確定・スプシ反映・Gカレ招待・お礼送信までを自動実行した記録です（送信から24時間監視）。
+    </p>
+    ${todo.length ? `<h3 style="font-size:0.95rem;margin:8px 0;">⚠️ 要対応 (${todo.length}件)</h3>` + todo.map(card).join('') : ''}
+    <h3 style="font-size:0.95rem;margin:16px 0 8px;">自動確定の記録 (${done.length}件)</h3>
+    ${done.length ? done.map(card).join('') : '<p style="color:var(--text3);font-size:0.85rem;">まだ記録はありません</p>'}
+  </div>`;
+}
+
 function renderHistoryPanel() {
   const panel = document.getElementById('panel-history');
   panel.innerHTML = `<div class="section"><div id="historyList"><div class="spinner" style="margin:20px auto;display:block;"></div></div></div>`;
