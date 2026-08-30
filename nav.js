@@ -24,6 +24,8 @@
     { href: 'shift.html',       icon: '👥',     label: 'シフト' },
     { href: 'property.html',    icon: '🏠',     label: '物件' },
     { href: 'uranai.html',      icon: '🔮',     label: '占い' },
+    { href: 'meishi.html',      icon: '📇',     label: '名刺' },
+    { href: 'fp.html',          icon: '📘',     label: 'FP学習', short: 'FP' },
   ].concat(window.NAV_EXTRA || []);
 
   // ── 現在ページ判定 ──
@@ -122,7 +124,7 @@
   function hint() {
     var el = document.createElement('div');
     el.style.cssText = 'position:fixed;bottom:64px;right:20px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 16px;font-size:12px;color:#e6edf3;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);line-height:1.6';
-    el.textContent = 'G → ' + ITEMS.slice(0, 6).map(function (it, i) { return (i + 1) + ':' + it.label; }).join(' ');
+    el.textContent = 'G → ' + ITEMS.slice(0, 9).map(function (it, i) { return (i + 1) + ':' + it.label; }).join(' ');
     document.body.appendChild(el);
     setTimeout(function () { el.remove(); }, 2000);
   }
