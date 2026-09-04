@@ -1,0 +1,23 @@
+{
+  "area": "tax",
+  "areaName": "タックスプランニング",
+  "icon": "💰",
+  "lawBase": "2026年4月1日施行の法令（2026年6月〜2027年5月実施分の法令基準日）",
+  "units": [
+    { "id": "U1",  "name": "所得税の基本",           "level": 3 },
+    { "id": "U2",  "name": "利子・配当・不動産所得", "level": 3 },
+    { "id": "U3",  "name": "事業・給与・退職所得",   "level": 3 },
+    { "id": "U4",  "name": "譲渡・一時・雑・山林所得","level": 3 },
+    { "id": "U5",  "name": "損益通算と繰越控除",     "level": 3 },
+    { "id": "U6",  "name": "所得控除（物的控除）",   "level": 3 },
+    { "id": "U7",  "name": "所得控除（人的控除）",   "level": 3 },
+    { "id": "U8",  "name": "税額計算と税額控除",     "level": 3 },
+    { "id": "U9",  "name": "申告と納付・青色申告",   "level": 3 },
+    { "id": "U10", "name": "個人住民税・個人事業税", "level": 3 },
+    { "id": "U11", "name": "法人税の基礎",           "level": 2 },
+    { "id": "U12", "name": "消費税",                 "level": 2 },
+    { "id": "U13", "name": "会社と役員・決算書",     "level": 2 }
+  ],
+  "cards": ["tax_cards_a.json", "tax_cards_b.json"],
+  "questions": ["tax_q3_a.json", "tax_q3_b.json", "tax_q2_a.json", "tax_q2_b.json"]
+}

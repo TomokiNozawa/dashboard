@@ -176,6 +176,10 @@ textarea.input { min-height: 64px; resize: vertical; line-height: 1.6; }
 }
 .unit-row .un { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
 .unit-row .pc { font-size: 12px; color: var(--text2); text-align: right; font-variant-numeric: tabular-nums; }
+.unit-area-head { font-size: 12px; font-weight: 700; color: var(--text3); margin: 18px 0 4px; }
+.unit-area-head:first-child { margin-top: 0; }
+.area-tile.sel { border-color: var(--accent); }
+.area-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 
 /* ── 学習（カード） ── */
 .study-wrap { display: grid; grid-template-columns: 320px 1fr; gap: 18px; align-items: start; }
@@ -399,6 +403,10 @@ textarea.input { min-height: 64px; resize: vertical; line-height: 1.6; }
     <section class="panel" id="p-drill">
       <div id="drillSetup">
         <div class="drill-form">
+          <div class="fgrp" id="areaGrp" hidden>
+            <label>分野</label>
+            <div class="chips" id="areaChips"></div>
+          </div>
           <div class="fgrp">
             <label>出題する単元</label>
             <div class="chips" id="unitChips"></div>
@@ -516,15 +524,16 @@ var ROOT = 'fpstudy';
 var CACHE_KEY = 'fp_cache_v1';
 var THEME_KEY = 'noza_theme';
 
-// 分野定義（Phase 1 はタックスのみ。以降ここに足していく）
+// 分野定義。fp-data/<id>.json を用意して ready:true にすれば有効になる
 var AREAS = [
   { id: 'tax',       name: 'タックスプランニング', icon: '💰', ready: true  },
+  { id: 'finance',   name: '金融資産運用',         icon: '📈', ready: true  },
   { id: 'lifeplan',  name: 'ライフプランニング',   icon: '👛', ready: false },
   { id: 'risk',      name: 'リスク管理',           icon: '🛡', ready: false },
-  { id: 'finance',   name: '金融資産運用',         icon: '📈', ready: false },
   { id: 'realestate',name: '不動産',               icon: '🏠', ready: false },
   { id: 'estate',    name: '相続・事業承継',       icon: '📜', ready: false }
 ];
+function readyAreas() { return AREAS.filter(function (a) { return a.ready; }); }
 
 // Leitner箱: 正解で1段上がり、間違えると箱0に戻る
 var BOX_DAYS = [0, 1, 3, 7, 16, 35];
@@ -532,11 +541,39 @@ var MASTER_BOX = 3;   // 箱3以上を「習熟」とみなす
 var DAY = 86400000;
 
 var db = null, auth = null;
-var A = null;                       // 現在の分野データ
+var DATA = {};                      // areaId -> 分野データ
+var curArea = 'tax';                // 学習／ドリルタブで見ている分野
+var A = null;                       // DATA[curArea] のショートカット
 var S = { srs: {}, read: {}, log: {}, notes: {}, prefs: { level: 3, goal: 10 } };
 var quiz = null;                    // 出題中の状態
 var selCard = null;
 var drillCfg = { units: [], mode: 'all', n: 10, unread: 'skip' };
+
+// 分野をまたいで引くための索引（SRSの保存キーは全分野で共通のため）
+function allQ() {
+  var out = [];
+  readyAreas().forEach(function (a) { if (DATA[a.id]) out = out.concat(DATA[a.id].questions); });
+  return out;
+}
+function cardOf(q) {
+  var d = DATA[q._area];
+  if (!d) return null;
+  for (var i = 0; i < d.cards.length; i++) if (d.cards[i].id === q.card) return d.cards[i];
+  return null;
+}
+function unitOf(q) {
+  var d = DATA[q._area];
+  if (!d) return null;
+  for (var i = 0; i < d.units.length; i++) if (d.units[i].id === q.unit) return d.units[i];
+  return null;
+}
+function setArea(id) {
+  if (!DATA[id]) return;
+  curArea = id; A = DATA[id];
+  selCard = null;
+  drillCfg.units = [];
+  renderStudy(); renderDrillSetup(); renderHome(); syncPrefsUI();
+}
 
 // ── ユーティリティ ──────────────────────────────────────
 function $(id) { return document.getElementById(id); }
@@ -632,7 +669,11 @@ function boot() {
     })]);
   }
   withTimeout(auth.signInWithEmailAndPassword('dashboard@prism-gacha.internal', pw), 15000)
-    .then(function () { return withTimeout(Promise.all([loadArea('tax'), loadState()]), 15000); })
+    .then(function () {
+      var jobs = readyAreas().map(function (a) { return loadArea(a.id); });
+      jobs.push(loadState());
+      return withTimeout(Promise.all(jobs), 20000);
+    })
     .then(function () {
       $('gate').hidden = true;
       $('app').hidden = false;
@@ -656,8 +697,14 @@ function boot() {
 
 function loadArea(id) {
   return fetch('fp-data/' + id + '.json', { cache: 'no-cache' })
-    .then(function (r) { if (!r.ok) throw new Error('データ取得失敗 ' + r.status); return r.json(); })
-    .then(function (j) { A = j; });
+    .then(function (r) { if (!r.ok) throw new Error('データ取得失敗 ' + id + ' ' + r.status); return r.json(); })
+    .then(function (j) {
+      // どの分野の問題／カードかを各要素に持たせておく（分野をまたぐ出題で必要）
+      j.questions.forEach(function (q) { q._area = id; });
+      j.cards.forEach(function (c) { c._area = id; });
+      DATA[id] = j;
+      if (id === curArea) A = j;
+    });
 }
 
 function loadState() {
@@ -693,7 +740,7 @@ function levelOk(q) { return S.prefs.level === 2 ? true : q.level === 3; }
 function isRead(cardId) { return !!S.read[cardId]; }
 function pool(opts) {
   opts = opts || {};
-  return A.questions.filter(function (q) {
+  return (opts.src || A.questions).filter(function (q) {
     if (!levelOk(q)) return false;
     if (opts.units && opts.units.length && opts.units.indexOf(q.unit) < 0) return false;
     if (opts.readOnly && !isRead(q.card)) return false;
@@ -704,9 +751,10 @@ function pool(opts) {
     return true;
   });
 }
+// 復習期限・今日の出題は分野をまたいで拾う（間隔反復は分野で区切らないほうが正しい）
 function dueList() {
   var now = Date.now();
-  return A.questions.filter(function (q) {
+  return allQ().filter(function (q) {
     var r = S.srs[q.id];
     return levelOk(q) && r && r.due <= now;
   });
@@ -718,7 +766,8 @@ function todayQuestions() {
   var out = due.slice(0, goal);
   if (out.length < goal) {
     var have = {}; out.forEach(function (q) { have[q.id] = 1; });
-    var fresh = shuffle(pool({ mode: 'unseen', readOnly: true }).filter(function (q) { return !have[q.id]; }));
+    var fresh = shuffle(pool({ mode: 'unseen', readOnly: true, src: allQ() })
+      .filter(function (q) { return !have[q.id]; }));
     out = out.concat(fresh.slice(0, goal - out.length));
   }
   return out;
@@ -788,33 +837,60 @@ function renderHome() {
   $('stStreak').innerHTML = streak() + '<small> 日</small>';
   $('stSolved').innerHTML = st.solved + '<small> 問</small>';
   $('stRate').innerHTML = st.solved ? st.rate + '<small>%</small>' : '—';
-  var m = masteryOf(A.questions);
+  var m = masteryOf(allQ());
   $('stMastery').innerHTML = m.pct + '<small>%</small>';
 
-  // 分野タイル
+  // 分野タイル（クリックでその分野の学習タブへ）
   $('areaGrid').innerHTML = AREAS.map(function (a) {
-    var mm = a.id === A.area ? masteryOf(A.questions) : null;
-    return '<button class="area-tile" ' + (a.ready ? 'data-area="' + a.id + '"' : 'disabled') + '>' +
+    var d = DATA[a.id];
+    var mm = d ? masteryOf(d.questions) : null;
+    return '<button class="area-tile' + (a.id === curArea ? ' sel' : '') + '" ' +
+      (a.ready && d ? 'data-area="' + a.id + '"' : 'disabled') + '>' +
       '<div class="n">' + esc(a.icon) + ' ' + esc(a.name) + '</div>' +
       '<div class="bar"><i style="width:' + (mm ? mm.pct : 0) + '%"></i></div>' +
-      '<div class="pct">' + (a.ready ? (mm ? mm.pct + '%（' + mm.done + '/' + mm.total + '問）' : '—') : '準備中') + '</div>' +
+      '<div class="pct">' + (mm ? mm.pct + '%（' + mm.done + '/' + mm.total + '問）' : '準備中') + '</div>' +
       '</button>';
   }).join('');
   $('areaGrid').querySelectorAll('[data-area]').forEach(function (b) {
-    b.addEventListener('click', function () { switchTab('study'); });
+    b.addEventListener('click', function () {
+      setArea(b.getAttribute('data-area'));
+      switchTab('study');
+    });
   });
 
-  // 単元別
-  $('unitBars').innerHTML = A.units.map(function (u) {
-    var qs = A.questions.filter(function (q) { return q.unit === u.id; });
-    var mm = masteryOf(qs);
-    if (!mm.total) return '';
-    var lv = u.level === 2 ? '<span class="tagl">2級</span>' : '';
-    return '<div class="unit-row">' +
-      '<div class="un">' + esc(u.name) + lv + '</div>' +
-      '<div class="bar"><i style="width:' + mm.pct + '%"></i></div>' +
-      '<div class="pc">' + mm.pct + '%</div></div>';
+  // 単元別（分野ごとにまとめて全分野ぶん表示する）
+  $('unitBars').innerHTML = readyAreas().map(function (a) {
+    var d = DATA[a.id];
+    if (!d) return '';
+    var rows = d.units.map(function (u) {
+      var qs = d.questions.filter(function (q) { return q.unit === u.id; });
+      var mm = masteryOf(qs);
+      if (!mm.total) return '';
+      var tag = u.practice ? '<span class="tagl">実践</span>'
+        : (u.level === 2 ? '<span class="tagl">2級</span>' : '');
+      return '<div class="unit-row">' +
+        '<div class="un">' + esc(u.name) + tag + '</div>' +
+        '<div class="bar"><i style="width:' + mm.pct + '%"></i></div>' +
+        '<div class="pc">' + mm.pct + '%</div></div>';
+    }).join('');
+    if (!rows) return '';
+    return '<div class="unit-area-head">' + esc(a.icon) + ' ' + esc(a.name) + '</div>' + rows;
   }).join('');
+}
+
+// 分野切替チップ（学習・ドリルの両タブで使う）
+function areaBarHtml() {
+  var rs = readyAreas().filter(function (a) { return DATA[a.id]; });
+  if (rs.length < 2) return '';
+  return '<div class="area-bar">' + rs.map(function (a) {
+    return '<button class="chip' + (a.id === curArea ? ' active' : '') + '" data-sw="' + a.id + '">' +
+      esc(a.icon) + ' ' + esc(a.name) + '</button>';
+  }).join('') + '</div>';
+}
+function bindAreaBar(root) {
+  root.querySelectorAll('[data-sw]').forEach(function (b) {
+    b.addEventListener('click', function () { setArea(b.getAttribute('data-sw')); });
+  });
 }
 
 function renderStudy() {
@@ -823,9 +899,10 @@ function renderStudy() {
     if (!cs.length) return '';
     if (S.prefs.level !== 2 && u.level === 2) return '';
     var rd = cs.filter(function (c) { return isRead(c.id); }).length;
+    var tag = u.practice ? ' <span class="tagl">実践</span>'
+      : (u.level === 2 ? ' <span class="tagl">2級</span>' : '');
     return '<div class="unit-group">' +
-      '<button class="gh" data-u="' + u.id + '">' + esc(u.name) +
-        (u.level === 2 ? ' <span class="tagl">2級</span>' : '') +
+      '<button class="gh" data-u="' + u.id + '">' + esc(u.name) + tag +
         '<span class="cnt">' + rd + '/' + cs.length + '</span></button>' +
       cs.map(function (c) {
         return '<button class="ccard" data-c="' + c.id + '">' +
@@ -833,11 +910,14 @@ function renderStudy() {
           '<div class="cs">' + esc(c.summary) + '</div></button>';
       }).join('') + '</div>';
   }).join('');
-  $('cardList').innerHTML = html;
+  $('cardList').innerHTML = areaBarHtml() + html;
+  bindAreaBar($('cardList'));
   $('cardList').querySelectorAll('[data-c]').forEach(function (b) {
     b.addEventListener('click', function () { openCard(b.getAttribute('data-c')); });
   });
   if (selCard) markSel();
+  else $('cardDetail').innerHTML =
+    '<div class="empty"><div class="big">📖</div><p>左のリストから論点を選んでください。</p></div>';
 }
 function markSel() {
   $('cardList').querySelectorAll('.ccard').forEach(function (b) {
@@ -864,8 +944,14 @@ function renderBody(body) {
 }
 
 function openCard(id) {
-  var c = A.cards.filter(function (x) { return x.id === id; })[0];
+  // 別の分野のカードを開く場合（出題後の「この論点を読む」など）は分野ごと切り替える
+  var c = null;
+  readyAreas().forEach(function (a) {
+    var d = DATA[a.id]; if (!d) return;
+    d.cards.forEach(function (x) { if (x.id === id) c = x; });
+  });
   if (!c) return;
+  if (c._area !== curArea) { curArea = c._area; A = DATA[curArea]; drillCfg.units = []; syncPrefsUI(); renderStudy(); }
   selCard = id; markSel();
   var qn = A.questions.filter(function (q) { return q.card === id && levelOk(q); }).length;
 
@@ -911,10 +997,19 @@ function openCard(id) {
 
 // ── ドリル設定 ──────────────────────────────────────────
 function renderDrillSetup() {
+  var rs = readyAreas().filter(function (a) { return DATA[a.id]; });
+  $('areaGrp').hidden = rs.length < 2;
+  $('areaChips').innerHTML = rs.map(function (a) {
+    return '<button class="chip' + (a.id === curArea ? ' active' : '') + '" data-sw="' + a.id + '">' +
+      esc(a.icon) + ' ' + esc(a.name) + '</button>';
+  }).join('');
+  bindAreaBar($('areaChips'));
+
   var us = A.units.filter(function (u) { return S.prefs.level === 2 || u.level !== 2; });
   $('unitChips').innerHTML = '<button class="chip' + (drillCfg.units.length ? '' : ' active') + '" data-u="">すべての単元</button>' +
     us.map(function (u) {
-      return '<button class="chip' + (drillCfg.units.indexOf(u.id) >= 0 ? ' active' : '') + '" data-u="' + u.id + '">' + esc(u.name) + '</button>';
+      return '<button class="chip' + (drillCfg.units.indexOf(u.id) >= 0 ? ' active' : '') + '" data-u="' + u.id + '">' +
+        esc(u.name) + (u.practice ? ' ✳' : '') + '</button>';
     }).join('');
   $('unitChips').querySelectorAll('[data-u]').forEach(function (b) {
     b.addEventListener('click', function () {
@@ -993,7 +1088,8 @@ function endQuiz() {
 }
 function renderQuiz() {
   var q = quiz.qs[quiz.i];
-  var u = A.units.filter(function (x) { return x.id === q.unit; })[0];
+  var u = unitOf(q);
+  var ar = AREAS.filter(function (x) { return x.id === q._area; })[0];
   var choices = q.type === 'ox' ? ['○（正しい）', '×（誤り）'] : q.c;
   var keys = ['1', '2', '3', '4'];
   $('drillQuiz').innerHTML =
@@ -1004,8 +1100,10 @@ function renderQuiz() {
     '</div>' +
     '<div class="qbox">' +
       '<div class="qmeta">' +
-        '<span class="tagl ' + (q.level === 3 ? 'l3' : '') + '">' + (q.level === 3 ? '3級' : '2級') + '</span>' +
-        '<span class="u">' + esc(u ? u.name : '') + '</span>' +
+        (u && u.practice
+          ? '<span class="tagl">実践</span>'
+          : '<span class="tagl ' + (q.level === 3 ? 'l3' : '') + '">' + (q.level === 3 ? '3級' : '2級') + '</span>') +
+        '<span class="u">' + (ar ? esc(ar.icon) + ' ' : '') + esc(u ? u.name : '') + '</span>' +
       '</div>' +
       '<div class="qtext">' + inline(q.q) + '</div>' +
       '<div class="choices" id="choices">' +
@@ -1036,7 +1134,7 @@ function answer(picked) {
     else if (i === picked) b.classList.add('ng');
   });
 
-  var card = A.cards.filter(function (c) { return c.id === q.card; })[0];
+  var card = cardOf(q);
   var last = quiz.i >= quiz.qs.length - 1;
   var note = S.notes[q.id] || '';
   $('after').innerHTML =
@@ -1101,7 +1199,7 @@ function renderLog() {
     return '<span>' + (i % 3 === 1 ? d.k.slice(5).replace('-', '/') : '') + '</span>';
   }).join('');
 
-  var weak = A.questions.filter(function (q) {
+  var weak = allQ().filter(function (q) {
     var r = S.srs[q.id]; return r && r.wrong > 0;
   }).sort(function (a, b) {
     var ra = S.srs[a.id], rb = S.srs[b.id];
@@ -1123,7 +1221,7 @@ function renderLog() {
   var ids = Object.keys(S.notes);
   $('noteList').innerHTML = ids.length
     ? ids.map(function (id) {
-        var q = A.questions.filter(function (x) { return x.id === id; })[0];
+        var q = allQ().filter(function (x) { return x.id === id; })[0];
         if (!q) return '';
         return '<div class="weak-row"><div class="wq"><div style="font-size:12px;color:var(--text3);margin-bottom:3px">' +
           inline(q.q) + '</div><div>' + esc(S.notes[id]) + '</div></div></div>';

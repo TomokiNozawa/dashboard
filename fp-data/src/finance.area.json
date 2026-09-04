@@ -1,0 +1,20 @@
+{
+  "area": "finance",
+  "areaName": "金融資産運用",
+  "icon": "📈",
+  "lawBase": "2026年4月1日施行の法令（2026年6月〜2027年5月実施分の法令基準日）",
+  "units": [
+    { "id": "F1",  "name": "経済・金融の基礎",       "level": 3 },
+    { "id": "F2",  "name": "貯蓄型商品とセーフティネット", "level": 3 },
+    { "id": "F3",  "name": "債券",                   "level": 3 },
+    { "id": "F4",  "name": "株式",                   "level": 3 },
+    { "id": "F5",  "name": "投資信託",               "level": 3 },
+    { "id": "F6",  "name": "外貨建て商品と為替",     "level": 3 },
+    { "id": "F7",  "name": "金融商品と税金・NISA",   "level": 3 },
+    { "id": "F8",  "name": "金融関連法規",           "level": 3 },
+    { "id": "F9",  "name": "ポートフォリオ理論・デリバティブ", "level": 2 },
+    { "id": "F10", "name": "実践：インデックス投資", "level": 3, "practice": true }
+  ],
+  "cards": ["fin_cards_a.json", "fin_cards_b.json"],
+  "questions": ["fin_q3_a.json", "fin_q3_b.json", "fin_q2_a.json"]
+}

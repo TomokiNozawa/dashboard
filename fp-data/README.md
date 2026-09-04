@@ -7,15 +7,18 @@
 ```
 fp-data/
 ├ tax.json          ← アプリが読む生成物。直接編集しない
+├ finance.json      ←   〃
 ├ README.md
 └ src/              ← 編集するのはこちら
-   ├ build.py           結合＋整合性チェック＋出力
-   ├ tax_cards_a.json   論点カード U1〜U4
-   ├ tax_cards_b.json   論点カード U5〜U13
-   ├ tax_q3_a.json      3級問題 U1〜U4
-   ├ tax_q3_b.json      3級問題 U5〜U10
-   ├ tax_q2_a.json      2級問題 U1〜U10
-   └ tax_q2_b.json      2級問題 U11〜U13（法人税・消費税・決算書）
+   ├ build.py             全分野共通のビルダー（分野ごとにコピーしない）
+   ├ tax.area.json        タックスの分野定義（単元・使うファイル）
+   ├ finance.area.json    金融資産運用の分野定義
+   ├ tax_cards_a/b.json   論点カード
+   ├ tax_q3_a/b.json      3級問題
+   ├ tax_q2_a/b.json      2級問題
+   ├ fin_cards_a/b.json   論点カード
+   ├ fin_q3_a/b.json      3級問題
+   └ fin_q2_a.json        2級問題
 ```
 
 ## 更新手順
@@ -27,22 +30,28 @@ fp-data/
 bash ~/.claude/scripts/run_py.sh fp-data/src/build.py
 ```
 
-3. エラーが1件でも出たら `tax.json` は出力されない。直してから再実行
-4. `tax.json` と `src/` の両方をコミットする
+分野を指定して部分ビルドもできる。
 
-`tax.json` を直接編集しないこと。下記の検査を素通りしてしまう。
+```bash
+bash ~/.claude/scripts/run_py.sh fp-data/src/build.py finance
+```
+
+3. エラーが1件でも出たら生成物は出力されない。直してから再実行
+4. 生成物（`*.json`）と `src/` の両方をコミットする
+
+生成物を直接編集しないこと。下記の検査を素通りしてしまう。
 
 ## build.py が検査すること
 
 | 検査 | 内容 |
 |---|---|
-| ID重複 | カード・問題のIDが一意か |
+| ID重複 | カード・問題のIDが**分野をまたいで**一意か（SRSの保存キーが全分野共通のため必須） |
 | 参照整合 | 問題の `card` / `unit`、カードの `prereq` が実在するか |
 | 正解index | `a` が選択肢の範囲内か（○×は0/1） |
 | 選択肢 | 重複した選択肢がないか、3級は3択・2級は4択か（警告） |
 | 解説 | `exp` が空でないか |
 | 表 | `head` と各 `rows` の列数が一致するか |
-| 文字混入 | キリル文字など想定外の文字が入っていないか |
+| 文字混入 | キリル文字・ハングルなど想定外の文字が入っていないか（カード・問題の両方） |
 | カバレッジ | 全単元にカードと問題が存在するか |
 
 ## データ形式
@@ -82,9 +91,30 @@ bash ~/.claude/scripts/run_py.sh fp-data/src/build.py
 
 ## 他の分野を追加するとき
 
-1. `src/` に `<area>_cards_*.json` / `<area>_q3_*.json` / `<area>_q2_*.json` を作る
-2. `build.py` をコピーして `UNITS` と読み込むファイル名、`area` / `areaName` / `icon` を差し替える
-3. `fp.html` の `AREAS` 配列で該当分野を `ready: true` にする
+1. `src/<area>.area.json` を作る（`tax.area.json` をひな形にする）
+
+```json
+{
+  "area": "risk", "areaName": "リスク管理", "icon": "🛡",
+  "lawBase": "…",
+  "units": [{ "id": "R1", "name": "保険制度の全体像", "level": 3 }],
+  "cards": ["risk_cards_a.json"],
+  "questions": ["risk_q3_a.json", "risk_q2_a.json"]
+}
+```
+
+2. `src/` に分割JSONを置く。**IDは分野をまたいで一意**にする（`risk-c01` / `risk-q3-001` のように接頭辞をつける）
+3. `bash ~/.claude/scripts/run_py.sh fp-data/src/build.py` を実行
+4. `fp.html` の `AREAS` 配列で該当分野を `ready: true` にする
+
+`build.py` は分野ごとにコピーしない。検査ロジックが分散すると、片方だけ直して他方で同じ事故が再発する。
+
+### 単元のオプション
+
+| フィールド | 効果 |
+|---|---|
+| `"level": 2` | 3級モードでは非表示になる（2級専用の単元） |
+| `"practice": true` | 試験範囲外の実践論点。紫の「実践」バッジが付く |
 
 ## コンテンツ方針
 
