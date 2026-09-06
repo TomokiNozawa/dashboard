@@ -124,6 +124,41 @@ def build_area(cfg, seen_ids, errs, warns):
     return out
 
 
+def build_glossary(errs, warns):
+    """用語集 (glossary_*.json) を結合・検査して ../glossary.json を作る。
+    アプリはここの用語を本文中から拾ってタップ可能にするので、
+    別名まで含めて重複がないこと・関連語の参照先が存在することを検査する。"""
+    files = sorted(glob.glob(os.path.join(SRC, "glossary_*.json")))
+    if not files:
+        return None
+    terms = []
+    for p in files:
+        with open(p, encoding="utf-8") as f:
+            terms += json.load(f)
+
+    keys = {}          # 見出し語・別名 -> 代表の見出し語
+    for e in terms:
+        t = e.get("t", "")
+        if not t:
+            errs.append("用語集: 見出し語が空のエントリがある")
+            continue
+        if not e.get("d"):
+            errs.append("用語集 %s: 説明が空" % t)
+        scan_chars("用語集", t, e, errs)
+        for k in [t] + e.get("a", []):
+            if k in keys:
+                errs.append("用語集: 見出し語/別名の重複 '%s'（%s と %s）" % (k, keys[k], t))
+            keys[k] = t
+
+    for e in terms:
+        for r in e.get("s", []):
+            if r not in keys:
+                errs.append("用語集 %s: 関連語の参照先が存在しない '%s'" % (e.get("t"), r))
+
+    print("\n【📖 用語集】 %d語（別名を含む見出し %d件）" % (len(terms), len(keys)))
+    return {"terms": terms}
+
+
 def main():
     targets = sys.argv[1:]
     cfgs = sorted(glob.glob(os.path.join(SRC, "*.area.json")))
@@ -138,6 +173,8 @@ def main():
         with open(p, encoding="utf-8") as f:
             cfg = json.load(f)
         built.append(build_area(cfg, seen_ids, errs, warns))
+
+    glo = None if targets else build_glossary(errs, warns)
 
     print("")
     if warns:
@@ -154,6 +191,12 @@ def main():
         out = os.path.join(OUT_DIR, data["area"] + ".json")
         with open(out, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+        print("OK -> %s (%.1f KB)" % (out, os.path.getsize(out) / 1024))
+
+    if glo:
+        out = os.path.join(OUT_DIR, "glossary.json")
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(glo, f, ensure_ascii=False, separators=(",", ":"))
         print("OK -> %s (%.1f KB)" % (out, os.path.getsize(out) / 1024))
 
 

@@ -312,6 +312,43 @@ textarea.input { min-height: 64px; resize: vertical; line-height: 1.6; }
   color: var(--text3); font-size: 20px; cursor: pointer; border-radius: var(--radius); }
 .modal-close:hover { background: var(--card-hover); color: var(--text); }
 .modal-body { padding: 20px; }
+/* ── 用語リンクとポップオーバー ── */
+/* 本文が読みにくくならないよう、色は変えず点線の下線だけにする */
+.gl {
+  border-bottom: 1px dotted var(--text3); cursor: pointer;
+  padding-bottom: 1px; transition: color .12s, border-color .12s;
+}
+.gl:hover, .gl:focus-visible { color: var(--accent); border-bottom-color: var(--accent); }
+.gl-pop {
+  position: fixed; z-index: 1100;
+  background: var(--card); border: 1px solid var(--accent); border-radius: 10px;
+  box-shadow: 0 10px 32px var(--shadow); padding: 15px 17px;
+}
+.gl-pop[hidden] { display: none; }
+.gl-pop .gt { font-size: 14px; font-weight: 700; line-height: 1.5; }
+.gl-pop .ga { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.gl-pop .gd { font-size: 13px; line-height: 1.8; margin-top: 9px; }
+.gl-pop .gs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;
+  padding-top: 10px; border-top: 1px solid var(--border-light); }
+.gl-pop .gs .gsl { font-size: 11px; color: var(--text3); align-self: center; margin-right: 2px; }
+.gl-pop .gs button {
+  min-height: 32px; padding: 4px 11px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 999px;
+  color: var(--text2); font-size: 12px; cursor: pointer;
+}
+.gl-pop .gs button:hover { border-color: var(--accent); color: var(--accent); }
+.gl-pop .gclose {
+  position: absolute; top: 6px; right: 6px; min-width: 34px; min-height: 34px;
+  background: none; border: none; color: var(--text3); font-size: 15px; cursor: pointer; border-radius: 6px;
+}
+.gl-pop .gclose:hover { background: var(--card-hover); color: var(--text); }
+/* 用語集モーダルの一覧 */
+.gl-item { padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+.gl-item .t { font-size: 14px; font-weight: 700; }
+.gl-item .a { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.gl-item .d { font-size: 13px; line-height: 1.75; color: var(--text2); margin-top: 5px; }
+.gl-count { font-size: 12px; color: var(--text3); margin: 10px 0 0; }
+
 .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
 .sync-dot.on { background: var(--green); }
 .sync-dot.err { background: var(--red); }
@@ -320,11 +357,22 @@ textarea.input { min-height: 64px; resize: vertical; line-height: 1.6; }
   .study-wrap { grid-template-columns: 1fr; }
   .detail { position: static; max-height: none; }
 }
+/* 狭い画面では下からのシートにする（指が届く位置に出す） */
+@media (max-width: 768px) {
+  .gl-pop {
+    left: 10px !important; right: 10px !important;
+    top: auto !important; width: auto !important;
+    bottom: calc(66px + env(safe-area-inset-bottom));
+    max-height: 60vh; overflow-y: auto;
+  }
+}
 @media (max-width: 768px) {
   body { padding-left: 0; padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
   .side-nav { display: none; }
   .mobile-bottom-nav { display: flex; }
   .header { padding: 12px 14px 0; }
+  .header h1 { font-size: 16px; }
+  .header .hlbl { display: none; }   /* ボタンはアイコンだけにして1行に収める */
   .main { padding: 16px 14px 40px; }
   .qbox { padding: 18px 16px; }
   .detail { padding: 18px 16px; }
@@ -351,7 +399,8 @@ textarea.input { min-height: 64px; resize: vertical; line-height: 1.6; }
       <h1>📘 FP学習 <span class="tagl l3" id="levelBadge">3級モード</span></h1>
       <div class="header-spacer"></div>
       <span class="sync-dot" id="syncDot" title="同期状態"></span>
-      <button class="btn btn-sm" id="btnSettings">⚙ 設定</button>
+      <button class="btn btn-sm" id="btnGlossary" title="用語集">📖<span class="hlbl"> 用語</span></button>
+      <button class="btn btn-sm" id="btnSettings" title="設定">⚙<span class="hlbl"> 設定</span></button>
       <button class="btn btn-sm" id="btnTheme">◐</button>
     </div>
     <nav class="tabs" id="tabs">
@@ -501,6 +550,24 @@ textarea.input { min-height: 64px; resize: vertical; line-height: 1.6; }
   </div>
 </div>
 
+<!-- 用語集モーダル -->
+<div class="modal" id="mdGlossary" role="dialog" aria-modal="true" aria-labelledby="mdGlossaryTitle">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 id="mdGlossaryTitle">用語集</h2>
+      <button class="modal-close" data-close aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-body">
+      <input class="input" id="glSearch" type="search" placeholder="用語を検索（例：損益通算、シャープレシオ）" autocomplete="off">
+      <p class="gl-count" id="glCount"></p>
+      <div id="glList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 用語のポップオーバー -->
+<div class="gl-pop" id="glPop" role="dialog" aria-live="polite" hidden></div>
+
 <nav class="mobile-bottom-nav" id="mobileBottomNav"></nav>
 
 <script>
@@ -631,6 +698,10 @@ function hideModal() {
   if (lastFocus && lastFocus.focus) lastFocus.focus();
 }
 document.addEventListener('keydown', function (e) {
+  // 用語ポップオーバーが開いていれば、そちらを先に閉じる
+  if (e.key === 'Escape' && !$('glPop').hidden) {
+    e.preventDefault(); e.stopPropagation(); hideGloss(); return;
+  }
   if (!openModal) return;
   if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hideModal(); return; }
   if (e.key === 'Tab') {
@@ -671,7 +742,7 @@ function boot() {
   withTimeout(auth.signInWithEmailAndPassword('dashboard@prism-gacha.internal', pw), 15000)
     .then(function () {
       var jobs = readyAreas().map(function (a) { return loadArea(a.id); });
-      jobs.push(loadState());
+      jobs.push(loadState(), loadGlossary());
       return withTimeout(Promise.all(jobs), 20000);
     })
     .then(function () {
@@ -705,6 +776,147 @@ function loadArea(id) {
       DATA[id] = j;
       if (id === curArea) A = j;
     });
+}
+
+// ═══ 用語集 ═══════════════════════════════════════════════
+var GL = {};        // 見出し語・別名 -> エントリ
+var GL_TERMS = [];  // 一覧表示用
+var GL_RE = null;   // 本文から用語を拾うための正規表現
+
+function loadGlossary() {
+  return fetch('fp-data/glossary.json', { cache: 'no-cache' })
+    .then(function (r) { if (!r.ok) throw new Error('用語集の取得失敗 ' + r.status); return r.json(); })
+    .then(function (j) {
+      GL_TERMS = j.terms;
+      var keys = [];
+      GL_TERMS.forEach(function (e) {
+        [e.t].concat(e.a || []).forEach(function (k) { GL[k] = e; keys.push(k); });
+      });
+      // 長い語を先に並べる = 「利回り」より「最終利回り」が優先して一致する
+      keys.sort(function (a, b) { return b.length - a.length; });
+      GL_RE = new RegExp(keys.map(function (k) {
+        return k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }).join('|'), 'g');
+    })
+    .catch(function (e) { console.warn('用語集を読み込めませんでした', e); });
+}
+
+// 英数字だけの語（PER/CI など）が別の英単語の一部に食い込むのを防ぐ
+function asciiWord(s) { return /^[A-Za-z0-9&%.\- ]+$/.test(s); }
+function isAlnum(ch) { return !!ch && /[A-Za-z0-9]/.test(ch); }
+
+// 指定要素の中の用語を、タップできる span に置き換える。
+// seen を共有すると「同じ用語は最初の1回だけ」を複数要素にまたがって適用できる。
+function glossify(root, seen) {
+  if (!GL_RE || !root) return;
+  seen = seen || {};
+  var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  var nodes = [], n;
+  while ((n = walker.nextNode())) nodes.push(n);
+
+  nodes.forEach(function (node) {
+    var p = node.parentNode;
+    if (!p || (p.closest && p.closest('.gl, .gl-pop'))) return;
+    var text = node.nodeValue;
+    if (!text || !text.trim()) return;
+
+    var frag = null, last = 0, m;
+    GL_RE.lastIndex = 0;
+    while ((m = GL_RE.exec(text)) !== null) {
+      var key = m[0], i = m.index;
+      if (asciiWord(key) && (isAlnum(text[i - 1]) || isAlnum(text[i + key.length]))) continue;
+      var entry = GL[key];
+      if (!entry || seen[entry.t]) continue;
+      seen[entry.t] = 1;
+      if (!frag) frag = document.createDocumentFragment();
+      frag.appendChild(document.createTextNode(text.slice(last, i)));
+      var s = document.createElement('span');
+      s.className = 'gl';
+      s.tabIndex = 0;
+      s.setAttribute('role', 'button');
+      s.setAttribute('aria-label', key + ' の意味を見る');
+      s.setAttribute('data-gl', key);
+      s.textContent = key;
+      frag.appendChild(s);
+      last = i + key.length;
+    }
+    if (!frag) return;
+    frag.appendChild(document.createTextNode(text.slice(last)));
+    p.replaceChild(frag, node);
+  });
+}
+
+function showGloss(key, el) {
+  var e = GL[key];
+  if (!e) return;
+  var p = $('glPop');
+  p.innerHTML =
+    '<button class="gclose" data-gclose aria-label="閉じる">✕</button>' +
+    '<div class="gt">' + esc(e.t) + '</div>' +
+    (e.a && e.a.length ? '<div class="ga">' + esc(e.a.join('／')) + '</div>' : '') +
+    '<div class="gd">' + esc(e.d) + '</div>' +
+    (e.s && e.s.length
+      ? '<div class="gs"><span class="gsl">関連</span>' +
+        e.s.map(function (r) { return '<button data-gl="' + esc(r) + '">' + esc(r) + '</button>'; }).join('') +
+        '</div>'
+      : '');
+  p.hidden = false;
+
+  // 幅を決めてから高さを測り、はみ出す側を避けて配置する（狭い画面はCSSで下部シートに固定）
+  var w = Math.min(340, window.innerWidth - 20);
+  p.style.width = w + 'px';
+  var r = el.getBoundingClientRect();
+  p.style.left = Math.max(10, Math.min(r.left, window.innerWidth - w - 10)) + 'px';
+  var h = p.offsetHeight;
+  var top = r.bottom + 8;
+  if (top + h > window.innerHeight - 10) top = Math.max(10, r.top - h - 8);
+  p.style.top = top + 'px';
+}
+function hideGloss() {
+  var p = $('glPop');
+  if (!p.hidden) { p.hidden = true; p.innerHTML = ''; }
+}
+
+document.addEventListener('click', function (e) {
+  var t = e.target;
+  if (!t || !t.closest) return;
+  if (t.closest('[data-gclose]')) { hideGloss(); return; }
+  var g = t.closest('[data-gl]');
+  if (g) {
+    e.preventDefault();
+    e.stopPropagation();
+    showGloss(g.getAttribute('data-gl'), g);
+    return;
+  }
+  if (!t.closest('.gl-pop')) hideGloss();
+}, true);
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  var g = e.target && e.target.closest ? e.target.closest('.gl') : null;
+  if (g) { e.preventDefault(); showGloss(g.getAttribute('data-gl'), g); }
+});
+// 広い画面ではポップオーバーが要素に紐づいて浮くのでスクロールで閉じる。
+// 狭い画面は画面下に固定されたシートなので、スクロールしても閉じない
+// （モバイルはURLバーの開閉でも resize が飛ぶため、閉じると読めなくなる）
+function isSheet() { return window.innerWidth <= 768; }
+window.addEventListener('resize', function () { if (!isSheet()) hideGloss(); });
+window.addEventListener('scroll', function () { if (!isSheet()) hideGloss(); }, true);
+
+// 用語集モーダル
+function renderGlossaryList() {
+  var q = ($('glSearch').value || '').trim().toLowerCase();
+  var hits = GL_TERMS.filter(function (e) {
+    if (!q) return true;
+    if (e.t.toLowerCase().indexOf(q) >= 0) return true;
+    if ((e.a || []).some(function (a) { return a.toLowerCase().indexOf(q) >= 0; })) return true;
+    return e.d.toLowerCase().indexOf(q) >= 0;
+  });
+  $('glCount').textContent = q ? hits.length + ' 件' : '全 ' + GL_TERMS.length + ' 語';
+  $('glList').innerHTML = hits.slice(0, 60).map(function (e) {
+    return '<div class="gl-item"><div class="t">' + esc(e.t) + '</div>' +
+      (e.a && e.a.length ? '<div class="a">' + esc(e.a.join('／')) + '</div>' : '') +
+      '<div class="d">' + esc(e.d) + '</div></div>';
+  }).join('') + (hits.length > 60 ? '<p class="gl-count">ほか ' + (hits.length - 60) + ' 件。検索で絞り込んでください。</p>' : '');
 }
 
 function loadState() {
@@ -992,6 +1204,11 @@ function openCard(id) {
       startQuiz(qs, '論点: ' + c.title);
     });
   }
+  // 本文とひっかけポイントの用語をタップできるようにする（同じ用語は最初の1回だけ）
+  var seen = {};
+  glossify($('cardDetail').querySelector('.cbody'), seen);
+  glossify($('cardDetail').querySelector('.pitfalls'), seen);
+
   if (window.innerWidth <= 980) $('cardDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -1118,6 +1335,9 @@ function renderQuiz() {
     b.addEventListener('click', function () { answer(parseInt(b.getAttribute('data-i'), 10)); });
   });
   quiz.answered = false;
+  // 選択肢は誤タップの原因になるので、問題文だけ用語リンクにする
+  quiz.seen = {};
+  glossify($('drillQuiz').querySelector('.qtext'), quiz.seen);
   window.scrollTo(0, 0);
 }
 function answer(picked) {
@@ -1154,6 +1374,7 @@ function answer(picked) {
   });
   if (card) $('btnGoCard').addEventListener('click', function () { switchTab('study'); openCard(card.id); });
   $('btnNext').addEventListener('click', next);
+  glossify($('after').querySelector('.exp'), quiz.seen || {});
   $('btnNext').focus();
 }
 function next() {
@@ -1267,6 +1488,12 @@ $('goalChips').querySelectorAll('.chip').forEach(function (b) {
   });
 });
 $('btnSettings').addEventListener('click', function () { showModal($('mdSettings')); });
+$('btnGlossary').addEventListener('click', function () {
+  renderGlossaryList();
+  showModal($('mdGlossary'));
+  $('glSearch').focus();
+});
+$('glSearch').addEventListener('input', renderGlossaryList);
 
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
@@ -1281,6 +1508,7 @@ $('btnTheme').addEventListener('click', function () {
 // ── キーボード操作 ──────────────────────────────────────
 document.addEventListener('keydown', function (e) {
   if (openModal) return;
+  if (!$('glPop').hidden) return;   // 用語の説明を読んでいる間は誤操作させない
   var tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea') return;
   if (!quiz || $('drillQuiz').hidden) return;
