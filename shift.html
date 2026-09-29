@@ -2600,7 +2600,7 @@ function modalRemoveAssigned(schedIdx, tagIdx, reopenFn, ...reopenArgs) {
 // -- Schedule row modal (EDITABLE) --
 function openScheduleModal(schedIdx) {
   const s = shiftData.schedule[schedIdx];
-  const TEACHER_LIST = ['中田', '野沢', '樋口', '保坂', '赤井', '福田', '澁谷'];
+  const TEACHER_LIST = ['中田', '野沢', '樋口', '保坂', '赤井', '福田', '澁谷', '山本さん'];
   const currentTeachers = s.teachers || [];
   const teacherTags = TEACHER_LIST.map(name => {
     const isActive = currentTeachers.includes(name);
