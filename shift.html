@@ -696,6 +696,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 let shiftData = null;
 let currentMonthKey = null;
 let fileSha = null;
+let baseData = null; // 読み込んだ時点のデータ (保存競合時の3-way マージの基準)
 let pat = null;
 let changeCount = 0;
 let sheetsCreds = null; // Google Sheets OAuth (refresh_token等)、encrypted-sheets.json 経由で取得
@@ -925,6 +926,7 @@ async function loadData() {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   const decoded = new TextDecoder('utf-8').decode(bytes);
   shiftData = JSON.parse(decoded);
+  baseData = JSON.parse(decoded);
   if (shiftData.months) {
     const key = shiftData.currentMonth || Object.keys(shiftData.months).sort().reverse()[0];
     applyMonthAlias(key);
@@ -958,15 +960,17 @@ async function saveData() {
     });
 
     if (resp.status === 409) {
-      showToast('他のユーザーが更新しています。再読み込みしてください。', 'error');
+      // 他の更新と競合: 手元の変更を捨てずに最新データへ統合する (3-way マージ)
       fab.disabled = false;
-      fab.innerHTML = '保存 <span class="save-badge" id="saveBadge">' + changeCount + '</span>';
+      fab.innerHTML = '💾 保存 <span class="save-badge" id="saveBadge">' + changeCount + '</span>';
+      await mergeWithRemoteAndSave(cleaned);
       return;
     }
     if (!resp.ok) throw new Error(`Save failed: ${resp.status}`);
 
     const result = await resp.json();
     fileSha = result.content.sha;
+    baseData = cleaned;
     changeCount = 0;
     updateSaveBadge();
     showToast('保存しました', 'success');
@@ -1007,6 +1011,241 @@ async function reloadData() {
   } catch (e) {
     showToast('再読み込みに失敗: ' + e.message, 'error');
   }
+}
+
+// ============================================================
+// 保存競合の3-way マージ
+//   基準(baseData) → 自分の編集 / 基準 → 他の更新(Claude の自動反映など) を項目単位で突き合わせ、
+//   別々の項目なら両方残す。同じ項目を両方が別の値にした時だけモーダルで選んでもらう。
+//   予定は 日付+開始+会社+内容、インストラクターは名前で突き合わせる (並び順のズレで誤適用しない)。
+// ============================================================
+const MERGE_FIELD_LABEL = {
+  assigned: '配置', instConfirm: '確認状況', instConfirmNote: '確認メモ', availability: '可用性',
+  instNeeded: '必要人数', teachers: '講師', note: 'メモ', notes: 'メモ', rank: 'ランク',
+  confirmed: '確定', replied: '回答', contacted: '連絡', start: '開始', end: '終了', content: '内容',
+  location: '場所', company: '会社', emails: 'メアド',
+};
+const MERGE_AUTO_MINE = ['lastEditedInBrowser', 'currentMonth'];   // 両方変えても自分の値で問題ない
+const MERGE_AUTO_THEIRS = ['updatedAt'];
+const MERGE_UNION_ARRAYS = ['autoLog', 'systemChangelog'];        // 追記型は和集合
+
+function _deepEq(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+function _isObj(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+function _mergeKey(item) {
+  if (!_isObj(item)) return null;
+  if ('date' in item && 'company' in item) return `S|${item.date}|${item.start}|${item.company}|${item.content}`;
+  if ('name' in item && ('availability' in item || 'slackId' in item)) return `I|${item.name}`;
+  return null;
+}
+function _mergeLabel(item) {
+  if ('date' in item) {
+    const d = new Date(item.date + 'T00:00:00');
+    const w = '日月火水木金土'[d.getDay()];
+    return `${item.date.slice(5, 7)}/${item.date.slice(8, 10)}(${w}) ${item.start} ${item.company}_${item.content}`;
+  }
+  return item.name;
+}
+
+function merge3(base, mine, theirs, path, conflicts) {
+  if (_deepEq(mine, base)) return theirs;
+  if (_deepEq(theirs, base)) return mine;
+  if (_deepEq(mine, theirs)) return mine;
+  const last = path.length ? path[path.length - 1].key : '';
+  if (MERGE_AUTO_MINE.includes(last)) return mine;
+  if (MERGE_AUTO_THEIRS.includes(last)) return theirs;
+  if (_isObj(mine) && _isObj(theirs) && (_isObj(base) || base === undefined)) {
+    const b = base || {};
+    const out = {};
+    for (const k of new Set([...Object.keys(b), ...Object.keys(mine), ...Object.keys(theirs)])) {
+      const v = merge3(b[k], mine[k], theirs[k], [...path, { key: k, label: MERGE_FIELD_LABEL[k] || k }], conflicts);
+      if (v !== undefined) out[k] = v;
+    }
+    return out;
+  }
+  if (Array.isArray(mine) && Array.isArray(theirs)) {
+    const all = [...(Array.isArray(base) ? base : []), ...mine, ...theirs];
+    if (all.length && all.every(x => _mergeKey(x))) {
+      const map = arr => new Map((Array.isArray(arr) ? arr : []).map(x => [_mergeKey(x), x]));
+      const bm = map(base), mm = map(mine), tm = map(theirs);
+      const order = [...tm.keys(), ...[...mm.keys()].filter(k => !tm.has(k))];
+      for (const k of bm.keys()) if (!order.includes(k)) order.push(k);
+      const out = [];
+      for (const k of order) {
+        const sample = tm.get(k) || mm.get(k) || bm.get(k);
+        const v = merge3(bm.get(k), mm.get(k), tm.get(k), [...path, { key: k, label: _mergeLabel(sample) }], conflicts);
+        if (v !== undefined) out.push(v);
+      }
+      return out;
+    }
+    if (MERGE_UNION_ARRAYS.includes(last)) {
+      const seen = new Set(theirs.map(x => JSON.stringify(x)));
+      return [...theirs, ...mine.filter(x => !seen.has(JSON.stringify(x)))];
+    }
+  }
+  // 同じ項目を両方が別の値にした → 既定は自分の値。モーダルで選び直せる
+  const c = { path, base, mine, theirs, pick: 'mine' };
+  conflicts.push(c);
+  return { __conflict: conflicts.length - 1 };
+}
+
+function _resolveConflicts(v, conflicts) {
+  if (_isObj(v) && '__conflict' in v) {
+    const c = conflicts[v.__conflict];
+    return c.pick === 'mine' ? c.mine : c.theirs;
+  }
+  if (Array.isArray(v)) return v.map(x => _resolveConflicts(x, conflicts)).filter(x => x !== undefined);
+  if (_isObj(v)) {
+    const out = {};
+    for (const [k, x] of Object.entries(v)) { const r = _resolveConflicts(x, conflicts); if (r !== undefined) out[k] = r; }
+    return out;
+  }
+  return v;
+}
+
+async function _fetchRemote() {
+  const url = `${API_BASE}/repos/${REPO}/contents/${FILE_PATH}?t=${Date.now()}`;
+  const resp = await fetch(url, { headers: apiHeaders(), cache: 'no-store' });
+  if (!resp.ok) throw new Error(`API error ${resp.status}`);
+  const json = await resp.json();
+  const binary = atob(json.content.replace(/\n/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return { sha: json.sha, data: JSON.parse(new TextDecoder('utf-8').decode(bytes)) };
+}
+
+async function mergeWithRemoteAndSave(mine, attempt = 0) {
+  let remote;
+  try { remote = await _fetchRemote(); }
+  catch (e) { showToast('最新データの取得に失敗しました。変更は残っています: ' + e.message, 'error'); return; }
+  const conflicts = [];
+  const merged = merge3(baseData, mine, remote.data, [], conflicts);
+  if (conflicts.length === 0) {
+    await _saveMerged(_resolveConflicts(merged, conflicts), remote, mine, attempt, 0);
+    return;
+  }
+  openMergeModal(conflicts, async () => {
+    await _saveMerged(_resolveConflicts(merged, conflicts), remote, mine, attempt, conflicts.length);
+  });
+}
+
+async function _saveMerged(data, remote, mine, attempt, nConflicts) {
+  const jsonStr = JSON.stringify(data, null, 2);
+  const utf8Bytes = new TextEncoder().encode(jsonStr);
+  let binaryStr = '';
+  utf8Bytes.forEach(b => binaryStr += String.fromCharCode(b));
+  const resp = await fetch(`${API_BASE}/repos/${REPO}/contents/${FILE_PATH}`, {
+    method: 'PUT', headers: apiHeaders(),
+    body: JSON.stringify({ message: 'シフトデータ更新（ブラウザ編集・他の更新と統合）', content: btoa(binaryStr), sha: remote.sha }),
+  });
+  if (resp.status === 409 && attempt < 2) {
+    // 統合中にさらに更新が入った: 今回の統合元(remote)を新しい基準にしてやり直す
+    baseData = remote.data;
+    return mergeWithRemoteAndSave(data, attempt + 1);
+  }
+  if (!resp.ok) { showToast(`保存に失敗しました (${resp.status})。変更は残っています`, 'error'); return; }
+  const result = await resp.json();
+  fileSha = result.content.sha;
+  const keepMonth = currentMonthKey;
+  shiftData = JSON.parse(jsonStr);
+  baseData = JSON.parse(jsonStr);
+  applyMonthAlias(shiftData.months && shiftData.months[keepMonth] ? keepMonth : (shiftData.currentMonth || keepMonth));
+  changeCount = 0;
+  renderApp();
+  updateSaveBadge();
+  if (historyLoaded) loadHistory();
+  showToast(nConflicts
+    ? `他の更新を取り込んで保存しました（同じ項目 ${nConflicts}件は選んだ内容で保存）`
+    : '他の更新を取り込んで保存しました（あなたの変更はそのまま残っています）', 'success');
+}
+
+function _mergeVal(v) {
+  if (v === undefined || v === null || v === '') return '<span style="color:var(--text3);">(なし)</span>';
+  if (Array.isArray(v)) return v.length ? escapeHtml(v.join(', ')) : '<span style="color:var(--text3);">(なし)</span>';
+  if (_isObj(v)) {
+    if ('kind' in v) return escapeHtml(v.raw || v.kind);
+    return escapeHtml(Object.entries(v).map(([k, x]) => `${k}:${typeof x === 'object' ? JSON.stringify(x) : x}`).join(' / '));
+  }
+  return escapeHtml(String(v));
+}
+
+let _mergeKeydownHandler = null;
+let _mergeModalPrevFocus = null;
+function openMergeModal(conflicts, onConfirm) {
+  _mergeModalPrevFocus = document.activeElement;
+  const wrap = document.createElement('div');
+  wrap.id = 'mergeModal';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-labelledby', 'mergeModalTitle');
+  wrap.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;';
+  wrap.addEventListener('click', e => { if (e.target === wrap) closeMergeModal(); });
+  const rows = conflicts.map((c, i) => {
+    const where = c.path.map(p => p.label).filter(l => !/^(months|schedule|instructors)$/.test(l) && !/^\d{4}-\d{2}$/.test(l));
+    const item = escapeHtml(where.slice(0, -1).join(' › ') || '全体');
+    const field = escapeHtml(where[where.length - 1] || '');
+    return `<div style="padding:12px 0;border-bottom:1px solid var(--border-light);">
+      <div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:6px;">${item} <span style="color:var(--text3);font-weight:400;">› ${field}</span></div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px;">変更前: ${_mergeVal(c.base)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="flex:1;min-width:220px;min-height:44px;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+          <input type="radio" name="mergePick${i}" value="mine" checked onchange="window._mergeConflicts[${i}].pick='mine'">
+          <span><b style="color:var(--blue);">自分の変更</b>: ${_mergeVal(c.mine)}</span></label>
+        <label style="flex:1;min-width:220px;min-height:44px;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+          <input type="radio" name="mergePick${i}" value="theirs" onchange="window._mergeConflicts[${i}].pick='theirs'">
+          <span><b style="color:var(--orange, #d29922);">他の更新</b>: ${_mergeVal(c.theirs)}</span></label>
+      </div></div>`;
+  }).join('');
+  window._mergeConflicts = conflicts;
+  window._mergeOnConfirm = onConfirm;
+  wrap.innerHTML = `<div style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;width:min(900px, calc(100vw - 32px));max-height:calc(100vh - 80px);display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden;">
+    <div style="position:sticky;top:0;background:var(--card);display:flex;justify-content:space-between;align-items:center;padding:18px 24px 12px;border-bottom:1px solid var(--border-light);">
+      <h3 id="mergeModalTitle" style="margin:0;font-size:16px;">⚠️ 同じ項目が他でも更新されています (${conflicts.length}件)</h3>
+      <button onclick="closeMergeModal()" title="閉じる (Esc)" aria-label="閉じる" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;min-width:44px;min-height:44px;line-height:1;">×</button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:8px 24px 12px;">
+      <div style="font-size:12px;color:var(--text2);padding:8px 0;">これ以外のあなたの変更と他の更新は、両方とも自動で統合します。下の項目だけ、どちらを残すか選んでください。</div>
+      ${rows}
+    </div>
+    <div style="position:sticky;bottom:0;background:var(--card);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;border-top:1px solid var(--border-light);">
+      <div style="font-size:11px;color:var(--text3);">Esc 閉じる(変更は残ります) / Alt+S 保存 / Tab で項目移動</div>
+      <div style="display:flex;gap:8px;">
+        <button id="mergeCancelBtn" onclick="closeMergeModal()" style="min-height:44px;padding:8px 16px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;">あとで (Esc)</button>
+        <button id="mergeConfirmBtn" onclick="confirmMergeModal()" style="min-height:44px;padding:8px 18px;background:var(--blue);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">この内容で保存 (Alt+S)</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap);
+  updateModalOpenState();
+  _mergeKeydownHandler = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMergeModal(); return; }
+    if (e.altKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); e.stopPropagation(); confirmMergeModal(); return; }
+    if (e.key === 'Tab') {
+      const f = wrap.querySelectorAll('button:not([disabled]), input, [tabindex]:not([tabindex="-1"])');
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !wrap.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !wrap.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+      return;
+    }
+    // モーダル表示中は背景のショートカットに渡さない
+    if (!wrap.contains(e.target)) { e.stopPropagation(); }
+  };
+  document.addEventListener('keydown', _mergeKeydownHandler, true);
+  setTimeout(() => document.getElementById('mergeConfirmBtn')?.focus(), 0);
+}
+
+function closeMergeModal() {
+  document.getElementById('mergeModal')?.remove();
+  if (_mergeKeydownHandler) { document.removeEventListener('keydown', _mergeKeydownHandler, true); _mergeKeydownHandler = null; }
+  updateModalOpenState();
+  try { _mergeModalPrevFocus?.focus(); } catch (e) {}
+  _mergeModalPrevFocus = null;
+}
+
+async function confirmMergeModal() {
+  const fn = window._mergeOnConfirm;
+  closeMergeModal();
+  if (fn) await fn();
 }
 
 // ============================================================
@@ -2398,6 +2637,7 @@ function escapeHtml(str) {
 function isAnyModalOpen() {
   return !!(document.getElementById('modalOverlay')?.classList.contains('active')
     || document.getElementById('exportModal')
+    || document.getElementById('mergeModal')
     || (document.getElementById('shortcutHelpModal') && document.getElementById('shortcutHelpModal').style.display === 'flex')
     || document.querySelector('.modal-dropdown')
     || document.querySelector('.assign-dropdown'));
